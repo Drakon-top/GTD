@@ -10,8 +10,11 @@ import com.gtd.backend.auth.exception.InvalidCredentialsException;
 import com.gtd.backend.auth.exception.InvalidRefreshTokenException;
 import com.gtd.backend.auth.service.AuthService;
 import com.gtd.backend.auth.service.JwtService;
+import com.gtd.backend.config.CorsProperties;
 import com.gtd.backend.config.JwtAuthenticationFilter;
 import com.gtd.backend.config.JwtProperties;
+import com.gtd.backend.config.RateLimitProperties;
+import com.gtd.backend.config.RateLimitingFilter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -56,6 +59,15 @@ class AuthControllerTest {
 
     @MockitoBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @MockitoBean
+    private RateLimitingFilter rateLimitingFilter;
+
+    @MockitoBean
+    private RateLimitProperties rateLimitProperties;
+
+    @MockitoBean
+    private CorsProperties corsProperties;
 
     @Test
     void shouldReturn201_whenRegistrationIsSuccessful() throws Exception {

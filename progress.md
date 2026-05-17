@@ -153,3 +153,28 @@
   - Partial index `idx_contexts_user_id_not_deleted` оптимизирует самый частый запрос — получение активных контекстов пользователя
   - Разблокированы: TASK-009 (CRUD API для контекстов, нужен также TASK-007), TASK-010 (миграция и сущность Task)
   - Следующий приоритет: TASK-006 (security, critical) — единственная critical-задача с выполненными dependencies, или TASK-010 (functional, critical) — таблица tasks (зависит только от TASK-008, теперь done)
+
+### TASK-006 — Spring Security конфигурация + rate limiting
+- **Дата:** 2026-05-17
+- **Статус:** done
+- **Что сделано:**
+  - Обновлён `SecurityConfig`: добавлена CORS-конфигурация через `CorsConfigurationSource` bean, rate limiting filter добавлен в цепочку фильтров после JWT-фильтра
+  - Создан `CorsProperties` (@ConfigurationProperties prefix=cors): allowed-origins, allowed-methods, allowed-headers, allow-credentials, max-age — всё конфигурируется через application.yml/env
+  - Создан `RateLimitProperties` (@ConfigurationProperties prefix=rate-limit): max-requests (default 100), window-ms (default 60000)
+  - Создан `RateLimitingFilter` (OncePerRequestFilter): sliding window rate limiter на ConcurrentHashMap + ConcurrentLinkedDeque, ключ = userId (если авторизован) или IP (X-Forwarded-For / remoteAddr), возвращает 429 + Retry-After header при превышении лимита
+  - CORS: по умолчанию разрешены http://localhost:3000 и http://localhost:5173, конфигурируется через `cors.allowed-origins` в application.yml
+  - Rate limit: по умолчанию 100 запросов в минуту, конфигурируется через `rate-limit.max-requests` и `rate-limit.window-ms`
+  - Добавлены секции cors и rate-limit в application.yml и test application.yml
+  - Входные данные уже валидируются на всех эндпоинтах через Jakarta Validation (@Valid, @NotBlank, @Email, @Size) — добавлено в TASK-004
+  - Написаны unit-тесты RateLimitingFilterTest (6 тестов: allow within limit, block on exceed, userId key, X-Forwarded-For key, remoteAddr key, separate tracking per client)
+  - Написаны интеграционные тесты SecurityConfigIntegrationTest (5 тестов: 401 без токена, auth open, swagger open, CORS allowed origin, CORS rejected origin)
+  - Написаны интеграционные тесты RateLimitingIntegrationTest (2 теста: 429 при превышении лимита, работа после сброса)
+  - Обновлён AuthControllerTest — добавлены mock beans для новых зависимостей (RateLimitingFilter, RateLimitProperties, CorsProperties)
+  - Все 79 тестов проходят, проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add CORS configuration and rate limiting (100 req/min)
+- **Заметки:**
+  - Rate limiter in-memory — подходит для single-instance deployment. Для multi-instance нужен Redis-based (Bucket4j + Redis)
+  - CORS origins конфигурируются через env: `CORS_ALLOWED_ORIGINS=https://app.example.com`
+  - `RateLimitingFilter.clearBuckets()` используется в тестах для изоляции — package-private
+  - Разблокирован: TASK-007 (Swagger/OpenAPI документация)
+  - Следующий приоритет: TASK-007 (infrastructure, critical) — Swagger документация, или TASK-010 (functional, critical) — таблица tasks

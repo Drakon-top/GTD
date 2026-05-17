@@ -25,3 +25,12 @@ jwt:
   secret: test-secret-key-that-is-at-least-256-bits-long-for-hmac-sha-testing-only
   access-token-expiration-ms: 900000
   refresh-token-expiration-ms: 2592000000
+
+rate-limit:
+  max-requests: 100
+  window-ms: 60000
+
+cors:
+  allowed-origins:
+    - http://localhost:3000
+    - http://localhost:5173
