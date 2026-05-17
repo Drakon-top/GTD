@@ -1,0 +1,1100 @@
+{
+  "agent_instructions": {
+    "before_start": [
+      "Прочитай этот файл и git log --oneline -20",
+      "Выбери ОДНУ задачу со статусом pending и наивысшим приоритетом",
+      "Проверь, что все dependencies этой задачи имеют статус done"
+    ],
+    "during_work": [
+      "Работай только над выбранной задачей",
+      "Делай коммиты после каждого логического изменения",
+      "Не трогай код, не связанный с текущей задачей"
+    ],
+    "before_finish": [
+      "Выполни ВСЕ test_steps из задачи",
+      "Меняй status на done ТОЛЬКО после успешного прохождения всех тестов",
+      "Напиши summary в progress.md",
+      "ЗАПРЕЩЕНО удалять или редактировать задачи — только менять status"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "category": "infrastructure",
+      "priority": "critical",
+      "description": "Инициализация Spring Boot проекта с базовой структурой и зависимостями",
+      "acceptance_criteria": [
+        "Создан Spring Boot 3.x проект с Java 17+",
+        "Подключены зависимости: Spring Web, Spring Data JPA, Spring Security, Flyway, PostgreSQL driver, SpringDoc OpenAPI, Spring AMQP, Lombok",
+        "Настроен application.yml с профилями (dev, prod)",
+        "Проект собирается без ошибок: ./mvnw clean package"
+      ],
+      "test_steps": [
+        "Шаг 0: Убедиться, что в проекте есть файл .gitignore, если нет, создать его",
+        "Шаг 0.1 Создать свод правил разрботки, для разработки и создания PR. Это файл .dev-rules.md",
+        "Шаг 1: Выполнить ./mvnw clean package",
+        "Шаг 2: Убедиться, что сборка прошла без ошибок",
+        "Шаг 3: Проверить, что все зависимости загрузились"
+      ],
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "TASK-002",
+      "category": "infrastructure",
+      "priority": "critical",
+      "description": "Docker Compose для локальной разработки (Spring Boot + PostgreSQL + RabbitMQ)",
+      "acceptance_criteria": [
+        "Создан docker-compose.yml с сервисами: app, postgres, rabbitmq",
+        "PostgreSQL 15+ доступен на порту 5432 с volume для данных",
+        "RabbitMQ доступен на порту 5672 (AMQP) и 15672 (Management UI)",
+        "Spring Boot приложение подключается к обоим сервисам",
+        "docker-compose up запускает всю инфраструктуру"
+      ],
+      "test_steps": [
+        "Шаг 1: Выполнить docker-compose up -d",
+        "Шаг 2: Проверить, что PostgreSQL отвечает на порту 5432",
+        "Шаг 3: Проверить, что RabbitMQ Management UI доступен на http://localhost:15672",
+        "Шаг 4: Убедиться, что Spring Boot приложение стартует и подключается к БД"
+      ],
+      "dependencies": ["TASK-001"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-003",
+      "category": "infrastructure",
+      "priority": "critical",
+      "description": "Настройка Flyway миграций и создание таблицы User",
+      "acceptance_criteria": [
+        "Flyway настроен и выполняет миграции при запуске приложения",
+        "Создана таблица users с полями: id (UUID PK), email (UNIQUE, NOT NULL), password_hash (NOT NULL), created_at, updated_at",
+        "Миграция V1__create_users_table.sql создана и применяется успешно"
+      ],
+      "test_steps": [
+        "Шаг 1: Запустить приложение",
+        "Шаг 2: Подключиться к PostgreSQL и проверить наличие таблицы users",
+        "Шаг 3: Проверить структуру таблицы: все поля, типы, constraints",
+        "Шаг 4: Перезапустить приложение — миграция не должна упасть (idempotent)"
+      ],
+      "dependencies": ["TASK-002"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-004",
+      "category": "security",
+      "priority": "critical",
+      "description": "Модель User (JPA Entity) + регистрация с BCrypt хэшированием",
+      "acceptance_criteria": [
+        "Создана JPA-сущность User с маппингом на таблицу users",
+        "Пароль хэшируется через BCrypt при регистрации",
+        "Эндпоинт POST /api/v1/auth/register принимает email + password",
+        "Валидация: email формат, пароль минимум 8 символов",
+        "При дублировании email — возвращается 409 Conflict"
+      ],
+      "test_steps": [
+        "Шаг 1: Отправить POST /api/v1/auth/register с валидными данными",
+        "Шаг 2: Проверить, что в БД создан пользователь с хэшированным паролем",
+        "Шаг 3: Отправить повторный запрос с тем же email — ожидать 409",
+        "Шаг 4: Отправить запрос с невалидным email — ожидать 400"
+      ],
+      "dependencies": ["TASK-003"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-005",
+      "category": "security",
+      "priority": "critical",
+      "description": "JWT авторизация: login, access token, refresh token",
+      "acceptance_criteria": [
+        "POST /api/v1/auth/login возвращает access token (15 мин) и refresh token (30 дней)",
+        "Access token в теле ответа, refresh token в HttpOnly cookie",
+        "POST /api/v1/auth/refresh обновляет access token по refresh token",
+        "POST /api/v1/auth/logout инвалидирует refresh token",
+        "Невалидный/просроченный токен возвращает 401"
+      ],
+      "test_steps": [
+        "Шаг 1: Зарегистрировать пользователя, затем POST /api/v1/auth/login",
+        "Шаг 2: Убедиться, что access token присутствует в теле ответа",
+        "Шаг 3: Использовать access token для защищённого эндпоинта — ожидать 200",
+        "Шаг 4: Отправить запрос без токена — ожидать 401",
+        "Шаг 5: POST /api/v1/auth/refresh — получить новый access token",
+        "Шаг 6: POST /api/v1/auth/logout, затем попробовать refresh — ожидать 401"
+      ],
+      "dependencies": ["TASK-004"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-006",
+      "category": "security",
+      "priority": "critical",
+      "description": "Spring Security конфигурация + rate limiting",
+      "acceptance_criteria": [
+        "Spring Security настроен: публичные эндпоинты (auth/*), остальные требуют JWT",
+        "CORS настроен для разрешённых доменов",
+        "Rate limiting: максимум 100 запросов в минуту на пользователя",
+        "Входные данные валидируются на всех эндпоинтах"
+      ],
+      "test_steps": [
+        "Шаг 1: Обратиться к защищённому эндпоинту без токена — ожидать 401",
+        "Шаг 2: Обратиться с валидным токеном — ожидать 200",
+        "Шаг 3: Отправить 101+ запрос за минуту — ожидать 429 Too Many Requests",
+        "Шаг 4: Проверить CORS: запрос с неразрешённого домена отклоняется"
+      ],
+      "dependencies": ["TASK-005"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-007",
+      "category": "infrastructure",
+      "priority": "critical",
+      "description": "Swagger/OpenAPI документация для всех существующих эндпоинтов",
+      "acceptance_criteria": [
+        "SpringDoc OpenAPI подключен и настроен",
+        "Swagger UI доступен по /swagger-ui.html",
+        "Все auth-эндпоинты задокументированы с описаниями и примерами",
+        "JWT авторизация настроена в Swagger (кнопка Authorize)"
+      ],
+      "test_steps": [
+        "Шаг 1: Открыть http://localhost:8080/swagger-ui.html",
+        "Шаг 2: Убедиться, что все auth-эндпоинты отображаются",
+        "Шаг 3: Выполнить запрос login через Swagger UI",
+        "Шаг 4: Авторизоваться через кнопку Authorize и выполнить защищённый запрос"
+      ],
+      "dependencies": ["TASK-006"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-008",
+      "category": "functional",
+      "priority": "critical",
+      "description": "Flyway-миграция и JPA-сущность для таблицы Context",
+      "acceptance_criteria": [
+        "Создана миграция V2__create_contexts_table.sql",
+        "Таблица contexts: id (UUID PK), user_id (FK → users), name (100, NOT NULL), theme (ENUM, NOT NULL), icon (50), sort_order (NOT NULL), is_deleted (NOT NULL, default false), created_at, updated_at",
+        "JPA-сущность Context с маппингом на таблицу",
+        "Enum ContextTheme: MINIMALIST, DESIGN, FORMAL, NATURE, DARK"
+      ],
+      "test_steps": [
+        "Шаг 1: Запустить приложение, проверить что миграция применилась",
+        "Шаг 2: Проверить структуру таблицы в PostgreSQL",
+        "Шаг 3: Убедиться, что FK на users работает корректно"
+      ],
+      "dependencies": ["TASK-003"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-009",
+      "category": "functional",
+      "priority": "critical",
+      "description": "CRUD API для контекстов с лимитом 5 контекстов",
+      "acceptance_criteria": [
+        "GET /api/v1/contexts — список контекстов текущего пользователя (без is_deleted=true)",
+        "POST /api/v1/contexts — создать контекст (name, theme, icon обязательны)",
+        "GET /api/v1/contexts/{id} — получить контекст (403 если чужой)",
+        "PUT /api/v1/contexts/{id} — обновить контекст (name, theme, icon, sort_order)",
+        "DELETE /api/v1/contexts/{id} — soft delete (is_deleted=true)",
+        "При попытке создать 6-й контекст — 400 с сообщением о лимите",
+        "Контексты изолированы: пользователь видит только свои"
+      ],
+      "test_steps": [
+        "Шаг 1: POST /api/v1/contexts — создать контекст 'Работа' с темой FORMAL",
+        "Шаг 2: GET /api/v1/contexts — убедиться, что контекст в списке",
+        "Шаг 3: PUT /api/v1/contexts/{id} — изменить название на 'Офис'",
+        "Шаг 4: Создать 5 контекстов, попробовать создать 6-й — ожидать 400",
+        "Шаг 5: DELETE /api/v1/contexts/{id} — проверить soft delete",
+        "Шаг 6: GET /api/v1/contexts — удалённый контекст не в списке"
+      ],
+      "dependencies": ["TASK-007", "TASK-008"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-010",
+      "category": "functional",
+      "priority": "critical",
+      "description": "Flyway-миграция и JPA-сущность для таблицы Task",
+      "acceptance_criteria": [
+        "Создана миграция V3__create_tasks_table.sql",
+        "Таблица tasks со всеми полями из PRD: id, context_id (FK), parent_task_id (FK self-ref), gtd_list (ENUM), category_id (FK), title (500), notes (TEXT), due_date, reminder_settings (JSONB), recurrence_rule (JSONB), nesting_level (1-4), sort_order, is_completed, completed_at, is_deleted, created_at, updated_at, version",
+        "Enum GtdList: INBOX, NEXT_ACTIONS, PROJECTS, WAITING_FOR, SOMEDAY_MAYBE, REFERENCE, CALENDAR, DONE",
+        "JPA-сущность Task с маппингом и связями"
+      ],
+      "test_steps": [
+        "Шаг 1: Запустить приложение, проверить что миграция применилась",
+        "Шаг 2: Проверить все поля, типы, FK constraints в PostgreSQL",
+        "Шаг 3: Убедиться, что self-reference (parent_task_id) работает"
+      ],
+      "dependencies": ["TASK-008"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-011",
+      "category": "functional",
+      "priority": "critical",
+      "description": "CRUD API для задач внутри контекста",
+      "acceptance_criteria": [
+        "GET /api/v1/contexts/{contextId}/tasks — все задачи контекста (без is_deleted)",
+        "GET /api/v1/contexts/{contextId}/tasks?gtd_list=INBOX — фильтр по GTD-списку",
+        "POST /api/v1/contexts/{contextId}/tasks — создать задачу (минимум: title)",
+        "GET /api/v1/tasks/{id} — получить задачу с подзадачами",
+        "PUT /api/v1/tasks/{id} — обновить задачу",
+        "DELETE /api/v1/tasks/{id} — soft delete",
+        "Новая задача по умолчанию попадает в INBOX с nesting_level=1"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать контекст, затем POST задачу с только title",
+        "Шаг 2: Проверить, что задача в INBOX с nesting_level=1",
+        "Шаг 3: GET задачи с фильтром gtd_list=INBOX — задача присутствует",
+        "Шаг 4: PUT — обновить title, notes, due_date",
+        "Шаг 5: DELETE — проверить soft delete",
+        "Шаг 6: GET — удалённая задача не возвращается"
+      ],
+      "dependencies": ["TASK-009", "TASK-010"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-012",
+      "category": "functional",
+      "priority": "critical",
+      "description": "Перемещение задач между GTD-списками и выполнение задач",
+      "acceptance_criteria": [
+        "PATCH /api/v1/tasks/{id}/move — принимает {gtd_list: 'NEXT_ACTIONS'}",
+        "PATCH /api/v1/tasks/{id}/complete — помечает задачу выполненной",
+        "При выполнении: is_completed=true, completed_at=now(), gtd_list=DONE",
+        "Нельзя переместить удалённую задачу",
+        "Version инкрементируется при каждом изменении (optimistic locking)"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать задачу в INBOX",
+        "Шаг 2: PATCH /move с gtd_list=NEXT_ACTIONS — проверить перемещение",
+        "Шаг 3: PATCH /complete — проверить is_completed, completed_at, gtd_list=DONE",
+        "Шаг 4: Попробовать переместить удалённую задачу — ожидать 404/400",
+        "Шаг 5: Проверить, что version увеличился"
+      ],
+      "dependencies": ["TASK-011"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-013",
+      "category": "functional",
+      "priority": "critical",
+      "description": "Вложенные подзадачи до 4 уровней с валидацией",
+      "acceptance_criteria": [
+        "POST /api/v1/tasks/{taskId}/subtasks — создать подзадачу",
+        "GET /api/v1/tasks/{taskId}/subtasks — список подзадач",
+        "Подзадача наследует context_id родителя",
+        "nesting_level = parent.nesting_level + 1",
+        "При попытке создать 5-й уровень — 400 с ошибкой",
+        "Soft delete родителя каскадно помечает подзадачи is_deleted=true",
+        "При выполнении родительской задачи предлагается выполнить подзадачи (флаг в ответе)"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать задачу (уровень 1)",
+        "Шаг 2: Создать подзадачу (уровень 2), проверить nesting_level=2",
+        "Шаг 3: Создать подзадачу уровня 3, затем 4 — успешно",
+        "Шаг 4: Попробовать создать уровень 5 — ожидать 400",
+        "Шаг 5: Удалить родителя — проверить, что все подзадачи is_deleted=true",
+        "Шаг 6: Выполнить родителя — проверить ответ с информацией о подзадачах"
+      ],
+      "dependencies": ["TASK-011"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-014",
+      "category": "functional",
+      "priority": "high",
+      "description": "Flyway-миграция и JPA-сущность для таблицы Category + CRUD API",
+      "acceptance_criteria": [
+        "Создана миграция V4__create_categories_table.sql",
+        "Таблица categories: id, context_id (FK), name (100), icon (50), color (7, HEX), sort_order, task_count (computed), is_deleted, created_at, updated_at",
+        "GET /api/v1/contexts/{contextId}/categories — список категорий",
+        "POST /api/v1/contexts/{contextId}/categories — создать категорию (name, icon, color)",
+        "PUT /api/v1/categories/{id} — обновить категорию",
+        "DELETE /api/v1/categories/{id} — soft delete",
+        "Категории изолированы в рамках контекста",
+        "Можно менять sort_order для переупорядочивания"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать контекст, затем POST категорию 'Книги' с иконкой и цветом",
+        "Шаг 2: GET — категория в списке с task_count=0",
+        "Шаг 3: Создать задачу с category_id этой категории",
+        "Шаг 4: GET категорию — task_count=1",
+        "Шаг 5: PUT — изменить название и цвет",
+        "Шаг 6: DELETE — soft delete, категория не в списке"
+      ],
+      "dependencies": ["TASK-009", "TASK-010"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-015",
+      "category": "functional",
+      "priority": "high",
+      "description": "Прогресс-бар проектов и счётчики задач",
+      "acceptance_criteria": [
+        "API возвращает progress для задач в списке PROJECTS",
+        "Формула: (выполненные подзадачи / общее количество) × 100%",
+        "Учитываются все уровни вложенности подзадач",
+        "Счётчики задач возвращаются для каждого GTD-списка и категории",
+        "Счётчики не учитывают задачи с is_deleted=true"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать задачу-проект с 4 подзадачами",
+        "Шаг 2: GET задачу — progress=0%",
+        "Шаг 3: Выполнить 2 подзадачи — progress=50%",
+        "Шаг 4: GET /api/v1/contexts/{id}/tasks — проверить счётчики по GTD-спискам",
+        "Шаг 5: Удалить задачу (soft) — счётчик уменьшился"
+      ],
+      "dependencies": ["TASK-013"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-016",
+      "category": "functional",
+      "priority": "high",
+      "description": "Flyway-миграция и JPA-сущность для таблицы Reminder + CRUD API",
+      "acceptance_criteria": [
+        "Создана миграция V5__create_reminders_table.sql",
+        "Таблица reminders: id, task_id (FK), remind_at (NOT NULL), offset_type (ENUM), offset_value, is_sent, created_at",
+        "GET /api/v1/tasks/{taskId}/reminders — список напоминаний задачи",
+        "POST /api/v1/tasks/{taskId}/reminders — создать напоминание (remind_at обязательно)",
+        "PUT /api/v1/reminders/{id} — обновить напоминание",
+        "DELETE /api/v1/reminders/{id} — удалить напоминание",
+        "К одной задаче можно привязать несколько напоминаний"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать задачу, затем POST напоминание с remind_at",
+        "Шаг 2: Создать второе напоминание для той же задачи — успешно",
+        "Шаг 3: GET — оба напоминания в списке",
+        "Шаг 4: PUT — изменить remind_at",
+        "Шаг 5: DELETE — напоминание удалено"
+      ],
+      "dependencies": ["TASK-011"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-017",
+      "category": "integration",
+      "priority": "high",
+      "description": "Настройка RabbitMQ + Spring AMQP: очереди для уведомлений",
+      "acceptance_criteria": [
+        "Spring AMQP подключен и настроен",
+        "Созданы 4 очереди: notification.reminder, notification.deadline, notification.recurrence, notification.sync_conflict",
+        "Dead letter queue настроена для неудавшихся сообщений",
+        "Exchange и binding для маршрутизации сообщений",
+        "Конфигурация в application.yml"
+      ],
+      "test_steps": [
+        "Шаг 1: Запустить приложение с RabbitMQ",
+        "Шаг 2: Открыть RabbitMQ Management UI — проверить наличие 4 очередей",
+        "Шаг 3: Проверить наличие dead letter queue",
+        "Шаг 4: Отправить тестовое сообщение в очередь — оно появляется"
+      ],
+      "dependencies": ["TASK-002"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-018",
+      "category": "functional",
+      "priority": "high",
+      "description": "Scheduler для проверки напоминаний и дедлайнов",
+      "acceptance_criteria": [
+        "Каждую минуту: проверка напоминаний с remind_at <= now() и is_sent=false → отправка в очередь notification.reminder",
+        "Каждый час: проверка задач с due_date в ближайшие 24 часа → отправка в очередь notification.deadline",
+        "После отправки: is_sent=true для напоминания",
+        "Scheduler не отправляет дубликаты"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать напоминание с remind_at = текущее время",
+        "Шаг 2: Подождать 1 минуту, проверить очередь notification.reminder — сообщение есть",
+        "Шаг 3: Проверить is_sent=true у напоминания",
+        "Шаг 4: Подождать ещё минуту — дубликат не отправлен",
+        "Шаг 5: Создать задачу с due_date завтра, проверить очередь notification.deadline"
+      ],
+      "dependencies": ["TASK-016", "TASK-017"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-019",
+      "category": "integration",
+      "priority": "high",
+      "description": "Consumer для обработки очереди уведомлений + retry логика",
+      "acceptance_criteria": [
+        "Consumer слушает все 4 очереди notification.*",
+        "При получении сообщения — логирует (для MVP, интеграция с FCM отдельно)",
+        "Retry с exponential backoff: 3 попытки",
+        "После 3 неудачных попыток — сообщение перемещается в dead letter queue",
+        "Все отправленные и неудавшиеся уведомления логируются"
+      ],
+      "test_steps": [
+        "Шаг 1: Отправить сообщение в очередь notification.reminder",
+        "Шаг 2: Проверить в логах, что consumer обработал сообщение",
+        "Шаг 3: Симулировать ошибку обработки — проверить 3 retry",
+        "Шаг 4: После 3 неудач — сообщение в dead letter queue"
+      ],
+      "dependencies": ["TASK-017"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-020",
+      "category": "integration",
+      "priority": "medium",
+      "description": "Интеграция с Firebase Cloud Messaging для push-уведомлений",
+      "acceptance_criteria": [
+        "Firebase Admin SDK подключен к Spring Boot",
+        "Consumer при получении сообщения из очереди отправляет push через FCM",
+        "Push содержит: title задачи, тип уведомления, task_id для deeplink",
+        "При ошибке FCM — сообщение уходит в retry"
+      ],
+      "test_steps": [
+        "Шаг 1: Настроить Firebase проект и получить service account key",
+        "Шаг 2: Отправить тестовое push через FCM API",
+        "Шаг 3: Создать напоминание, дождаться scheduler, проверить push на устройстве",
+        "Шаг 4: Проверить, что при ошибке FCM срабатывает retry"
+      ],
+      "dependencies": ["TASK-019"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-021",
+      "category": "functional",
+      "priority": "high",
+      "description": "Повторяющиеся задачи: создание и логика повторения",
+      "acceptance_criteria": [
+        "Задача может иметь recurrence_rule в формате JSON (daily, weekly, custom)",
+        "При выполнении повторяющейся задачи — автоматически создаётся следующий экземпляр",
+        "Новый экземпляр наследует: контекст, категорию, напоминания, gtd_list",
+        "Выполненный экземпляр уходит в DONE с пометкой о повторении",
+        "Пользователь может остановить повторение (обнулить recurrence_rule)"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать задачу с recurrence_rule: {type: 'daily', time: '09:00'}",
+        "Шаг 2: PATCH /complete — задача в DONE",
+        "Шаг 3: Проверить, что создан новый экземпляр с тем же title и recurrence_rule",
+        "Шаг 4: PUT — обнулить recurrence_rule у нового экземпляра",
+        "Шаг 5: PATCH /complete — новый экземпляр НЕ создаётся"
+      ],
+      "dependencies": ["TASK-012"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-022",
+      "category": "functional",
+      "priority": "high",
+      "description": "Scheduler для создания экземпляров повторяющихся задач",
+      "acceptance_criteria": [
+        "Ежедневно в 00:00: scheduler находит задачи с recurrence_rule на сегодня",
+        "Для каждой — создаёт новый экземпляр задачи",
+        "Если старый экземпляр не выполнен — всё равно создаётся новый, старый помечается как просроченный",
+        "Отправляется сообщение в очередь notification.recurrence"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать задачу с recurrence_rule type=daily",
+        "Шаг 2: Запустить scheduler вручную (или подождать)",
+        "Шаг 3: Проверить, что создан новый экземпляр",
+        "Шаг 4: Проверить сообщение в очереди notification.recurrence",
+        "Шаг 5: Проверить, что невыполненный старый экземпляр помечен просроченным"
+      ],
+      "dependencies": ["TASK-021", "TASK-017"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-023",
+      "category": "functional",
+      "priority": "high",
+      "description": "Flyway-миграция для таблицы Sync_Log + Sync API endpoints",
+      "acceptance_criteria": [
+        "Создана миграция V6__create_sync_log_table.sql",
+        "Таблица sync_log: id, user_id (FK), entity_type (ENUM), entity_id, field_name, old_value, new_value, device_source (ENUM), conflict_status (ENUM), created_at",
+        "POST /api/v1/sync/push — принимает массив локальных изменений",
+        "GET /api/v1/sync/pull?since={timestamp} — возвращает серверные изменения после timestamp",
+        "Optimistic locking через поле version в задачах"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать задачу через API",
+        "Шаг 2: POST /api/v1/sync/push с изменением title",
+        "Шаг 3: Проверить, что задача обновлена, version увеличился",
+        "Шаг 4: GET /api/v1/sync/pull?since={старый_timestamp} — изменение в ответе",
+        "Шаг 5: Проверить запись в sync_log"
+      ],
+      "dependencies": ["TASK-012"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-024",
+      "category": "functional",
+      "priority": "high",
+      "description": "Field-level merge логика для синхронизации",
+      "acceptance_criteria": [
+        "Если поле изменено только на клиенте — применяется клиентская версия",
+        "Если поле изменено только на сервере — применяется серверная версия",
+        "Если поле изменено на обоих — побеждает более поздний timestamp",
+        "При конфликте — создаётся запись в sync_log с conflict_status=RESOLVED_NOTIFY",
+        "Отправляется сообщение в очередь notification.sync_conflict"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать задачу, запомнить version и timestamp",
+        "Шаг 2: Обновить title через API (серверное изменение)",
+        "Шаг 3: POST /sync/push с изменением notes (другое поле) — merge без конфликта",
+        "Шаг 4: POST /sync/push с изменением title (тот же поле) с более поздним timestamp — побеждает push",
+        "Шаг 5: Проверить sync_log: запись с конфликтом и статусом RESOLVED_NOTIFY",
+        "Шаг 6: Проверить сообщение в очереди notification.sync_conflict"
+      ],
+      "dependencies": ["TASK-023"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-025",
+      "category": "functional",
+      "priority": "medium",
+      "description": "API экспорта данных в JSON",
+      "acceptance_criteria": [
+        "GET /api/v1/export — экспорт всех контекстов текущего пользователя",
+        "GET /api/v1/export?context_id={id} — экспорт конкретного контекста",
+        "JSON включает: contexts, categories, tasks (с subtasks), reminders",
+        "Soft-deleted данные НЕ включаются",
+        "Формат соответствует структуре из PRD (export_date, version, contexts)"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать контекст с категориями, задачами, подзадачами и напоминаниями",
+        "Шаг 2: Удалить (soft) одну задачу",
+        "Шаг 3: GET /api/v1/export — проверить полноту данных",
+        "Шаг 4: Убедиться, что удалённая задача отсутствует в экспорте",
+        "Шаг 5: GET /api/v1/export?context_id={id} — только выбранный контекст"
+      ],
+      "dependencies": ["TASK-014", "TASK-016"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-026",
+      "category": "infrastructure",
+      "priority": "medium",
+      "description": "Инициализация React + TypeScript проекта для веб-приложения",
+      "acceptance_criteria": [
+        "Создан React 18+ проект с TypeScript (Vite)",
+        "Подключены: Tailwind CSS, React Router v6, Axios, Zustand (или Redux Toolkit), dnd-kit",
+        "Настроена базовая структура папок: pages, components, store, api, types",
+        "Проект собирается и запускается: npm run dev"
+      ],
+      "test_steps": [
+        "Шаг 1: Выполнить npm install",
+        "Шаг 2: npm run dev — приложение открывается в браузере",
+        "Шаг 3: npm run build — сборка без ошибок",
+        "Шаг 4: Проверить, что Tailwind CSS применяется"
+      ],
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-027",
+      "category": "ui",
+      "priority": "high",
+      "description": "Web: экран авторизации (login/register/logout)",
+      "acceptance_criteria": [
+        "Страница входа: email + пароль + кнопка Login",
+        "Страница регистрации: email + пароль + подтверждение пароля + кнопка Register",
+        "После успешного входа — redirect на экран контекстов",
+        "JWT access token хранится в памяти, refresh token в HttpOnly cookie",
+        "При 401 — автоматический refresh token и повтор запроса",
+        "Кнопка logout — очистка токена и redirect на login",
+        "Минималистичный дизайн в стиле Notion"
+      ],
+      "test_steps": [
+        "Шаг 1: Открыть /register, создать аккаунт",
+        "Шаг 2: Redirect на /login, войти",
+        "Шаг 3: Проверить redirect на /contexts",
+        "Шаг 4: Обновить страницу — сессия сохранена (persistent session)",
+        "Шаг 5: Нажать Logout — redirect на /login"
+      ],
+      "dependencies": ["TASK-026", "TASK-005"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-028",
+      "category": "ui",
+      "priority": "high",
+      "description": "Web: экран выбора контекста (карточки)",
+      "acceptance_criteria": [
+        "Отображаются карточки контекстов пользователя",
+        "Каждая карточка: название + иконка + количество задач в Inbox",
+        "Карточка визуально отражает выбранную тему контекста",
+        "Кнопка '+' для создания нового контекста (если < 5)",
+        "При клике на карточку — переход в контекст",
+        "Это первый экран после авторизации"
+      ],
+      "test_steps": [
+        "Шаг 1: Войти в приложение — отображается экран контекстов",
+        "Шаг 2: Если контекстов нет — предложение создать первый",
+        "Шаг 3: Создать контекст через '+' — карточка появляется",
+        "Шаг 4: Кликнуть на карточку — переход в контекст",
+        "Шаг 5: Создать 5 контекстов — кнопка '+' исчезает или неактивна"
+      ],
+      "dependencies": ["TASK-027", "TASK-009"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-029",
+      "category": "ui",
+      "priority": "high",
+      "description": "Web: основной рабочий экран — боковое меню + список задач",
+      "acceptance_criteria": [
+        "Слева: боковое меню с GTD-списками (Inbox, Next Actions и т.д.) + кастомные категории ниже",
+        "Счётчик задач рядом с каждым пунктом меню",
+        "Список 'Выполнено' визуально отделён от активных",
+        "Центр: список задач выбранного раздела",
+        "Каждая задача: чекбокс + название + индикатор подзадач + дедлайн",
+        "При клике на задачу — раскрывается панель деталей"
+      ],
+      "test_steps": [
+        "Шаг 1: Войти в контекст — отображается боковое меню",
+        "Шаг 2: Кликнуть Inbox — список задач Inbox в центре",
+        "Шаг 3: Кликнуть Next Actions — список меняется",
+        "Шаг 4: Проверить счётчики задач",
+        "Шаг 5: Кликнуть на задачу — раскрывается панель деталей"
+      ],
+      "dependencies": ["TASK-028", "TASK-011"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-030",
+      "category": "ui",
+      "priority": "high",
+      "description": "Web: CRUD задач — создание, редактирование, удаление",
+      "acceptance_criteria": [
+        "Кнопка добавления задачи → инлайн-форма или модальное окно",
+        "Минимум для создания — только название",
+        "При редактировании: title, notes, due_date, category, напоминания",
+        "Удаление через контекстное меню или кнопку Delete",
+        "Чекбокс для отметки выполнения — задача уходит в 'Выполнено'"
+      ],
+      "test_steps": [
+        "Шаг 1: Нажать кнопку добавления — ввести название — задача создана",
+        "Шаг 2: Кликнуть задачу — отредактировать notes и due_date",
+        "Шаг 3: Отметить чекбокс — задача перемещена в 'Выполнено'",
+        "Шаг 4: Удалить задачу — исчезла из списка"
+      ],
+      "dependencies": ["TASK-029"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-031",
+      "category": "ui",
+      "priority": "high",
+      "description": "Web: подзадачи — отображение и управление в панели деталей",
+      "acceptance_criteria": [
+        "В панели деталей задачи — секция подзадач с иерархическим отображением",
+        "Кнопка 'Добавить подзадачу' (до 4 уровней)",
+        "Чекбоксы для выполнения подзадач",
+        "Прогресс-бар для задач-проектов (видно и в списке)",
+        "При попытке добавить 5-й уровень — сообщение об ошибке"
+      ],
+      "test_steps": [
+        "Шаг 1: Открыть задачу, добавить подзадачу",
+        "Шаг 2: Добавить подзадачу второго уровня — иерархия видна",
+        "Шаг 3: Выполнить одну подзадачу — прогресс-бар обновился",
+        "Шаг 4: Попытаться добавить 5-й уровень — ошибка"
+      ],
+      "dependencies": ["TASK-030", "TASK-013"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-032",
+      "category": "ui",
+      "priority": "high",
+      "description": "Web: перемещение задач между GTD-списками (drag & drop)",
+      "acceptance_criteria": [
+        "Задачи можно перемещать drag-and-drop между GTD-списками в боковом меню",
+        "Альтернатива: контекстное меню 'Переместить в...'",
+        "При перемещении — визуальная обратная связь (анимация)",
+        "Задача обновляется на сервере через PATCH /move"
+      ],
+      "test_steps": [
+        "Шаг 1: Перетащить задачу из Inbox в Next Actions",
+        "Шаг 2: Переключиться на Next Actions — задача там",
+        "Шаг 3: Использовать контекстное меню для перемещения в Waiting For",
+        "Шаг 4: Обновить страницу — изменения сохранены"
+      ],
+      "dependencies": ["TASK-030", "TASK-012"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-033",
+      "category": "ui",
+      "priority": "medium",
+      "description": "Web: кастомные категории — создание, управление, привязка к задачам",
+      "acceptance_criteria": [
+        "В настройках контекста: создание категории (name, icon, color)",
+        "Категории отображаются в боковом меню ниже GTD-списков",
+        "Можно менять порядок категорий",
+        "При создании/редактировании задачи — выбор категории из списка",
+        "Категория удаляется через soft delete"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать категорию 'Книги' с иконкой и цветом",
+        "Шаг 2: Категория появилась в боковом меню с счётчиком 0",
+        "Шаг 3: Создать задачу с этой категорией",
+        "Шаг 4: Кликнуть категорию в меню — отображаются задачи категории",
+        "Шаг 5: Удалить категорию — исчезла из меню"
+      ],
+      "dependencies": ["TASK-029", "TASK-014"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-034",
+      "category": "ui",
+      "priority": "medium",
+      "description": "Web: настройка напоминаний и повторяющихся задач в UI",
+      "acceptance_criteria": [
+        "В панели деталей задачи: секция 'Напоминания'",
+        "Кнопка 'Добавить напоминание' → выбор даты/времени или смещения",
+        "Отображение списка напоминаний с возможностью удаления",
+        "Секция 'Повторение' → выбор паттерна (daily, weekly, custom interval)",
+        "Возможность остановить повторение"
+      ],
+      "test_steps": [
+        "Шаг 1: Открыть задачу, добавить напоминание 'за 1 день'",
+        "Шаг 2: Добавить второе напоминание 'за 1 час'",
+        "Шаг 3: Удалить первое напоминание",
+        "Шаг 4: Включить повторение 'ежедневно'",
+        "Шаг 5: Отключить повторение"
+      ],
+      "dependencies": ["TASK-030", "TASK-016", "TASK-021"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-035",
+      "category": "ui",
+      "priority": "medium",
+      "description": "Web: 5 тем оформления для контекстов",
+      "acceptance_criteria": [
+        "Реализованы 5 тем: Minimalist, Design, Formal, Nature, Dark",
+        "Каждая тема определяет: цветовую палитру, стиль элементов, типографику",
+        "Тема применяется ко всему рабочему экрану контекста",
+        "В настройках контекста: смена темы с превью",
+        "Цвета соответствуют спецификации из PRD"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать контекст с темой Minimalist",
+        "Шаг 2: Зайти в контекст — UI в стиле Minimalist",
+        "Шаг 3: Сменить тему на Dark — визуал обновился",
+        "Шаг 4: Проверить все 5 тем — каждая уникальна",
+        "Шаг 5: Переключиться между контекстами — темы сохраняются"
+      ],
+      "dependencies": ["TASK-029"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-036",
+      "category": "ui",
+      "priority": "medium",
+      "description": "Web: экспорт данных в JSON из настроек",
+      "acceptance_criteria": [
+        "В настройках контекста: кнопка 'Экспорт'",
+        "Выбор: экспорт текущего контекста или всех",
+        "При клике — скачивается JSON-файл на устройство",
+        "Файл содержит все данные: задачи, подзадачи, категории, напоминания"
+      ],
+      "test_steps": [
+        "Шаг 1: Открыть настройки контекста",
+        "Шаг 2: Нажать 'Экспорт текущего контекста'",
+        "Шаг 3: Проверить скачанный JSON — все данные присутствуют",
+        "Шаг 4: Нажать 'Экспорт всех контекстов' — файл со всеми данными"
+      ],
+      "dependencies": ["TASK-029", "TASK-025"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-037",
+      "category": "infrastructure",
+      "priority": "medium",
+      "description": "Android: инициализация Kotlin + Jetpack Compose проекта",
+      "acceptance_criteria": [
+        "Создан Android-проект с Kotlin и Jetpack Compose",
+        "Подключены: Room, Retrofit + OkHttp, Hilt, WorkManager, FCM",
+        "Настроена базовая структура: ui, data, domain, di пакеты",
+        "Проект собирается и запускается на эмуляторе"
+      ],
+      "test_steps": [
+        "Шаг 1: Открыть проект в Android Studio",
+        "Шаг 2: ./gradlew build — сборка без ошибок",
+        "Шаг 3: Запустить на эмуляторе — пустой экран"
+      ],
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-038",
+      "category": "functional",
+      "priority": "medium",
+      "description": "Android: Room Database — зеркальная структура серверной БД",
+      "acceptance_criteria": [
+        "Room entities для: User, Context, Task, Category, Reminder, PendingChange",
+        "DAO-интерфейсы для всех сущностей с CRUD-операциями",
+        "Таблица pending_changes для отслеживания локальных изменений",
+        "Миграции Room для будущих обновлений схемы"
+      ],
+      "test_steps": [
+        "Шаг 1: Запустить приложение на эмуляторе",
+        "Шаг 2: Проверить, что Room создал все таблицы (через App Inspection)",
+        "Шаг 3: Вставить тестовые данные через DAO — данные сохраняются",
+        "Шаг 4: Перезапустить приложение — данные на месте"
+      ],
+      "dependencies": ["TASK-037"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-039",
+      "category": "ui",
+      "priority": "medium",
+      "description": "Android: авторизация (login/register) с Retrofit",
+      "acceptance_criteria": [
+        "Экран входа: email + пароль + кнопка Login",
+        "Экран регистрации: email + пароль + подтверждение",
+        "JWT tokens хранятся в EncryptedSharedPreferences",
+        "Auto-refresh access token при 401",
+        "Persistent session при перезапуске"
+      ],
+      "test_steps": [
+        "Шаг 1: Открыть приложение — экран Login",
+        "Шаг 2: Перейти на Register, создать аккаунт",
+        "Шаг 3: Войти — redirect на экран контекстов",
+        "Шаг 4: Закрыть и открыть приложение — сессия сохранена",
+        "Шаг 5: Logout — вернулись на Login"
+      ],
+      "dependencies": ["TASK-038", "TASK-005"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-040",
+      "category": "ui",
+      "priority": "medium",
+      "description": "Android: экран выбора контекста + основной рабочий экран",
+      "acceptance_criteria": [
+        "Экран контекстов: карточки с названием, иконкой, счётчиком Inbox",
+        "Кнопка '+' для создания контекста",
+        "Основной экран: hamburger menu (GTD-списки + категории) + список задач",
+        "Задачи: чекбокс + название + дедлайн",
+        "Floating Action Button для быстрого добавления"
+      ],
+      "test_steps": [
+        "Шаг 1: Войти — экран контекстов",
+        "Шаг 2: Создать контекст — карточка появилась",
+        "Шаг 3: Кликнуть карточку — основной экран с меню",
+        "Шаг 4: Нажать FAB — создать задачу",
+        "Шаг 5: Hamburger menu — переключение между GTD-списками"
+      ],
+      "dependencies": ["TASK-039", "TASK-009", "TASK-011"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-041",
+      "category": "ui",
+      "priority": "medium",
+      "description": "Android: CRUD задач + подзадачи + перемещение между списками",
+      "acceptance_criteria": [
+        "Создание задачи через FAB (минимум: title)",
+        "Экран деталей задачи: notes, due_date, category, подзадачи",
+        "Подзадачи до 4 уровней с иерархическим отображением",
+        "Свайп влево — выполнить задачу, свайп вправо — переместить (выбор списка)",
+        "Прогресс-бары и счётчики"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать задачу через FAB",
+        "Шаг 2: Открыть задачу, добавить notes и подзадачу",
+        "Шаг 3: Свайп влево — задача выполнена",
+        "Шаг 4: Свайп вправо — выбрать GTD-список для перемещения",
+        "Шаг 5: Проверить прогресс-бар для проекта с подзадачами"
+      ],
+      "dependencies": ["TASK-040", "TASK-012", "TASK-013"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-042",
+      "category": "ui",
+      "priority": "medium",
+      "description": "Android: кастомные категории + темы оформления + экспорт",
+      "acceptance_criteria": [
+        "Создание и управление категориями в настройках контекста",
+        "Категории в hamburger menu с счётчиками",
+        "5 тем оформления применяются к контексту",
+        "Экспорт в JSON — файл скачивается на устройство",
+        "Напоминания и повторяющиеся задачи настраиваются в UI"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать категорию — появилась в меню",
+        "Шаг 2: Сменить тему контекста — визуал обновился",
+        "Шаг 3: Экспорт — JSON-файл скачан",
+        "Шаг 4: Добавить напоминание к задаче — сохранено",
+        "Шаг 5: Включить повторение задачи"
+      ],
+      "dependencies": ["TASK-041", "TASK-014", "TASK-016", "TASK-021"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-043",
+      "category": "functional",
+      "priority": "high",
+      "description": "Android: офлайн-режим — полноценная работа без интернета",
+      "acceptance_criteria": [
+        "Все CRUD операции работают офлайн через Room",
+        "Change Tracker записывает каждое изменение в pending_changes",
+        "При отсутствии сети — пользователь не видит ошибок, работает как обычно",
+        "Локальные уведомления через AlarmManager работают офлайн",
+        "При появлении сети — индикатор 'синхронизируется'"
+      ],
+      "test_steps": [
+        "Шаг 1: Включить airplane mode",
+        "Шаг 2: Создать задачу — успешно",
+        "Шаг 3: Отредактировать задачу, выполнить — работает",
+        "Шаг 4: Создать напоминание — оно срабатывает офлайн",
+        "Шаг 5: Выключить airplane mode — данные синхронизируются"
+      ],
+      "dependencies": ["TASK-041", "TASK-038"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-044",
+      "category": "integration",
+      "priority": "high",
+      "description": "Android: Sync Manager через WorkManager + field-level merge",
+      "acceptance_criteria": [
+        "WorkManager запускает синхронизацию при появлении интернета",
+        "Delta sync: отправляются только изменённые записи (по updated_at)",
+        "Field-level merge при конфликтах — побеждает более поздний timestamp",
+        "Уведомление пользователю при конфликтах синхронизации",
+        "Данные не теряются при конфликтах"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать задачу офлайн на Android",
+        "Шаг 2: Изменить ту же задачу через Web API",
+        "Шаг 3: Включить интернет на Android — sync запускается",
+        "Шаг 4: Проверить, что неконфликтующие поля корректно merge",
+        "Шаг 5: Проверить уведомление о конфликте (если был)"
+      ],
+      "dependencies": ["TASK-043", "TASK-024"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-045",
+      "category": "integration",
+      "priority": "medium",
+      "description": "Android: Push-уведомления через FCM + локальные уведомления",
+      "acceptance_criteria": [
+        "FCM интегрирован: приложение получает push при активной сети",
+        "При нажатии на push — открывается задача в приложении (deeplink)",
+        "Локальные уведомления через AlarmManager для офлайн-напоминаний",
+        "Уведомления работают даже если приложение закрыто"
+      ],
+      "test_steps": [
+        "Шаг 1: Создать напоминание, подождать — push приходит",
+        "Шаг 2: Нажать на push — открывается задача",
+        "Шаг 3: Включить airplane mode, создать напоминание — локальное уведомление срабатывает",
+        "Шаг 4: Закрыть приложение — уведомление всё равно приходит"
+      ],
+      "dependencies": ["TASK-043", "TASK-020"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-046",
+      "category": "infrastructure",
+      "priority": "medium",
+      "description": "Dockerfile для Spring Boot + настройка Yandex Cloud",
+      "acceptance_criteria": [
+        "Dockerfile для Spring Boot приложения (multi-stage build)",
+        "Настроена VM в Yandex Compute Cloud (2 vCPU, 4GB RAM)",
+        "Managed PostgreSQL в Yandex Cloud или PostgreSQL в Docker на VM",
+        "Docker Compose для production (Spring Boot + RabbitMQ)",
+        "Приложение доступно по внешнему IP"
+      ],
+      "test_steps": [
+        "Шаг 1: docker build -t gtd-backend . — образ собирается",
+        "Шаг 2: Задеплоить на VM — приложение стартует",
+        "Шаг 3: Обратиться к API по внешнему IP — ответ 200",
+        "Шаг 4: Проверить подключение к PostgreSQL"
+      ],
+      "dependencies": ["TASK-002"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-047",
+      "category": "infrastructure",
+      "priority": "medium",
+      "description": "HTTPS сертификат (Let's Encrypt) + настройка домена",
+      "acceptance_criteria": [
+        "Настроен домен через Yandex Cloud DNS",
+        "HTTPS сертификат получен через Let's Encrypt (TLS 1.3)",
+        "Nginx или Caddy как reverse proxy с SSL termination",
+        "HTTP → HTTPS редирект",
+        "API доступен по https://domain.com/api/v1/"
+      ],
+      "test_steps": [
+        "Шаг 1: Обратиться к https://domain.com — HTTPS работает",
+        "Шаг 2: http://domain.com — редирект на HTTPS",
+        "Шаг 3: Проверить сертификат в браузере — валидный Let's Encrypt",
+        "Шаг 4: API запросы через HTTPS — работают"
+      ],
+      "dependencies": ["TASK-046"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-048",
+      "category": "infrastructure",
+      "priority": "medium",
+      "description": "CI/CD pipeline (GitHub Actions) для автоматического деплоя",
+      "acceptance_criteria": [
+        "GitHub Actions workflow: тесты → сборка Docker → push в Container Registry → деплой на VM",
+        "Автоматический деплой при push в main",
+        "Тесты запускаются для каждого PR",
+        "Secrets хранятся в GitHub Secrets"
+      ],
+      "test_steps": [
+        "Шаг 1: Push в main — pipeline запускается",
+        "Шаг 2: Тесты проходят",
+        "Шаг 3: Docker образ собирается и пушится",
+        "Шаг 4: На VM обновляется приложение — новая версия доступна"
+      ],
+      "dependencies": ["TASK-046"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-049",
+      "category": "infrastructure",
+      "priority": "low",
+      "description": "Мониторинг и логирование для production",
+      "acceptance_criteria": [
+        "Structured logging через SLF4J/Logback",
+        "Health check endpoint: GET /actuator/health",
+        "Логи доступны на VM (или через сервис логирования)",
+        "Мониторинг uptime (простейший — cron + curl)"
+      ],
+      "test_steps": [
+        "Шаг 1: GET /actuator/health — ответ UP",
+        "Шаг 2: Проверить логи на VM — записываются",
+        "Шаг 3: Симулировать ошибку — она в логах",
+        "Шаг 4: Проверить мониторинг — оповещение при падении"
+      ],
+      "dependencies": ["TASK-046"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-050",
+      "category": "integration",
+      "priority": "low",
+      "description": "Финальное end-to-end тестирование и стресс-тест синхронизации",
+      "acceptance_criteria": [
+        "Полный цикл: регистрация → создание контекста → задачи → подзадачи → напоминания → повторение → выполнение → экспорт",
+        "Тест на Web и Android параллельно",
+        "Стресс-тест синхронизации: одновременные изменения с Web и Android",
+        "Все конфликты корректно разрешаются",
+        "Офлайн-тест: создание 50+ задач офлайн → синхронизация без потерь"
+      ],
+      "test_steps": [
+        "Шаг 1: Зарегистрироваться через Web, войти на Android",
+        "Шаг 2: Создать контекст на Web, проверить на Android",
+        "Шаг 3: Создать 10 задач на Android (офлайн), включить сеть",
+        "Шаг 4: Одновременно редактировать задачу на Web и Android — конфликт",
+        "Шаг 5: Экспорт на обоих устройствах — данные идентичны"
+      ],
+      "dependencies": ["TASK-044", "TASK-036", "TASK-042"],
+      "status": "pending"
+    }
+  ]
+}

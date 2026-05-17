@@ -1,0 +1,29 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+*.class
+*.jar
+*.war
+
+# Logs
+*.log
+
+# Environment
+.env
+*.env.local
+
+# Node (for frontend)
+node_modules/
+dist/
+.cache/
+
+# Backend build artifacts are handled by backend/.gitignore
