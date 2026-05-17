@@ -77,7 +77,7 @@
         "Шаг 4: Перезапустить приложение — миграция не должна упасть (idempotent)"
       ],
       "dependencies": ["TASK-002"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-004",

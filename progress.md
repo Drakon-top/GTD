@@ -57,3 +57,23 @@
   - Для запуска всей инфраструктуры: `docker-compose up -d`
   - Для локальной разработки без Docker: запустить PostgreSQL и RabbitMQ отдельно, использовать дефолтные env-значения
   - Следующий шаг: TASK-003 (Flyway миграции + таблица users) или TASK-008 (таблица contexts) — оба разблокированы
+
+### TASK-003 — Настройка Flyway миграций и создание таблицы User
+- **Дата:** 2026-05-17
+- **Статус:** done
+- **Что сделано:**
+  - Создана директория `backend/src/main/resources/db/migration/`
+  - Создана миграция `V1__create_users_table.sql` (PostgreSQL): таблица `users` с полями id (UUID PK, gen_random_uuid()), email (UNIQUE, NOT NULL), password_hash (NOT NULL), created_at (TIMESTAMPTZ), updated_at (TIMESTAMPTZ)
+  - Индекс `idx_users_email` для быстрого поиска по email
+  - Создана JPA-сущность `User` в пакете `com.gtd.backend.auth.model` с Lombok (@Builder, @Getter, @Setter, @NoArgsConstructor, @AllArgsConstructor)
+  - @PrePersist / @PreUpdate автоматически устанавливают created_at и updated_at
+  - Создан `UserRepository` (JpaRepository) в `com.gtd.backend.auth.repository` с методами findByEmail() и existsByEmail()
+  - Написаны 7 тестов для UserRepository (save, findByEmail, existsByEmail, duplicate email rejection, timestamps)
+  - Убрана устаревшая настройка `database-platform: org.hibernate.dialect.H2Dialect` из тестового application.yml
+- **Коммиты:** feat: add Flyway V1 migration for users table and User JPA entity
+- **Заметки:**
+  - Тестовый профиль использует H2 с create-drop и Flyway disabled — PostgreSQL-специфичный SQL миграции не мешает тестам
+  - Production/dev: Flyway применяет миграцию, Hibernate validate проверяет соответствие entity и таблицы
+  - Mockito/ByteBuddy agent attachment может не работать в sandboxed-среде (нужен `-XX:+EnableDynamicAgentLoading`, уже настроен в surefire)
+  - Разблокированы: TASK-004 (User entity + регистрация с BCrypt), TASK-008 (таблица contexts)
+  - Следующий приоритет: TASK-004 (security, critical) — регистрация с BCrypt, или TASK-008 (functional, critical) — миграция contexts
