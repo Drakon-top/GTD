@@ -224,7 +224,7 @@
         "Шаг 3: Убедиться, что self-reference (parent_task_id) работает"
       ],
       "dependencies": ["TASK-008"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-011",

@@ -178,3 +178,24 @@
   - `RateLimitingFilter.clearBuckets()` используется в тестах для изоляции — package-private
   - Разблокирован: TASK-007 (Swagger/OpenAPI документация)
   - Следующий приоритет: TASK-007 (infrastructure, critical) — Swagger документация, или TASK-010 (functional, critical) — таблица tasks
+
+### TASK-010 — Flyway-миграция и JPA-сущность для таблицы Task
+- **Дата:** 2026-05-17
+- **Статус:** done
+- **Что сделано:**
+  - Создана Flyway-миграция `V4__create_tasks_table.sql` с PostgreSQL enum type `gtd_list`
+  - Таблица `tasks`: id (UUID PK), context_id (FK → contexts), parent_task_id (FK self-reference → tasks), gtd_list (ENUM, default INBOX), category_id (UUID, будет FK позже), title (VARCHAR 500, NOT NULL), notes (TEXT), due_date (TIMESTAMPTZ), reminder_settings (JSONB), recurrence_rule (JSONB), nesting_level (INTEGER, CHECK 1-4), sort_order (INTEGER), is_completed (BOOLEAN), completed_at (TIMESTAMPTZ), is_deleted (BOOLEAN), created_at (TIMESTAMPTZ), updated_at (TIMESTAMPTZ), version (INTEGER, optimistic locking)
+  - Индексы: idx_tasks_context_id, idx_tasks_parent_task_id (partial, WHERE NOT NULL), idx_tasks_context_gtd_list (partial, WHERE NOT deleted), idx_tasks_context_not_deleted, idx_tasks_due_date (partial, WHERE NOT NULL/deleted/completed)
+  - Создан enum `GtdList` в пакете `com.gtd.backend.task.model` с 8 значениями: INBOX, NEXT_ACTIONS, PROJECTS, WAITING_FOR, SOMEDAY_MAYBE, REFERENCE, CALENDAR, DONE
+  - Создана JPA-сущность `Task` с полным маппингом: @ManyToOne(LAZY) → Context, self-referencing @ManyToOne → parentTask, @OneToMany → subtasks, @Enumerated(STRING), @JdbcTypeCode(JSON) для JSONB-полей, @Version для optimistic locking, @Builder.Default для дефолтов
+  - Создан `TaskRepository` (JpaRepository) с методами: findByContextIdAndIsDeletedFalseOrderBySortOrderAsc(), findByContextIdAndGtdListAndIsDeletedFalseOrderBySortOrderAsc(), findByParentTaskIdAndIsDeletedFalseOrderBySortOrderAsc(), findByIdAndIsDeletedFalse(), countByContextIdAndIsDeletedFalse(), countByContextIdAndGtdListAndIsDeletedFalse()
+  - Написаны 16 тестов для TaskRepository: save, find by context, filter by GTD list, find subtasks, exclude deleted subtasks, find by id, return empty when deleted, count active, count by GTD list, sort order, all GTD list values, self-reference (3 levels), optional fields (JSONB), timestamps, context isolation, FK to context
+  - Все 95 тестов проходят (79 старых + 16 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add Flyway V4 migration for tasks table and Task JPA entity
+- **Заметки:**
+  - JSONB-поля (reminder_settings, recurrence_rule) используют @JdbcTypeCode(SqlTypes.JSON) без columnDefinition — это обеспечивает совместимость с H2 (тесты) и PostgreSQL (prod/dev)
+  - Self-reference (parent_task_id) с ON DELETE RESTRICT — нельзя удалить родителя пока есть подзадачи в БД
+  - category_id пока UUID без FK — FK будет добавлен в TASK-014 когда появится таблица categories
+  - Partial indices оптимизируют самые частые запросы: активные задачи контекста, фильтр по GTD-списку, задачи с приближающимся дедлайном
+  - Разблокированы: TASK-011 (CRUD API для задач, нужен также TASK-009), TASK-014 (категории, нужен также TASK-009)
+  - Следующий приоритет: TASK-007 (infrastructure, critical) — Swagger документация (разблокирует TASK-009, который разблокирует TASK-011 и TASK-014)
