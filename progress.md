@@ -77,3 +77,27 @@
   - Mockito/ByteBuddy agent attachment может не работать в sandboxed-среде (нужен `-XX:+EnableDynamicAgentLoading`, уже настроен в surefire)
   - Разблокированы: TASK-004 (User entity + регистрация с BCrypt), TASK-008 (таблица contexts)
   - Следующий приоритет: TASK-004 (security, critical) — регистрация с BCrypt, или TASK-008 (functional, critical) — миграция contexts
+
+### TASK-004 — Модель User (JPA Entity) + регистрация с BCrypt хэшированием
+- **Дата:** 2026-05-17
+- **Статус:** done
+- **Что сделано:**
+  - Создан `RegisterRequest` DTO с Jakarta Validation (@Email, @NotBlank, @Size(min=8))
+  - Создан `RegisterResponse` DTO (id, email, createdAt)
+  - Создан `ErrorResponse` DTO (status, error, message, details, timestamp)
+  - Создан `AuthService` с методом register(): нормализация email (trim + lowercase), проверка дубликата, BCrypt хэширование, сохранение в БД
+  - Создан `AuthController` с эндпоинтом `POST /api/v1/auth/register` (возвращает 201 Created)
+  - Создан `EmailAlreadyExistsException` → 409 Conflict
+  - Создан `GlobalExceptionHandler` (@RestControllerAdvice): обработка EmailAlreadyExists (409) и MethodArgumentNotValid (400 с деталями по полям)
+  - Создан `SecurityConfig`: BCryptPasswordEncoder bean, SecurityFilterChain (auth/** permitAll, остальное authenticated, CSRF off, stateless session)
+  - Написаны unit-тесты AuthService (4 теста: регистрация, хэширование, нормализация email, дубликат)
+  - Написаны controller-тесты AuthController (7 тестов: 201, 409, 400 invalid email/blank email/short password/blank password/empty body)
+  - Написаны интеграционные тесты (5 тестов: полный цикл регистрации с проверкой BCrypt в БД, дубликат email, нормализация регистра, невалидный email, короткий пароль)
+  - Добавлен mockito-extensions/org.mockito.plugins.MockMaker для совместимости с sandbox-средой
+- **Коммиты:** feat: add user registration endpoint with BCrypt password hashing
+- **Заметки:**
+  - Spring Boot 3.5.0 перенёс @MockBean в `org.springframework.test.context.bean.override.mockito.MockitoBean`
+  - ByteBuddy agent attachment не работает в sandbox (нужны all permissions для тестов или использовать subclass mock maker)
+  - SecurityConfig пока простой — auth/** открыт, остальное закрыто. JWT-фильтр будет добавлен в TASK-005
+  - Разблокирован: TASK-005 (JWT авторизация: login, access/refresh tokens)
+  - Следующий приоритет: TASK-005 (security, critical) — JWT auth, или TASK-008 (functional, critical) — таблица contexts

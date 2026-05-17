@@ -98,7 +98,7 @@
         "Шаг 4: Отправить запрос с невалидным email — ожидать 400"
       ],
       "dependencies": ["TASK-003"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-005",
