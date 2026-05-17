@@ -121,7 +121,7 @@
         "Шаг 6: POST /api/v1/auth/logout, затем попробовать refresh — ожидать 401"
       ],
       "dependencies": ["TASK-004"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-006",

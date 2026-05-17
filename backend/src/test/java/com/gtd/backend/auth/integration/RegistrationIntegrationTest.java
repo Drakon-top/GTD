@@ -3,6 +3,7 @@ package com.gtd.backend.auth.integration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gtd.backend.auth.dto.RegisterRequest;
 import com.gtd.backend.auth.model.User;
+import com.gtd.backend.auth.repository.RefreshTokenRepository;
 import com.gtd.backend.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,10 +35,14 @@ class RegistrationIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
 

@@ -101,3 +101,36 @@
   - SecurityConfig пока простой — auth/** открыт, остальное закрыто. JWT-фильтр будет добавлен в TASK-005
   - Разблокирован: TASK-005 (JWT авторизация: login, access/refresh tokens)
   - Следующий приоритет: TASK-005 (security, critical) — JWT auth, или TASK-008 (functional, critical) — таблица contexts
+
+### TASK-005 — JWT авторизация: login, access token, refresh token
+- **Дата:** 2026-05-17
+- **Статус:** done
+- **Что сделано:**
+  - Добавлены зависимости JJWT 0.12.6 (jjwt-api, jjwt-impl, jjwt-jackson) в pom.xml
+  - Создан `JwtProperties` (@ConfigurationProperties) для конфига JWT (secret, access/refresh expiration)
+  - JWT-конфиг добавлен в application.yml (15 мин access, 30 дней refresh) и test application.yml
+  - Создан `JwtService` — генерация access/refresh токенов (HMAC-SHA), валидация, парсинг claims (userId, type)
+  - Создана Flyway-миграция `V2__create_refresh_tokens_table.sql` (id UUID PK, user_id FK, token_hash UNIQUE, expires_at, revoked, created_at)
+  - Создана JPA-сущность `RefreshToken` с маппингом и `RefreshTokenRepository` (findByTokenHashAndRevokedFalse, revokeAllByUserId)
+  - Refresh-токен хранится в БД как SHA-256 хэш — оригинал токена отправляется в HttpOnly cookie
+  - Создан `LoginRequest` DTO (email + password с валидацией)
+  - Создан `AuthResponse` DTO (accessToken + tokenType)
+  - Расширен `AuthService`: login() — аутентификация + генерация пары токенов, refresh() — ротация refresh-токена (old revoked, new issued), logout() — revoke refresh-токена
+  - Создан `JwtAuthenticationFilter` (OncePerRequestFilter) — извлекает Bearer token из Authorization header, валидирует, устанавливает Authentication в SecurityContext
+  - Обновлён `SecurityConfig` — JWT-фильтр добавлен перед UsernamePasswordAuthenticationFilter, custom AuthenticationEntryPoint возвращает 401
+  - Созданы `InvalidCredentialsException` и `InvalidRefreshTokenException` с обработкой в GlobalExceptionHandler (401 Unauthorized)
+  - POST /api/v1/auth/login — access token в теле, refresh token в HttpOnly secure cookie
+  - POST /api/v1/auth/refresh — ротация обоих токенов, refresh из cookie
+  - POST /api/v1/auth/logout — revoke refresh-токена, очистка cookie
+  - Обновлены AuthControllerTest (14 тестов), AuthServiceTest (12 тестов), JwtServiceTest (6 тестов)
+  - Создан JwtAuthIntegrationTest (8 тестов: login, wrong password, protected endpoint, refresh, refresh revoked, logout, etc.)
+  - Обновлён RegistrationIntegrationTest — cleanup refresh_tokens перед users для FK constraint
+  - Все 54 теста проходят, проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add JWT authentication with login, refresh, and logout endpoints
+- **Заметки:**
+  - Refresh token rotation: при каждом refresh старый токен revoke, выдаётся новый — защита от replay attacks
+  - Токены хранятся как SHA-256 хэш в БД, оригинал только в cookie — даже при утечке БД токены бесполезны
+  - `@WebMvcTest` требует мокать JwtAuthenticationFilter и JwtService, иначе SecurityConfig не загружается
+  - В H2 (тесты) Hibernate create-drop автоматически создаёт refresh_tokens, Flyway миграция не нужна
+  - Разблокирован: TASK-006 (Spring Security конфигурация + rate limiting)
+  - Следующий приоритет: TASK-006 (security, critical) — rate limiting и CORS, или TASK-008 (functional, critical) — таблица contexts

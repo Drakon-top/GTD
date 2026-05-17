@@ -20,3 +20,8 @@ spring:
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+
+jwt:
+  secret: test-secret-key-that-is-at-least-256-bits-long-for-hmac-sha-testing-only
+  access-token-expiration-ms: 900000
+  refresh-token-expiration-ms: 2592000000
