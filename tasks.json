@@ -58,7 +58,7 @@
         "Шаг 4: Убедиться, что Spring Boot приложение стартует и подключается к БД"
       ],
       "dependencies": ["TASK-001"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-003",
