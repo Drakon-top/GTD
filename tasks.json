@@ -180,7 +180,7 @@
         "Шаг 3: Убедиться, что FK на users работает корректно"
       ],
       "dependencies": ["TASK-003"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-009",

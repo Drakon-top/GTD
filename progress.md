@@ -134,3 +134,22 @@
   - В H2 (тесты) Hibernate create-drop автоматически создаёт refresh_tokens, Flyway миграция не нужна
   - Разблокирован: TASK-006 (Spring Security конфигурация + rate limiting)
   - Следующий приоритет: TASK-006 (security, critical) — rate limiting и CORS, или TASK-008 (functional, critical) — таблица contexts
+
+### TASK-008 — Flyway-миграция и JPA-сущность для таблицы Context
+- **Дата:** 2026-05-17
+- **Статус:** done
+- **Что сделано:**
+  - Создана Flyway-миграция `V3__create_contexts_table.sql` с PostgreSQL enum type `context_theme`
+  - Таблица `contexts`: id (UUID PK), user_id (FK → users, ON DELETE RESTRICT), name (VARCHAR 100, NOT NULL), theme (context_theme ENUM, NOT NULL), icon (VARCHAR 50), sort_order (INTEGER, NOT NULL, default 0), is_deleted (BOOLEAN, NOT NULL, default false), created_at (TIMESTAMPTZ), updated_at (TIMESTAMPTZ)
+  - Индексы: `idx_contexts_user_id` и частичный `idx_contexts_user_id_not_deleted` (WHERE is_deleted = FALSE)
+  - Создан enum `ContextTheme` в пакете `com.gtd.backend.context.model` с 5 значениями: MINIMALIST, DESIGN, FORMAL, NATURE, DARK
+  - Создана JPA-сущность `Context` с полным маппингом: @ManyToOne(LAZY) → User, @Enumerated(STRING), @Builder.Default для sortOrder и isDeleted, @PrePersist/@PreUpdate для timestamps
+  - Создан `ContextRepository` (JpaRepository) с методами: findByUserIdAndIsDeletedFalseOrderBySortOrderAsc(), findByIdAndIsDeletedFalse(), countByUserIdAndIsDeletedFalse()
+  - Написаны 12 тестов для ContextRepository: save, find active, exclude deleted, find by id, count active, sort order, user isolation, timestamps, all theme values, FK integrity
+  - Все 66 тестов проходят (54 старых + 12 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add Flyway V3 migration for contexts table and Context JPA entity
+- **Заметки:**
+  - Миграция использует PostgreSQL CREATE TYPE для enum — в H2 (тесты) это не выполняется (Flyway disabled), Hibernate create-drop создаёт таблицу автоматически с EnumType.STRING
+  - Partial index `idx_contexts_user_id_not_deleted` оптимизирует самый частый запрос — получение активных контекстов пользователя
+  - Разблокированы: TASK-009 (CRUD API для контекстов, нужен также TASK-007), TASK-010 (миграция и сущность Task)
+  - Следующий приоритет: TASK-006 (security, critical) — единственная critical-задача с выполненными dependencies, или TASK-010 (functional, critical) — таблица tasks (зависит только от TASK-008, теперь done)
