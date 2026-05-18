@@ -703,3 +703,32 @@
   - Vite proxy избавляет от CORS-проблем в dev-режиме
   - Разблокированы: TASK-027 (Web: авторизация, зависит от TASK-026 + TASK-005, оба done), TASK-028 (Web: экран контекстов, зависит от TASK-027 + TASK-009)
   - Следующий приоритет: TASK-027 (ui, high) — Web: экран авторизации (login/register/logout), TASK-020 (integration, medium) — FCM push, TASK-046 (infrastructure, medium) — Dockerfile + Yandex Cloud
+
+### TASK-027 — Web: экран авторизации (login/register/logout)
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Полностью переработаны LoginPage и RegisterPage с Notion-inspired минималистичным дизайном (stone color palette, rounded-xl карточки, branded "G" logo)
+  - LoginPage: email + пароль + кнопка Sign in, field-level ошибки валидации с бэкенда (details), loading spinner, auto-complete атрибуты
+  - RegisterPage: email + пароль + подтверждение пароля + кнопка Create account, клиентская валидация совпадения паролей, field-level ошибки от бэкенда, success screen с redirect на /login через 1.5с
+  - Обновлён `authStore` (Zustand): добавлен `isInitializing` state и `initSession()` — при загрузке приложения пытается refresh token через POST /auth/refresh (persistent session)
+  - Создан `GuestRoute` компонент — redirects to /contexts если пользователь уже авторизован (не показывать login/register)
+  - Обновлён `App.tsx` — вызывает `initSession()` при монтировании, показывает loading spinner пока идёт инициализация, login/register обёрнуты в GuestRoute
+  - Обновлён `ContextsPage` — убрана дублирующая проверка isAuthenticated (уже проверяется ProtectedRoute), улучшен logout с transition на /login, обновлён дизайн в stone palette
+  - Обновлён `NotFoundPage` — stone palette для консистентности
+  - JWT access token хранится в памяти (Zustand store), refresh token в HttpOnly cookie (бэкенд) — безопасно
+  - При 401 — auto-refresh interceptor в apiClient автоматически обновляет access token и повторяет запрос
+  - Кнопка Sign out — POST /auth/logout (revoke refresh token на сервере) + clear Zustand store + redirect на /login
+  - Исправлен package.json — добавлены runtime dependencies (axios, react-router-dom, zustand) которые были в node_modules но не в dependencies
+  - `npm run build` — TypeScript компиляция + Vite build без ошибок (87 модулей, 288KB JS gzip 93KB)
+  - `npm run lint` — ESLint без ошибок
+  - Все 480 backend тестов проходят
+- **Коммиты:** feat: add auth UI with login, register, logout, and persistent session
+- **Заметки:**
+  - Persistent session реализован через `initSession()` в App.tsx: при каждом открытии/refresh страницы пытается refresh token — если cookie валидный, пользователь автоматически авторизуется
+  - GuestRoute предотвращает показ login/register уже авторизованным пользователям — redirect на /contexts
+  - Дизайн использует stone color palette (stone-50 фон, stone-900 кнопки, stone-200 границы) — минималистичный стиль в духе Notion
+  - Field-level ошибки от бэкенда (ErrorResponse.details) отображаются под конкретными полями (email, password) красным текстом
+  - isAxiosError type guard используется вместо ручной проверки err.response — типобезопасность
+  - Разблокирован: TASK-028 (Web: экран выбора контекста, зависит от TASK-027 + TASK-009, оба done)
+  - Следующий приоритет: TASK-028 (ui, high) — Web: экран выбора контекста (карточки), TASK-020 (integration, medium) — FCM push, TASK-046 (infrastructure, medium) — Dockerfile + Yandex Cloud

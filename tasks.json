@@ -605,7 +605,7 @@
         "Шаг 5: Нажать Logout — redirect на /login"
       ],
       "dependencies": ["TASK-026", "TASK-005"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-028",
