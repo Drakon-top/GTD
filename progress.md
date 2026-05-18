@@ -1107,3 +1107,51 @@
   - Mockito sandbox issue: ByteBuddy agent attachment блокируется в restrictive environments; CI runners не имеют этого ограничения
   - Разблокировано: нет новых задач, зависящих от TASK-048. TASK-050 (E2E) зависит от TASK-044 + TASK-036 + TASK-042
   - Следующий приоритет: TASK-047 (HTTPS + домен), TASK-020 (FCM push), TASK-037 (Android init), TASK-049 (мониторинг)
+
+### TASK-049 — Мониторинг и логирование для production
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан `logback-spring.xml` — structured logging с профилями:
+    - **dev/default:** человекочитаемый console-вывод с цветовой подсветкой (pattern: timestamp, level, thread, logger, message)
+    - **prod:** JSON-формат через LogstashEncoder для stdout (Docker captures) + rolling file appender
+    - Rolling file: `/app/logs/gtd-backend.log`, ротация по размеру (50MB) и дате, сжатие .gz, хранение 30 дней, лимит 1GB
+    - MDC-контекст в каждом JSON-сообщении: requestId, userId, method, uri
+  - Создан `RequestLoggingFilter` — structured access log:
+    - Генерирует уникальный requestId (8 символов UUID) для каждого запроса
+    - Записывает requestId, method, uri в MDC (доступны в каждой log-записи внутри запроса)
+    - Возвращает `X-Request-Id` header в ответе для корреляции клиент-сервер
+    - Логирует `HTTP {method} {uri} {status} {duration}ms` для каждого запроса
+    - Исключает `/actuator/*` из access-логов (noise reduction)
+    - `@Order(HIGHEST_PRECEDENCE)` — выполняется до всех остальных фильтров
+  - Добавлена зависимость `logstash-logback-encoder:8.0` в pom.xml — для JSON-формата логов
+  - Добавлена зависимость `micrometer-registry-prometheus` в pom.xml — для Prometheus-совместимых метрик
+  - Расширена конфигурация actuator endpoints:
+    - Exposed: health, info, prometheus, metrics (ранее только health, info)
+    - `/actuator/info` — возвращает app name, version, description (management.info.env.enabled=true)
+    - `/actuator/prometheus` — Prometheus scrape endpoint для метрик (JVM, HTTP, DB pool, etc.)
+    - `/actuator/metrics` — JSON-формат метрик для ручного мониторинга
+    - Production: `show-details: always`, `show-components: always` для health — видно статус DB, RabbitMQ, disk space
+  - SecurityConfig: разрешён публичный доступ к `/actuator/info` и `/actuator/prometheus` (ранее только `/actuator/health`)
+  - Dockerfile: добавлена директория `/app/logs` для rolling file appender
+  - docker-compose.prod.yml: добавлен named volume `app_logs` для персистентного хранения логов
+  - Создан `scripts/health-check.sh` — bash-скрипт мониторинга uptime:
+    - Вызывает `/actuator/health`, проверяет HTTP 200 + status=UP
+    - Настраиваемые параметры через env: HEALTH_URL, TIMEOUT, ALERT_WEBHOOK
+    - При failure: отправляет alert через webhook (Slack/Telegram/etc.)
+    - Предназначен для cron: `*/5 * * * * /opt/gtd/scripts/health-check.sh >> /var/log/gtd-health.log 2>&1`
+  - Написаны 3 новых unit-теста для RequestLoggingFilter + 2 интеграционных теста для actuator health/info endpoints в SecurityConfigIntegrationTest
+  - Обновлена test application.yml: добавлена конфигурация management endpoints + info
+  - Все 485 backend-тестов проходят: `./mvnw test` — BUILD SUCCESS (0 failures, 0 errors)
+  - Frontend: `npm run lint` — без ошибок, `npm run build` — 100 модулей, 396KB JS gzip 120KB
+  - docker-compose.prod.yml: `config` — валидный
+- **Коммиты:** feat: add structured logging, Prometheus metrics, and uptime monitoring
+- **Заметки:**
+  - JSON-логи в production позволяют парсинг через ELK/Loki/CloudWatch без дополнительной настройки
+  - Prometheus endpoint `/actuator/prometheus` готов к подключению Grafana/Prometheus stack; для MVP достаточно cron + curl
+  - RequestLoggingFilter ставит requestId в MDC ДО всех остальных фильтров — все логи внутри запроса содержат requestId для корреляции
+  - Rolling file в `/app/logs` на Docker volume — логи переживают рестарт контейнера; Docker JSON driver на stdout — для `docker logs`
+  - Health check скрипт поддерживает webhook для alerting — можно подключить Telegram Bot API или Slack Incoming Webhook
+  - Разблокировано: нет задач, напрямую зависящих от TASK-049
+  - Оставшиеся pending задачи: TASK-020 (FCM push, medium, integration — требует Firebase credentials), TASK-037 (Android init, medium, infrastructure — требует Android SDK), TASK-047 (HTTPS + домен, medium, infrastructure — требует VM + домен), TASK-038-045 (Android chain, зависят от TASK-037), TASK-050 (E2E, зависит от TASK-044 + TASK-036 + TASK-042)
+  - Следующий приоритет: TASK-047 (HTTPS + Let's Encrypt) или TASK-020 (FCM push) — оба medium, оба имеют dependencies met. TASK-047 можно частично реализовать (Nginx HTTPS конфигурация + certbot скрипты), TASK-020 требует Firebase project setup

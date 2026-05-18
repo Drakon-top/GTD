@@ -80,6 +80,18 @@ class SecurityConfigIntegrationTest {
     }
 
     @Test
+    void shouldAllowAccessToActuatorHealth_withoutToken() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldAllowAccessToActuatorInfo_withoutToken() throws Exception {
+        mockMvc.perform(get("/actuator/info"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void shouldRejectCorsRequest_whenOriginIsNotAllowed() throws Exception {
         mockMvc.perform(options("/api/v1/auth/register")
                         .header("Origin", "http://evil.com")

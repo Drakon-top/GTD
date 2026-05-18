@@ -25,10 +25,19 @@ logging:
     org.hibernate: WARN
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       show-details: always
       show-components: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: gtd-backend
 
 springdoc:
   swagger-ui:

@@ -16,7 +16,7 @@ WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar
 
-RUN chown -R appuser:appgroup /app
+RUN mkdir -p /app/logs && chown -R appuser:appgroup /app
 
 USER appuser
 
