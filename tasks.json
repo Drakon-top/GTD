@@ -713,7 +713,7 @@
         "Шаг 4: Обновить страницу — изменения сохранены"
       ],
       "dependencies": ["TASK-030", "TASK-012"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-033",

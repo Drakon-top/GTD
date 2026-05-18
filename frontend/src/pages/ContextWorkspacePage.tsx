@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import apiClient from '../api/client';
 import type {
   CategoryResponse,
@@ -12,6 +14,7 @@ import Sidebar from '../components/Sidebar';
 import TaskList from '../components/TaskList';
 import { gtdListLabel } from '../utils/gtdLabels';
 import TaskDetailPanel from '../components/TaskDetailPanel';
+import DragOverlayCard from '../components/DragOverlayCard';
 
 export default function ContextWorkspacePage() {
   const { contextId } = useParams<{ contextId: string }>();
@@ -25,6 +28,11 @@ export default function ContextWorkspacePage() {
   const [activeSection, setActiveSection] = useState<string>('INBOX');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [refreshKey, refresh] = useReducer((x: number) => x + 1, 0);
+  const [draggedTask, setDraggedTask] = useState<TaskResponse | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
 
   useEffect(() => {
     if (!contextId) return;
@@ -93,6 +101,31 @@ export default function ContextWorkspacePage() {
     setSelectedTaskId(null);
   }, []);
 
+  function handleDragStart(event: DragStartEvent) {
+    const { task } = event.active.data.current as { task: TaskResponse };
+    setDraggedTask(task);
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    setDraggedTask(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const overId = over.id as string;
+    if (!overId.startsWith('gtd:')) return;
+
+    const targetList = overId.slice(4) as GtdList;
+    const { task } = active.data.current as { task: TaskResponse };
+
+    if (task.gtdList === targetList) return;
+    if (task.isCompleted) return;
+
+    try {
+      await apiClient.patch(`/tasks/${task.id}/move`, { gtdList: targetList });
+      refresh();
+    } catch { /* silently fail */ }
+  }
+
   function sectionLabel(): string {
     if (activeSection.startsWith('cat:')) {
       const catId = activeSection.slice(4);
@@ -113,59 +146,65 @@ export default function ContextWorkspacePage() {
   if (!context || !contextId) return null;
 
   return (
-    <div className="flex h-screen flex-col bg-stone-50">
-      <header className="shrink-0 border-b border-stone-200 bg-white">
-        <div className="flex items-center gap-4 px-4 py-2.5">
-          <button
-            type="button"
-            onClick={() => navigate('/contexts')}
-            className="rounded-md p-1.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{context.icon}</span>
-            <h1 className="text-base font-semibold text-stone-900">{context.name}</h1>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="flex h-screen flex-col bg-stone-50">
+        <header className="shrink-0 border-b border-stone-200 bg-white">
+          <div className="flex items-center gap-4 px-4 py-2.5">
+            <button
+              type="button"
+              onClick={() => navigate('/contexts')}
+              className="rounded-md p-1.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{context.icon}</span>
+              <h1 className="text-base font-semibold text-stone-900">{context.name}</h1>
+            </div>
+            {counts && (
+              <span className="ml-auto text-xs text-stone-400">
+                {counts.total} task{counts.total !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
-          {counts && (
-            <span className="ml-auto text-xs text-stone-400">
-              {counts.total} task{counts.total !== 1 ? 's' : ''}
-            </span>
+        </header>
+
+        <div className="flex min-h-0 flex-1">
+          <Sidebar
+            counts={counts}
+            categories={categories}
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+          />
+
+          <main className="min-w-0 flex-1 bg-white">
+            <TaskList
+              tasks={tasks}
+              sectionLabel={sectionLabel()}
+              contextId={contextId}
+              onTaskClick={handleTaskClick}
+              onTasksChanged={handleTasksChanged}
+              selectedTaskId={selectedTaskId}
+            />
+          </main>
+
+          {selectedTaskId && (
+            <TaskDetailPanel
+              taskId={selectedTaskId}
+              contextId={contextId}
+              categories={categories}
+              onClose={handleCloseDetail}
+              onTaskChanged={handleTasksChanged}
+            />
           )}
         </div>
-      </header>
-
-      <div className="flex min-h-0 flex-1">
-        <Sidebar
-          counts={counts}
-          categories={categories}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
-
-        <main className="min-w-0 flex-1 bg-white">
-          <TaskList
-            tasks={tasks}
-            sectionLabel={sectionLabel()}
-            contextId={contextId}
-            onTaskClick={handleTaskClick}
-            onTasksChanged={handleTasksChanged}
-            selectedTaskId={selectedTaskId}
-          />
-        </main>
-
-        {selectedTaskId && (
-          <TaskDetailPanel
-            taskId={selectedTaskId}
-            contextId={contextId}
-            categories={categories}
-            onClose={handleCloseDetail}
-            onTaskChanged={handleTasksChanged}
-          />
-        )}
       </div>
-    </div>
+
+      <DragOverlay>
+        {draggedTask && <DragOverlayCard task={draggedTask} />}
+      </DragOverlay>
+    </DndContext>
   );
 }

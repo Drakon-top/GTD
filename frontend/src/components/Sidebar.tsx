@@ -1,3 +1,4 @@
+import { useDroppable } from '@dnd-kit/core';
 import type { CategoryResponse, GtdList, TaskCountsResponse } from '../types';
 
 const GTD_LISTS: { key: GtdList; label: string; icon: string }[] = [
@@ -23,6 +24,53 @@ interface SidebarProps {
   onSectionChange: (section: string) => void;
 }
 
+function DroppableGtdItem({
+  gtdKey,
+  label,
+  icon,
+  count,
+  isActive,
+  isDimmed,
+  onClick,
+}: {
+  gtdKey: GtdList;
+  label: string;
+  icon: string;
+  count: number;
+  isActive: boolean;
+  isDimmed?: boolean;
+  onClick: () => void;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id: `gtd:${gtdKey}` });
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      onClick={onClick}
+      className={`group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition ${
+        isOver
+          ? 'bg-blue-50 ring-1 ring-blue-300'
+          : isActive
+            ? 'bg-stone-100 font-medium text-stone-900'
+            : isDimmed
+              ? 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'
+              : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'
+      }`}
+    >
+      <span className="w-5 text-center text-sm">{icon}</span>
+      <span className="flex-1 truncate">{label}</span>
+      {count > 0 && (
+        <span className={`min-w-[20px] rounded-full px-1.5 text-center text-xs ${
+          isActive ? 'bg-stone-200 text-stone-700' : 'bg-stone-100 text-stone-500'
+        }`}>
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
 export default function Sidebar({ counts, categories, activeSection, onSectionChange }: SidebarProps) {
   const gtdCount = (key: GtdList) => counts?.byGtdList[key] ?? 0;
   const catCount = (id: string) => counts?.byCategory[id] ?? 0;
@@ -34,54 +82,29 @@ export default function Sidebar({ counts, categories, activeSection, onSectionCh
           GTD Lists
         </div>
 
-        {GTD_LISTS.map(({ key, label, icon }) => {
-          const count = gtdCount(key);
-          const isActive = activeSection === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onSectionChange(key)}
-              className={`group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition ${
-                isActive
-                  ? 'bg-stone-100 font-medium text-stone-900'
-                  : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'
-              }`}
-            >
-              <span className="w-5 text-center text-sm">{icon}</span>
-              <span className="flex-1 truncate">{label}</span>
-              {count > 0 && (
-                <span className={`min-w-[20px] rounded-full px-1.5 text-center text-xs ${
-                  isActive ? 'bg-stone-200 text-stone-700' : 'bg-stone-100 text-stone-500'
-                }`}>
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
+        {GTD_LISTS.map(({ key, label, icon }) => (
+          <DroppableGtdItem
+            key={key}
+            gtdKey={key}
+            label={label}
+            icon={icon}
+            count={gtdCount(key)}
+            isActive={activeSection === key}
+            onClick={() => onSectionChange(key)}
+          />
+        ))}
 
         <div className="my-2 border-t border-stone-100" />
 
-        <button
-          type="button"
+        <DroppableGtdItem
+          gtdKey={DONE_LIST.key}
+          label={DONE_LIST.label}
+          icon={DONE_LIST.icon}
+          count={gtdCount('DONE')}
+          isActive={activeSection === 'DONE'}
+          isDimmed
           onClick={() => onSectionChange(DONE_LIST.key)}
-          className={`group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition ${
-            activeSection === 'DONE'
-              ? 'bg-stone-100 font-medium text-stone-900'
-              : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'
-          }`}
-        >
-          <span className="w-5 text-center text-sm">{DONE_LIST.icon}</span>
-          <span className="flex-1 truncate">{DONE_LIST.label}</span>
-          {gtdCount('DONE') > 0 && (
-            <span className={`min-w-[20px] rounded-full px-1.5 text-center text-xs ${
-              activeSection === 'DONE' ? 'bg-stone-200 text-stone-700' : 'bg-stone-100 text-stone-400'
-            }`}>
-              {gtdCount('DONE')}
-            </span>
-          )}
-        </button>
+        />
 
         {categories.length > 0 && (
           <>

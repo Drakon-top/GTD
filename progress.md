@@ -873,3 +873,37 @@
   - countCompleted/countTotal в React — рекурсивные функции для подсчёта прогресса на клиенте (дублирует backend логику для отзывчивого UI)
   - Разблокированы: никаких прямых зависимостей от TASK-031 в tasks.json
   - Следующий приоритет: TASK-032 (ui, high) — drag & drop перемещение задач (зависит от TASK-030 + TASK-012, оба done), TASK-033 (ui, medium) — кастомные категории UI (зависит от TASK-029 + TASK-014, оба done), TASK-035 (ui, medium) — 5 тем оформления (зависит от TASK-029, done)
+
+### TASK-032 — Web: перемещение задач между GTD-списками (drag & drop)
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Установлены `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` (были в devDependencies описаны в TASK-026, но не в package.json — добавлены)
+  - Реализован drag & drop через `@dnd-kit/core`:
+    - `DndContext` обёртывает весь workspace (ContextWorkspacePage) с `PointerSensor` (activationConstraint: distance 8px для предотвращения случайных drag)
+    - Каждый task item — `useDraggable` (id: `task:{taskId}`, data содержит TaskResponse)
+    - Каждый GTD-список в sidebar — `useDroppable` (id: `gtd:{listKey}`)
+    - При drop на GTD-список: PATCH /tasks/{id}/move с целевым gtdList, затем refresh данных
+  - `DragOverlay` компонент показывает превью задачи при перетаскивании — карточка с тенью, синей рамкой и названием задачи
+  - Визуальная обратная связь:
+    - Dragged item: opacity 50% + синий фон + shadow
+    - Drop target (sidebar GTD item): bg-blue-50 + ring-1 ring-blue-300 при hover
+    - DragOverlay: белая карточка с border-blue-200, shadow-xl
+  - Реализована альтернатива без drag & drop — контекстное меню "Move to...":
+    - Кнопка "➡️ Move to..." в context menu с submenu (появляется справа)
+    - Submenu содержит все 8 GTD-списков (кроме текущего) с emoji-иконками
+    - Клик по пункту submenu: PATCH /tasks/{id}/move → refresh
+  - Checkbox и "more" кнопка используют `onPointerDown stopPropagation` — клик по ним не начинает drag
+  - Completed задачи нельзя перемещать (guard в handleDragEnd)
+  - Обновлён пустой state TaskList: "Add one below or drag tasks here"
+  - `npm run lint` — ESLint без ошибок
+  - `npm run build` — TypeScript компиляция + Vite build без ошибок (97 модулей, 363KB JS gzip 114KB)
+  - Backend: все 480 тестов проходят, `./mvnw clean package` — успешно
+- **Коммиты:** feat: add drag & drop task movement between GTD lists with Move to context menu
+- **Заметки:**
+  - PointerSensor с distance constraint 8px — предотвращает случайные drag при обычных кликах по задачам
+  - DnD не работает для completed задач — handleDragEnd проверяет isCompleted перед вызовом API
+  - Context menu "Move to..." — полноценная альтернатива для пользователей без мыши или на тачскринах
+  - @dnd-kit добавляет ~80KB к бандлу (363KB vs 317KB в TASK-031) — приемлемо для функциональности
+  - Разблокированы: никаких прямых зависимостей от TASK-032 в tasks.json
+  - Следующий приоритет: TASK-033 (ui, medium) — кастомные категории UI (зависит от TASK-029 + TASK-014, оба done), TASK-034 (ui, medium) — напоминания и повторяющиеся задачи UI (зависит от TASK-030 + TASK-016 + TASK-021), TASK-035 (ui, medium) — 5 тем оформления (зависит от TASK-029, done)
