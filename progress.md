@@ -1013,3 +1013,35 @@
   - Дубликация тем между ContextsPage.THEME_STYLES, CreateContextModal.THEMES и themes.ts — ContextsPage/CreateContextModal используют собственные упрощённые стили для карточек; themes.ts — полная палитра для workspace
   - Разблокированных задач от TASK-035 нет в tasks.json
   - Следующий приоритет: TASK-036 (ui, medium) — экспорт из настроек (зависит от TASK-029 + TASK-025, оба done), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done), TASK-046 (infrastructure, medium) — Dockerfile + Yandex Cloud (зависит от TASK-002, done)
+
+### TASK-036 — Web: экспорт данных в JSON из настроек
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан компонент `ExportModal` — модальное окно экспорта данных в JSON:
+    - Две опции: "This context" (экспорт текущего контекста) и "All contexts" (экспорт всех данных)
+    - Каждая опция — карточка-кнопка с иконкой, заголовком и описанием
+    - При клике: GET /api/v1/export?context_id={id} или GET /api/v1/export → формирование Blob → triggerDownload через createElement('a')
+    - Имя файла: `gtd-export-{sanitized_context_name}-{YYYY-MM-DD}.json` или `gtd-export-all-{YYYY-MM-DD}.json`
+    - `sanitizeFilename()` — заменяет спецсимволы на underscore, поддерживает кириллицу
+    - Disabled состояние кнопок во время загрузки, показ "Exporting..." текста
+    - Error handling: красный блок с сообщением ошибки под кнопками
+    - Закрытие: по клику на overlay или крестик, автоматически после успешного экспорта
+  - Добавлена кнопка экспорта (download icon) в header `ContextWorkspacePage` — рядом с theme picker
+    - Нейтральный стиль, использует цвета текущей темы (headerSubtext)
+    - SVG иконка стрелки вниз с подчёркиванием (стандартный download icon)
+  - `ExportModal` рендерится условно по state `showExportModal` в `ContextWorkspacePage`
+  - Модал в stone palette (нейтральный, как CategoryManager и theme picker — overlay-элементы не тематизируются)
+  - Экспортируемый JSON форматируется с `JSON.stringify(data, null, 2)` для читаемости
+  - `npm run lint` — ESLint без ошибок
+  - `npm run build` — TypeScript + Vite build без ошибок (100 модулей, 396KB JS gzip 120KB)
+  - Backend: не изменялся; `./mvnw compile` — успешно; тесты имеют pre-existing Mockito environment issue (437 errors из-за MockMaker plugin init, 0 failures — не связано с данной задачей)
+- **Коммиты:** feat: add JSON export modal with single context and full export options
+- **Заметки:**
+  - Бэкенд export API (GET /api/v1/export) уже полностью реализован в TASK-025 — фронтенд только вызывает его и скачивает результат
+  - triggerDownload использует Blob + createObjectURL + programmatic click — стандартный паттерн для скачивания файлов в браузере
+  - Soft-deleted данные автоматически исключаются бэкендом — фронтенд не фильтрует
+  - Экспорт включает: contexts, categories, tasks (с subtasks), reminders — полная структура из PRD
+  - Разблокированных задач от TASK-036 нет напрямую, но TASK-050 (E2E тестирование) зависит от TASK-036 + TASK-042 + TASK-044
+  - Все web UI задачи (TASK-027–036) теперь завершены
+  - Следующий приоритет: TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done), TASK-046 (infrastructure, medium) — Dockerfile + Yandex Cloud (зависит от TASK-002, done), TASK-037 (infrastructure, medium) — Android инициализация (нет зависимостей)

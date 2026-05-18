@@ -16,6 +16,7 @@ import { gtdListLabel } from '../utils/gtdLabels';
 import TaskDetailPanel from '../components/TaskDetailPanel';
 import DragOverlayCard from '../components/DragOverlayCard';
 import CategoryManager from '../components/CategoryManager';
+import ExportModal from '../components/ExportModal';
 import { getTheme, THEME_NAMES } from '../utils/themes';
 import type { ThemeColors } from '../utils/themes';
 import type { ContextTheme } from '../types';
@@ -35,6 +36,7 @@ export default function ContextWorkspacePage() {
   const [draggedTask, setDraggedTask] = useState<TaskResponse | null>(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -186,6 +188,16 @@ export default function ContextWorkspacePage() {
                   {counts.total} task{counts.total !== 1 ? 's' : ''}
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => setShowExportModal(true)}
+                className={`rounded-md p-1.5 ${theme.headerSubtext} transition hover:opacity-80`}
+                title="Export data"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </button>
               <div className="relative">
                 <button
                   type="button"
@@ -271,6 +283,14 @@ export default function ContextWorkspacePage() {
           categories={categories}
           onCategoriesChanged={() => { refresh(); }}
           onClose={() => setShowCategoryManager(false)}
+        />
+      )}
+
+      {showExportModal && (
+        <ExportModal
+          contextId={contextId}
+          contextName={context.name}
+          onClose={() => setShowExportModal(false)}
         />
       )}
     </DndContext>
