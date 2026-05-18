@@ -65,6 +65,9 @@ public class TaskResponse {
     @Schema(description = "Whether the task has incomplete subtasks (only included on complete)")
     private Boolean hasIncompleteSubtasks;
 
+    @Schema(description = "Project progress percentage (0-100). Only populated for tasks in PROJECTS list that have subtasks.")
+    private Integer progress;
+
     @Schema(description = "Creation timestamp")
     private Instant createdAt;
 

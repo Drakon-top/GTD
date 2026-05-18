@@ -5,6 +5,7 @@ import com.gtd.backend.context.exception.ContextNotFoundException;
 import com.gtd.backend.context.model.Context;
 import com.gtd.backend.context.repository.ContextRepository;
 import com.gtd.backend.task.dto.CreateTaskRequest;
+import com.gtd.backend.task.dto.TaskCountsResponse;
 import com.gtd.backend.task.dto.TaskResponse;
 import com.gtd.backend.task.dto.UpdateTaskRequest;
 import com.gtd.backend.task.exception.MaxNestingLevelException;
@@ -18,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -40,14 +43,14 @@ public class TaskService {
             tasks = taskRepository.findByContextIdAndParentTaskIsNullAndIsDeletedFalseOrderBySortOrderAsc(contextId);
         }
 
-        return tasks.stream().map(this::toResponse).toList();
+        return tasks.stream().map(this::toResponseWithProgress).toList();
     }
 
     @Transactional(readOnly = true)
     public TaskResponse getTask(UUID taskId, UUID userId) {
         Task task = findTaskOrThrow(taskId);
         verifyTaskOwnership(task, userId);
-        return toResponseWithSubtasks(task);
+        return toResponseWithSubtasksAndProgress(task);
     }
 
     @Transactional
@@ -134,7 +137,39 @@ public class TaskService {
         verifyTaskOwnership(parentTask, userId);
 
         List<Task> subtasks = taskRepository.findByParentTaskIdAndIsDeletedFalseOrderBySortOrderAsc(parentTaskId);
-        return subtasks.stream().map(this::toResponse).toList();
+        return subtasks.stream().map(this::toResponseWithProgress).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public TaskCountsResponse getTaskCounts(UUID contextId, UUID userId) {
+        Context context = findContextOrThrow(contextId);
+        verifyContextOwnership(context, userId);
+
+        Map<String, Integer> byGtdList = new LinkedHashMap<>();
+        for (GtdList list : GtdList.values()) {
+            byGtdList.put(list.name(), 0);
+        }
+        for (Object[] row : taskRepository.countByContextIdGroupedByGtdList(contextId)) {
+            GtdList list = (GtdList) row[0];
+            int count = ((Long) row[1]).intValue();
+            byGtdList.put(list.name(), count);
+        }
+
+        Map<String, Integer> byCategory = new LinkedHashMap<>();
+        for (Object[] row : taskRepository.countByContextIdGroupedByCategory(contextId)) {
+            String categoryId = (String) row[0];
+            int count = ((Long) row[1]).intValue();
+            byCategory.put(categoryId, count);
+        }
+
+        int total = taskRepository.countByContextIdAndIsDeletedFalse(contextId);
+
+        return TaskCountsResponse.builder()
+                .contextId(contextId)
+                .byGtdList(byGtdList)
+                .byCategory(byCategory)
+                .total(total)
+                .build();
     }
 
     @Transactional
@@ -206,6 +241,32 @@ public class TaskService {
         }
     }
 
+    Integer computeProgress(UUID taskId) {
+        int[] counts = countAllDescendants(taskId);
+        int total = counts[0];
+        int completed = counts[1];
+        if (total == 0) {
+            return null;
+        }
+        return Math.round((float) completed / total * 100);
+    }
+
+    private int[] countAllDescendants(UUID parentTaskId) {
+        List<Task> children = taskRepository.findByParentTaskIdAndIsDeletedFalse(parentTaskId);
+        int total = 0;
+        int completed = 0;
+        for (Task child : children) {
+            total++;
+            if (child.isCompleted()) {
+                completed++;
+            }
+            int[] childCounts = countAllDescendants(child.getId());
+            total += childCounts[0];
+            completed += childCounts[1];
+        }
+        return new int[]{total, completed};
+    }
+
     private TaskResponse toResponse(Task task) {
         return TaskResponse.builder()
                 .id(task.getId())
@@ -226,11 +287,19 @@ public class TaskService {
                 .build();
     }
 
-    private TaskResponse toResponseWithSubtasks(Task task) {
-        List<Task> subtasks = taskRepository.findByParentTaskIdAndIsDeletedFalseOrderBySortOrderAsc(task.getId());
-        List<TaskResponse> subtaskResponses = subtasks.stream().map(this::toResponse).toList();
-
+    private TaskResponse toResponseWithProgress(Task task) {
         TaskResponse response = toResponse(task);
+        if (task.getGtdList() == GtdList.PROJECTS) {
+            response.setProgress(computeProgress(task.getId()));
+        }
+        return response;
+    }
+
+    private TaskResponse toResponseWithSubtasksAndProgress(Task task) {
+        List<Task> subtasks = taskRepository.findByParentTaskIdAndIsDeletedFalseOrderBySortOrderAsc(task.getId());
+        List<TaskResponse> subtaskResponses = subtasks.stream().map(this::toResponseWithProgress).toList();
+
+        TaskResponse response = toResponseWithProgress(task);
         response.setSubtasks(subtaskResponses);
         return response;
     }

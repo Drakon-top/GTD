@@ -344,7 +344,7 @@
         "Шаг 5: Удалить задачу (soft) — счётчик уменьшился"
       ],
       "dependencies": ["TASK-013"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-016",

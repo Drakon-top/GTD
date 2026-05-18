@@ -7,6 +7,7 @@ import com.gtd.backend.context.model.Context;
 import com.gtd.backend.context.model.ContextTheme;
 import com.gtd.backend.context.repository.ContextRepository;
 import com.gtd.backend.task.dto.CreateTaskRequest;
+import com.gtd.backend.task.dto.TaskCountsResponse;
 import com.gtd.backend.task.dto.TaskResponse;
 import com.gtd.backend.task.dto.UpdateTaskRequest;
 import com.gtd.backend.task.exception.MaxNestingLevelException;
@@ -612,6 +613,189 @@ class TaskServiceTest {
         assertThat(result.getNestingLevel()).isEqualTo(3);
         assertThat(result.getContextId()).isEqualTo(contextId);
         assertThat(result.getSortOrder()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldComputeProgressForProjectWith50Percent() {
+        Context context = buildContext(contextId, userId);
+        Task project = buildTask(taskId, context, "Project", GtdList.PROJECTS);
+        UUID sub1Id = UUID.randomUUID();
+        UUID sub2Id = UUID.randomUUID();
+        Task sub1 = buildTask(sub1Id, context, "Sub 1", GtdList.INBOX);
+        sub1.setCompleted(true);
+        Task sub2 = buildTask(sub2Id, context, "Sub 2", GtdList.INBOX);
+
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(taskId)).thenReturn(List.of(sub1, sub2));
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(sub1Id)).thenReturn(List.of());
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(sub2Id)).thenReturn(List.of());
+
+        Integer progress = taskService.computeProgress(taskId);
+
+        assertThat(progress).isEqualTo(50);
+    }
+
+    @Test
+    void shouldComputeProgressForProjectWith0Percent() {
+        Context context = buildContext(contextId, userId);
+        Task project = buildTask(taskId, context, "Project", GtdList.PROJECTS);
+        UUID sub1Id = UUID.randomUUID();
+        UUID sub2Id = UUID.randomUUID();
+        Task sub1 = buildTask(sub1Id, context, "Sub 1", GtdList.INBOX);
+        Task sub2 = buildTask(sub2Id, context, "Sub 2", GtdList.INBOX);
+
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(taskId)).thenReturn(List.of(sub1, sub2));
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(sub1Id)).thenReturn(List.of());
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(sub2Id)).thenReturn(List.of());
+
+        Integer progress = taskService.computeProgress(taskId);
+
+        assertThat(progress).isEqualTo(0);
+    }
+
+    @Test
+    void shouldComputeProgressFor100Percent() {
+        Context context = buildContext(contextId, userId);
+        UUID sub1Id = UUID.randomUUID();
+        Task sub1 = buildTask(sub1Id, context, "Sub 1", GtdList.DONE);
+        sub1.setCompleted(true);
+
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(taskId)).thenReturn(List.of(sub1));
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(sub1Id)).thenReturn(List.of());
+
+        Integer progress = taskService.computeProgress(taskId);
+
+        assertThat(progress).isEqualTo(100);
+    }
+
+    @Test
+    void shouldReturnNullProgressWhenNoSubtasks() {
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(taskId)).thenReturn(List.of());
+
+        Integer progress = taskService.computeProgress(taskId);
+
+        assertThat(progress).isNull();
+    }
+
+    @Test
+    void shouldComputeProgressRecursivelyAcrossAllLevels() {
+        Context context = buildContext(contextId, userId);
+        UUID sub1Id = UUID.randomUUID();
+        UUID sub2Id = UUID.randomUUID();
+        UUID grandchild1Id = UUID.randomUUID();
+        UUID grandchild2Id = UUID.randomUUID();
+
+        Task sub1 = buildTask(sub1Id, context, "Sub 1", GtdList.INBOX);
+        sub1.setCompleted(true);
+        Task sub2 = buildTask(sub2Id, context, "Sub 2", GtdList.INBOX);
+
+        Task grandchild1 = buildTask(grandchild1Id, context, "Grandchild 1", GtdList.INBOX);
+        grandchild1.setCompleted(true);
+        Task grandchild2 = buildTask(grandchild2Id, context, "Grandchild 2", GtdList.INBOX);
+
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(taskId)).thenReturn(List.of(sub1, sub2));
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(sub1Id)).thenReturn(List.of());
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(sub2Id)).thenReturn(List.of(grandchild1, grandchild2));
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(grandchild1Id)).thenReturn(List.of());
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(grandchild2Id)).thenReturn(List.of());
+
+        // 4 descendants total: sub1 (completed) + sub2 (not) + grandchild1 (completed) + grandchild2 (not) = 2/4 = 50%
+        Integer progress = taskService.computeProgress(taskId);
+
+        assertThat(progress).isEqualTo(50);
+    }
+
+    @Test
+    void shouldIncludeProgressFieldForProjectTaskInGetTasks() {
+        Context context = buildContext(contextId, userId);
+        Task project = buildTask(taskId, context, "My Project", GtdList.PROJECTS);
+
+        UUID sub1Id = UUID.randomUUID();
+        Task sub1 = buildTask(sub1Id, context, "Sub 1", GtdList.INBOX);
+        sub1.setCompleted(true);
+
+        when(contextRepository.findByIdAndIsDeletedFalse(contextId)).thenReturn(Optional.of(context));
+        when(taskRepository.findByContextIdAndParentTaskIsNullAndIsDeletedFalseOrderBySortOrderAsc(contextId))
+                .thenReturn(List.of(project));
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(taskId)).thenReturn(List.of(sub1));
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(sub1Id)).thenReturn(List.of());
+
+        List<TaskResponse> result = taskService.getTasks(contextId, null, userId);
+
+        assertThat(result.get(0).getProgress()).isEqualTo(100);
+    }
+
+    @Test
+    void shouldNotIncludeProgressForNonProjectTask() {
+        Context context = buildContext(contextId, userId);
+        Task inboxTask = buildTask(taskId, context, "Inbox task", GtdList.INBOX);
+
+        when(contextRepository.findByIdAndIsDeletedFalse(contextId)).thenReturn(Optional.of(context));
+        when(taskRepository.findByContextIdAndParentTaskIsNullAndIsDeletedFalseOrderBySortOrderAsc(contextId))
+                .thenReturn(List.of(inboxTask));
+
+        List<TaskResponse> result = taskService.getTasks(contextId, null, userId);
+
+        assertThat(result.get(0).getProgress()).isNull();
+    }
+
+    @Test
+    void shouldGetTaskCountsGroupedByGtdList() {
+        Context context = buildContext(contextId, userId);
+        when(contextRepository.findByIdAndIsDeletedFalse(contextId)).thenReturn(Optional.of(context));
+        when(taskRepository.countByContextIdGroupedByGtdList(contextId)).thenReturn(List.of(
+                new Object[]{GtdList.INBOX, 5L},
+                new Object[]{GtdList.NEXT_ACTIONS, 3L},
+                new Object[]{GtdList.PROJECTS, 2L}
+        ));
+        when(taskRepository.countByContextIdGroupedByCategory(contextId)).thenReturn(List.of());
+        when(taskRepository.countByContextIdAndIsDeletedFalse(contextId)).thenReturn(10);
+
+        TaskCountsResponse result = taskService.getTaskCounts(contextId, userId);
+
+        assertThat(result.getContextId()).isEqualTo(contextId);
+        assertThat(result.getByGtdList().get("INBOX")).isEqualTo(5);
+        assertThat(result.getByGtdList().get("NEXT_ACTIONS")).isEqualTo(3);
+        assertThat(result.getByGtdList().get("PROJECTS")).isEqualTo(2);
+        assertThat(result.getByGtdList().get("DONE")).isEqualTo(0);
+        assertThat(result.getTotal()).isEqualTo(10);
+    }
+
+    @Test
+    void shouldGetTaskCountsGroupedByCategory() {
+        Context context = buildContext(contextId, userId);
+        UUID cat1Id = UUID.randomUUID();
+        UUID cat2Id = UUID.randomUUID();
+        when(contextRepository.findByIdAndIsDeletedFalse(contextId)).thenReturn(Optional.of(context));
+        when(taskRepository.countByContextIdGroupedByGtdList(contextId)).thenReturn(List.of());
+        when(taskRepository.countByContextIdGroupedByCategory(contextId)).thenReturn(List.of(
+                new Object[]{cat1Id.toString(), 3L},
+                new Object[]{cat2Id.toString(), 7L}
+        ));
+        when(taskRepository.countByContextIdAndIsDeletedFalse(contextId)).thenReturn(10);
+
+        TaskCountsResponse result = taskService.getTaskCounts(contextId, userId);
+
+        assertThat(result.getByCategory()).hasSize(2);
+        assertThat(result.getByCategory().get(cat1Id.toString())).isEqualTo(3);
+        assertThat(result.getByCategory().get(cat2Id.toString())).isEqualTo(7);
+    }
+
+    @Test
+    void shouldThrowContextNotFoundOnGetTaskCounts() {
+        when(contextRepository.findByIdAndIsDeletedFalse(contextId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.getTaskCounts(contextId, userId))
+                .isInstanceOf(ContextNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowAccessDeniedOnGetTaskCounts() {
+        UUID otherUserId = UUID.randomUUID();
+        Context context = buildContext(contextId, otherUserId);
+        when(contextRepository.findByIdAndIsDeletedFalse(contextId)).thenReturn(Optional.of(context));
+
+        assertThatThrownBy(() -> taskService.getTaskCounts(contextId, userId))
+                .isInstanceOf(ContextAccessDeniedException.class);
     }
 
     private Context buildContext(UUID id, UUID ownerId) {

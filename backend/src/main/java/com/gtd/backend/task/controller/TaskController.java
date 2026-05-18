@@ -3,6 +3,7 @@ package com.gtd.backend.task.controller;
 import com.gtd.backend.auth.dto.ErrorResponse;
 import com.gtd.backend.task.dto.CreateTaskRequest;
 import com.gtd.backend.task.dto.MoveTaskRequest;
+import com.gtd.backend.task.dto.TaskCountsResponse;
 import com.gtd.backend.task.dto.TaskResponse;
 import com.gtd.backend.task.dto.UpdateTaskRequest;
 import com.gtd.backend.task.model.GtdList;
@@ -61,6 +62,26 @@ public class TaskController {
             Authentication authentication) {
         UUID userId = (UUID) authentication.getPrincipal();
         return ResponseEntity.ok(taskService.getTasks(contextId, gtdList, userId));
+    }
+
+    @Operation(summary = "Get task counts for a context",
+            description = "Returns task counts grouped by GTD list and by category. Excludes soft-deleted tasks.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Counts retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = TaskCountsResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Access denied to context",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Context not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/contexts/{contextId}/tasks/counts")
+    public ResponseEntity<TaskCountsResponse> getTaskCounts(
+            @PathVariable UUID contextId,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(taskService.getTaskCounts(contextId, userId));
     }
 
     @Operation(summary = "Create a task in a context",

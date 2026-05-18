@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -498,6 +499,152 @@ class TaskIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.contextId").value(contextId));
+    }
+
+    @Test
+    void shouldReturnProgressForProjectTask() throws Exception {
+        String projectId = createTask("My Project", GtdList.PROJECTS);
+        String sub1 = createSubtask(projectId, "Subtask 1");
+        String sub2 = createSubtask(projectId, "Subtask 2");
+        String sub3 = createSubtask(projectId, "Subtask 3");
+        createSubtask(projectId, "Subtask 4");
+
+        // Complete 2 out of 4 subtasks
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", sub1)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", sub2)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        // GET single project task — should have progress=50%
+        mockMvc.perform(get("/api/v1/tasks/{id}", projectId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.progress").value(50));
+    }
+
+    @Test
+    void shouldReturnProgress0WhenNoSubtasksCompleted() throws Exception {
+        String projectId = createTask("Empty Project", GtdList.PROJECTS);
+        createSubtask(projectId, "Subtask 1");
+        createSubtask(projectId, "Subtask 2");
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", projectId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.progress").value(0));
+    }
+
+    @Test
+    void shouldReturnNullProgressForProjectWithNoSubtasks() throws Exception {
+        String projectId = createTask("Lonely Project", GtdList.PROJECTS);
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", projectId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.progress").doesNotExist());
+    }
+
+    @Test
+    void shouldReturnNullProgressForInboxTask() throws Exception {
+        String inboxTaskId = createTask("Inbox Task", null);
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", inboxTaskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.progress").doesNotExist());
+    }
+
+    @Test
+    void shouldReturnProgressIncludingNestedSubtasks() throws Exception {
+        String projectId = createTask("Deep Project", GtdList.PROJECTS);
+        String sub1 = createSubtask(projectId, "Sub 1");
+        String sub2 = createSubtask(projectId, "Sub 2");
+        String grandchild1 = createSubtask(sub1, "Grandchild 1");
+        createSubtask(sub1, "Grandchild 2");
+
+        // Complete sub2 and grandchild1 — 2 out of 4 descendants = 50%
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", sub2)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", grandchild1)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", projectId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.progress").value(50));
+    }
+
+    @Test
+    void shouldReturnProgressInTaskList() throws Exception {
+        String projectId = createTask("Listed Project", GtdList.PROJECTS);
+        String sub1 = createSubtask(projectId, "Sub 1");
+        createSubtask(projectId, "Sub 2");
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", sub1)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/contexts/{contextId}/tasks", contextId)
+                        .param("gtd_list", "PROJECTS")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].progress").value(50));
+    }
+
+    @Test
+    void shouldReturnTaskCountsByGtdList() throws Exception {
+        createTask("Inbox 1", null);
+        createTask("Inbox 2", null);
+        createTaskWithGtdList("Next 1", GtdList.NEXT_ACTIONS);
+        createTaskWithGtdList("Project 1", GtdList.PROJECTS);
+
+        mockMvc.perform(get("/api/v1/contexts/{contextId}/tasks/counts", contextId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contextId").value(contextId))
+                .andExpect(jsonPath("$.byGtdList.INBOX").value(2))
+                .andExpect(jsonPath("$.byGtdList.NEXT_ACTIONS").value(1))
+                .andExpect(jsonPath("$.byGtdList.PROJECTS").value(1))
+                .andExpect(jsonPath("$.byGtdList.DONE").value(0))
+                .andExpect(jsonPath("$.total").value(4));
+    }
+
+    @Test
+    void shouldUpdateCountsAfterSoftDelete() throws Exception {
+        String taskId = createTask("To delete", null);
+        createTask("Keep", null);
+
+        mockMvc.perform(delete("/api/v1/tasks/{id}", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/contexts/{contextId}/tasks/counts", contextId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.byGtdList.INBOX").value(1))
+                .andExpect(jsonPath("$.total").value(1));
+    }
+
+    @Test
+    void shouldReturn404OnCountsForNonexistentContext() throws Exception {
+        String fakeContextId = UUID.randomUUID().toString();
+
+        mockMvc.perform(get("/api/v1/contexts/{contextId}/tasks/counts", fakeContextId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn403OnCountsForOtherUsersContext() throws Exception {
+        String otherToken = registerAndLoginOther("counts-other@test.com", "password123");
+
+        mockMvc.perform(get("/api/v1/contexts/{contextId}/tasks/counts", contextId)
+                        .header("Authorization", "Bearer " + otherToken))
+                .andExpect(status().isForbidden());
     }
 
     private void registerAndLogin(String email, String password) throws Exception {

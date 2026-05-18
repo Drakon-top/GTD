@@ -366,3 +366,31 @@
   - Интеграционные тесты ранее не очищали rate limiter state — это вызывало спорадические 429 ошибки при большом количестве тестов. Теперь все @SpringBootTest тесты очищают buckets в setUp()
   - Разблокированы: TASK-025 (экспорт данных, зависит от TASK-014 + TASK-016), TASK-033 (UI категории, зависит от TASK-029 + TASK-014)
   - Следующий приоритет: TASK-015 (functional, high) — прогресс-бар проектов (зависит только от TASK-013, уже done), или TASK-016 (functional, high) — Reminder CRUD API (зависит только от TASK-011, уже done), или TASK-021 (functional, high) — повторяющиеся задачи (зависит только от TASK-012, уже done)
+
+### TASK-015 — Прогресс-бар проектов и счётчики задач
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Добавлено поле `progress` (Integer, nullable) в `TaskResponse` — процент выполнения проекта (0–100%), только для задач в списке PROJECTS
+  - Реализован рекурсивный подсчёт всех потомков (все уровни вложенности): `computeProgress(taskId)` обходит дерево подзадач, считает total и completed
+  - Формула: `Math.round((float) completed / total * 100)`. Если подзадач нет — progress = null
+  - Progress автоматически включается в ответы: GET /contexts/{id}/tasks (список), GET /tasks/{id} (одиночная задача), GET /tasks/{id}/subtasks (подзадачи)
+  - Создан новый эндпоинт `GET /api/v1/contexts/{contextId}/tasks/counts` — возвращает `TaskCountsResponse`:
+    - `byGtdList` — количество активных задач по каждому GTD-списку (Map<String, Integer>), все 8 списков всегда присутствуют (с 0 если пусто)
+    - `byCategory` — количество задач по каждой категории (Map<String, Integer>), только категории с задачами
+    - `total` — общее количество активных (не удалённых) задач в контексте
+  - Добавлены JPQL-запросы в `TaskRepository`: `countByContextIdGroupedByGtdList()` и `countByContextIdGroupedByCategory()`
+  - Обновлён `TaskService`: добавлены `computeProgress()`, `countAllDescendants()`, `getTaskCounts()`, обновлены `toResponseWithProgress()` и `toResponseWithSubtasksAndProgress()`
+  - Обновлён `TaskController`: добавлен endpoint `/contexts/{contextId}/tasks/counts` с OpenAPI-документацией
+  - Счётчики не учитывают задачи с is_deleted=true (гарантируется запросами WHERE isDeleted = false)
+  - Написаны unit-тесты TaskServiceTest (+12 тестов: progress 0%/50%/100%, null progress без подзадач, рекурсивный подсчёт, progress в getTasks, non-project null, getTaskCounts grouped by GTD/category, context not found/access denied)
+  - Написаны controller-тесты TaskControllerTest (+4 теста: GET counts success, 404, 403, progress field in list)
+  - Написаны интеграционные тесты TaskIntegrationTest (+11 тестов: progress 50% с 4 подзадачами, 0% без completed, null без подзадач, null для INBOX, рекурсивный progress с grandchild, progress в списке, counts по GTD-спискам, counts после soft delete, 404/403 для counts)
+  - Все 289 тестов проходят (264 старых + 25 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add project progress bar and task counts per GTD list/category
+- **Заметки:**
+  - Рекурсивный обход дерева подзадач — O(N) где N = количество потомков. Для типичных проектов с десятками подзадач это не проблема. При тысячах подзадач стоит рассмотреть materialized path или recursive CTE в SQL
+  - Progress вычисляется ТОЛЬКО для задач в PROJECTS — для INBOX, NEXT_ACTIONS и других списков progress = null
+  - Категорийные счётчики в /tasks/counts дублируют task_count из GET /categories, но в более удобном формате (один запрос для всего сайдбара)
+  - Разблокированы: никаких новых зависимостей от TASK-015 не определено в tasks.json
+  - Следующий приоритет: TASK-016 (functional, high) — Reminder CRUD API (зависит только от TASK-011, уже done), или TASK-021 (functional, high) — повторяющиеся задачи (зависит только от TASK-012, уже done), или TASK-023 (functional, high) — Sync API (зависит только от TASK-012, уже done)

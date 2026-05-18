@@ -12,6 +12,7 @@ import com.gtd.backend.context.exception.ContextAccessDeniedException;
 import com.gtd.backend.context.exception.ContextNotFoundException;
 import com.gtd.backend.task.dto.CreateTaskRequest;
 import com.gtd.backend.task.dto.MoveTaskRequest;
+import com.gtd.backend.task.dto.TaskCountsResponse;
 import com.gtd.backend.task.dto.TaskResponse;
 import com.gtd.backend.task.dto.UpdateTaskRequest;
 import com.gtd.backend.task.exception.MaxNestingLevelException;
@@ -34,7 +35,9 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -458,6 +461,63 @@ class TaskControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldReturnTaskCounts() throws Exception {
+        Map<String, Integer> byGtdList = new LinkedHashMap<>();
+        byGtdList.put("INBOX", 5);
+        byGtdList.put("NEXT_ACTIONS", 3);
+        Map<String, Integer> byCategory = new LinkedHashMap<>();
+        byCategory.put(UUID.randomUUID().toString(), 2);
+
+        TaskCountsResponse counts = TaskCountsResponse.builder()
+                .contextId(contextId)
+                .byGtdList(byGtdList)
+                .byCategory(byCategory)
+                .total(8)
+                .build();
+
+        when(taskService.getTaskCounts(eq(contextId), eq(userId))).thenReturn(counts);
+
+        mockMvc.perform(get("/api/v1/contexts/{contextId}/tasks/counts", contextId).with(withUser()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contextId").value(contextId.toString()))
+                .andExpect(jsonPath("$.byGtdList.INBOX").value(5))
+                .andExpect(jsonPath("$.byGtdList.NEXT_ACTIONS").value(3))
+                .andExpect(jsonPath("$.total").value(8));
+    }
+
+    @Test
+    void shouldReturn404WhenContextNotFoundOnGetCounts() throws Exception {
+        when(taskService.getTaskCounts(eq(contextId), eq(userId)))
+                .thenThrow(new ContextNotFoundException(contextId));
+
+        mockMvc.perform(get("/api/v1/contexts/{contextId}/tasks/counts", contextId).with(withUser()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn403WhenContextAccessDeniedOnGetCounts() throws Exception {
+        when(taskService.getTaskCounts(eq(contextId), eq(userId)))
+                .thenThrow(new ContextAccessDeniedException(contextId));
+
+        mockMvc.perform(get("/api/v1/contexts/{contextId}/tasks/counts", contextId).with(withUser()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldReturnProgressFieldForProjectTask() throws Exception {
+        TaskResponse response = buildResponse("My Project", GtdList.PROJECTS);
+        response.setProgress(75);
+        when(taskService.getTasks(eq(contextId), eq(GtdList.PROJECTS), eq(userId)))
+                .thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/v1/contexts/{contextId}/tasks", contextId)
+                        .param("gtd_list", "PROJECTS")
+                        .with(withUser()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].progress").value(75));
     }
 
     private TaskResponse buildResponse(String title, GtdList gtdList) {
