@@ -2,6 +2,9 @@ package com.gtd.backend.sync.service;
 
 import com.gtd.backend.auth.model.User;
 import com.gtd.backend.auth.repository.UserRepository;
+import com.gtd.backend.config.RabbitMQProperties;
+import com.gtd.backend.notification.dto.NotificationType;
+import com.gtd.backend.notification.dto.SyncConflictNotification;
 import com.gtd.backend.sync.dto.SyncChangeRequest;
 import com.gtd.backend.sync.dto.SyncChangeResult;
 import com.gtd.backend.sync.dto.SyncLogResponse;
@@ -16,6 +19,8 @@ import com.gtd.backend.task.model.Task;
 import com.gtd.backend.task.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +38,12 @@ public class SyncService {
     private final SyncLogRepository syncLogRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+
+    @Autowired(required = false)
+    private RabbitTemplate rabbitTemplate;
+
+    @Autowired(required = false)
+    private RabbitMQProperties rabbitMQProperties;
 
     @Transactional
     public SyncPushResponse pushChanges(SyncPushRequest request, UUID userId) {
@@ -120,9 +131,56 @@ public class SyncService {
                     .build();
         }
 
-        if (change.getExpectedVersion() != null && change.getExpectedVersion() != task.getVersion()) {
-            String serverValue = getTaskFieldValue(task, change.getFieldName());
+        String currentServerValue = getTaskFieldValue(task, change.getFieldName());
 
+        if (currentServerValue == null && change.getFieldName() != null) {
+            String unknownCheck = getTaskFieldValue(task, change.getFieldName());
+            if (unknownCheck == null && !isKnownField(change.getFieldName())) {
+                return SyncChangeResult.builder()
+                        .entityType(change.getEntityType())
+                        .entityId(change.getEntityId())
+                        .fieldName(change.getFieldName())
+                        .applied(false)
+                        .conflictStatus(ConflictStatus.NO_CONFLICT)
+                        .error("Unknown field: " + change.getFieldName())
+                        .build();
+            }
+        }
+
+        boolean serverChanged = !valuesEqual(currentServerValue, change.getOldValue());
+        boolean clientChanged = !valuesEqual(change.getOldValue(), change.getNewValue());
+
+        if (serverChanged && clientChanged) {
+            return resolveFieldConflict(task, change, user, currentServerValue);
+        }
+
+        if (!clientChanged) {
+            return SyncChangeResult.builder()
+                    .entityType(change.getEntityType())
+                    .entityId(change.getEntityId())
+                    .fieldName(change.getFieldName())
+                    .applied(false)
+                    .conflictStatus(ConflictStatus.NO_CONFLICT)
+                    .serverValue(currentServerValue)
+                    .newVersion(task.getVersion())
+                    .build();
+        }
+
+        return applyAndLogChange(task, change, user, currentServerValue, ConflictStatus.NO_CONFLICT);
+    }
+
+    private SyncChangeResult resolveFieldConflict(Task task, SyncChangeRequest change, User user, String currentServerValue) {
+        Instant serverUpdatedAt = task.getUpdatedAt();
+        Instant clientTimestamp = change.getClientTimestamp();
+
+        boolean clientWins = clientTimestamp != null && serverUpdatedAt != null
+                && !clientTimestamp.isBefore(serverUpdatedAt);
+
+        if (clientWins) {
+            SyncChangeResult result = applyAndLogChange(task, change, user, currentServerValue, ConflictStatus.RESOLVED_NOTIFY);
+            sendSyncConflictNotification(result, user.getId(), currentServerValue);
+            return result;
+        } else {
             SyncLog logEntry = SyncLog.builder()
                     .user(user)
                     .entityType(change.getEntityType())
@@ -135,18 +193,23 @@ public class SyncService {
                     .build();
             syncLogRepository.save(logEntry);
 
-            return SyncChangeResult.builder()
+            SyncChangeResult result = SyncChangeResult.builder()
                     .entityType(change.getEntityType())
                     .entityId(change.getEntityId())
                     .fieldName(change.getFieldName())
                     .applied(false)
                     .conflictStatus(ConflictStatus.RESOLVED_NOTIFY)
-                    .serverValue(serverValue)
+                    .serverValue(currentServerValue)
                     .newVersion(task.getVersion())
                     .build();
-        }
 
-        String oldValue = getTaskFieldValue(task, change.getFieldName());
+            sendSyncConflictNotification(logEntry.getId(), change, user.getId(), currentServerValue);
+            return result;
+        }
+    }
+
+    private SyncChangeResult applyAndLogChange(Task task, SyncChangeRequest change, User user,
+                                                String oldServerValue, ConflictStatus conflictStatus) {
         boolean applied = applyTaskFieldChange(task, change.getFieldName(), change.getNewValue());
 
         if (!applied) {
@@ -167,10 +230,10 @@ public class SyncService {
                 .entityType(change.getEntityType())
                 .entityId(change.getEntityId())
                 .fieldName(change.getFieldName())
-                .oldValue(oldValue)
+                .oldValue(oldServerValue)
                 .newValue(change.getNewValue())
                 .deviceSource(change.getDeviceSource())
-                .conflictStatus(ConflictStatus.NO_CONFLICT)
+                .conflictStatus(conflictStatus)
                 .build();
         syncLogRepository.save(logEntry);
 
@@ -179,9 +242,22 @@ public class SyncService {
                 .entityId(change.getEntityId())
                 .fieldName(change.getFieldName())
                 .applied(true)
-                .conflictStatus(ConflictStatus.NO_CONFLICT)
+                .conflictStatus(conflictStatus)
                 .newVersion(saved.getVersion())
                 .build();
+    }
+
+    boolean valuesEqual(String a, String b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        return a.equals(b);
+    }
+
+    boolean isKnownField(String fieldName) {
+        return switch (fieldName) {
+            case "title", "notes", "gtdList", "dueDate", "categoryId", "sortOrder", "recurrenceRule" -> true;
+            default -> false;
+        };
     }
 
     String getTaskFieldValue(Task task, String fieldName) {
@@ -231,6 +307,55 @@ public class SyncService {
             }
         }
         return true;
+    }
+
+    private void sendSyncConflictNotification(SyncChangeResult result, UUID userId, String resolvedValue) {
+        if (rabbitTemplate == null || rabbitMQProperties == null) return;
+
+        try {
+            SyncConflictNotification notification = SyncConflictNotification.builder()
+                    .entityId(result.getEntityId())
+                    .userId(userId)
+                    .entityType(result.getEntityType().name())
+                    .fieldName(result.getFieldName())
+                    .resolvedValue(result.isApplied() ? result.getFieldName() : resolvedValue)
+                    .conflictStatus(ConflictStatus.RESOLVED_NOTIFY.name())
+                    .type(NotificationType.SYNC_CONFLICT)
+                    .build();
+
+            rabbitTemplate.convertAndSend(
+                    rabbitMQProperties.getExchange(),
+                    rabbitMQProperties.getSyncConflictRoutingKey(),
+                    notification);
+            log.info("Sent sync conflict notification for entity {} field {}", result.getEntityId(), result.getFieldName());
+        } catch (Exception e) {
+            log.error("Failed to send sync conflict notification for entity {}: {}", result.getEntityId(), e.getMessage());
+        }
+    }
+
+    private void sendSyncConflictNotification(UUID syncLogId, SyncChangeRequest change, UUID userId, String resolvedValue) {
+        if (rabbitTemplate == null || rabbitMQProperties == null) return;
+
+        try {
+            SyncConflictNotification notification = SyncConflictNotification.builder()
+                    .syncLogId(syncLogId)
+                    .entityId(change.getEntityId())
+                    .userId(userId)
+                    .entityType(change.getEntityType().name())
+                    .fieldName(change.getFieldName())
+                    .resolvedValue(resolvedValue)
+                    .conflictStatus(ConflictStatus.RESOLVED_NOTIFY.name())
+                    .type(NotificationType.SYNC_CONFLICT)
+                    .build();
+
+            rabbitTemplate.convertAndSend(
+                    rabbitMQProperties.getExchange(),
+                    rabbitMQProperties.getSyncConflictRoutingKey(),
+                    notification);
+            log.info("Sent sync conflict notification for entity {} field {}", change.getEntityId(), change.getFieldName());
+        } catch (Exception e) {
+            log.error("Failed to send sync conflict notification for entity {}: {}", change.getEntityId(), e.getMessage());
+        }
     }
 
     private SyncLogResponse toSyncLogResponse(SyncLog syncLog) {

@@ -539,7 +539,7 @@
         "Шаг 6: Проверить сообщение в очереди notification.sync_conflict"
       ],
       "dependencies": ["TASK-023"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-025",

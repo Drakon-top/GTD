@@ -34,6 +34,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -92,7 +93,6 @@ class SyncIntegrationTest {
     @Test
     void shouldPushTitleChangeAndUpdateTask() throws Exception {
         String taskId = createTask("Original Title");
-        int version = getTaskVersion(taskId);
 
         SyncChangeRequest change = SyncChangeRequest.builder()
                 .entityType(SyncEntityType.TASK)
@@ -102,7 +102,6 @@ class SyncIntegrationTest {
                 .newValue("Updated Via Sync")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
-                .expectedVersion(version)
                 .build();
 
         SyncPushRequest request = SyncPushRequest.builder()
@@ -116,29 +115,29 @@ class SyncIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.appliedCount").value(1))
                 .andExpect(jsonPath("$.conflictCount").value(0))
-                .andExpect(jsonPath("$.results[0].applied").value(true))
-                .andExpect(jsonPath("$.results[0].newVersion").value(version + 1));
+                .andExpect(jsonPath("$.results[0].applied").value(true));
 
         mockMvc.perform(get("/api/v1/tasks/{id}", taskId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("Updated Via Sync"))
-                .andExpect(jsonPath("$.version").value(version + 1));
+                .andExpect(jsonPath("$.title").value("Updated Via Sync"));
     }
 
     @Test
-    void shouldDetectVersionConflict() throws Exception {
+    void shouldDetectFieldConflict_serverWins() throws Exception {
         String taskId = createTask("Original Title");
+
+        updateTaskTitle(taskId, "Server Updated Title");
+        Thread.sleep(50);
 
         SyncChangeRequest change = SyncChangeRequest.builder()
                 .entityType(SyncEntityType.TASK)
                 .entityId(UUID.fromString(taskId))
                 .fieldName("title")
                 .oldValue("Original Title")
-                .newValue("Stale Change")
+                .newValue("Stale Client Change")
                 .deviceSource(DeviceSource.ANDROID)
-                .clientTimestamp(Instant.now())
-                .expectedVersion(999)
+                .clientTimestamp(Instant.parse("2020-01-01T00:00:00Z"))
                 .build();
 
         SyncPushRequest request = SyncPushRequest.builder()
@@ -154,14 +153,91 @@ class SyncIntegrationTest {
                 .andExpect(jsonPath("$.conflictCount").value(1))
                 .andExpect(jsonPath("$.results[0].applied").value(false))
                 .andExpect(jsonPath("$.results[0].conflictStatus").value("RESOLVED_NOTIFY"))
-                .andExpect(jsonPath("$.results[0].serverValue").value("Original Title"));
+                .andExpect(jsonPath("$.results[0].serverValue").value("Server Updated Title"));
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Server Updated Title"));
+    }
+
+    @Test
+    void shouldDetectFieldConflict_clientWins() throws Exception {
+        String taskId = createTask("Original Title");
+
+        updateTaskTitle(taskId, "Server Updated Title");
+
+        SyncChangeRequest change = SyncChangeRequest.builder()
+                .entityType(SyncEntityType.TASK)
+                .entityId(UUID.fromString(taskId))
+                .fieldName("title")
+                .oldValue("Original Title")
+                .newValue("Client Wins Title")
+                .deviceSource(DeviceSource.ANDROID)
+                .clientTimestamp(Instant.now().plusSeconds(3600))
+                .build();
+
+        SyncPushRequest request = SyncPushRequest.builder()
+                .changes(List.of(change))
+                .build();
+
+        mockMvc.perform(post("/api/v1/sync/push")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appliedCount").value(1))
+                .andExpect(jsonPath("$.conflictCount").value(1))
+                .andExpect(jsonPath("$.results[0].applied").value(true))
+                .andExpect(jsonPath("$.results[0].conflictStatus").value("RESOLVED_NOTIFY"));
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Client Wins Title"));
+    }
+
+    @Test
+    void shouldMergeNonConflictingFieldChanges() throws Exception {
+        String taskId = createTask("Original Title");
+
+        updateTaskTitle(taskId, "Server Changed Title");
+
+        SyncChangeRequest change = SyncChangeRequest.builder()
+                .entityType(SyncEntityType.TASK)
+                .entityId(UUID.fromString(taskId))
+                .fieldName("notes")
+                .oldValue(null)
+                .newValue("Client Added Notes")
+                .deviceSource(DeviceSource.ANDROID)
+                .clientTimestamp(Instant.now())
+                .build();
+
+        SyncPushRequest request = SyncPushRequest.builder()
+                .changes(List.of(change))
+                .build();
+
+        mockMvc.perform(post("/api/v1/sync/push")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appliedCount").value(1))
+                .andExpect(jsonPath("$.conflictCount").value(0))
+                .andExpect(jsonPath("$.results[0].applied").value(true))
+                .andExpect(jsonPath("$.results[0].conflictStatus").value("NO_CONFLICT"));
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Server Changed Title"))
+                .andExpect(jsonPath("$.notes").value("Client Added Notes"));
     }
 
     @Test
     void shouldPullChangesAfterPush() throws Exception {
         Instant beforePush = Instant.now();
         String taskId = createTask("Pull Test");
-        int version = getTaskVersion(taskId);
 
         SyncChangeRequest change = SyncChangeRequest.builder()
                 .entityType(SyncEntityType.TASK)
@@ -171,7 +247,6 @@ class SyncIntegrationTest {
                 .newValue("Changed Title")
                 .deviceSource(DeviceSource.WEB)
                 .clientTimestamp(Instant.now())
-                .expectedVersion(version)
                 .build();
 
         SyncPushRequest request = SyncPushRequest.builder()
@@ -215,10 +290,10 @@ class SyncIntegrationTest {
                 .entityType(SyncEntityType.TASK)
                 .entityId(UUID.fromString(taskId))
                 .fieldName("notes")
+                .oldValue(null)
                 .newValue("Some notes")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
-                .expectedVersion(initialVersion)
                 .build();
 
         SyncPushRequest request = SyncPushRequest.builder()
@@ -236,7 +311,6 @@ class SyncIntegrationTest {
     @Test
     void shouldRecordInSyncLog() throws Exception {
         String taskId = createTask("Log Test");
-        int version = getTaskVersion(taskId);
 
         SyncChangeRequest change = SyncChangeRequest.builder()
                 .entityType(SyncEntityType.TASK)
@@ -246,7 +320,6 @@ class SyncIntegrationTest {
                 .newValue("Logged Change")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
-                .expectedVersion(version)
                 .build();
 
         SyncPushRequest request = SyncPushRequest.builder()
@@ -272,6 +345,7 @@ class SyncIntegrationTest {
                 .entityType(SyncEntityType.TASK)
                 .entityId(UUID.fromString(taskId))
                 .fieldName("title")
+                .oldValue("My Task")
                 .newValue("Hacked Title")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
@@ -294,22 +368,22 @@ class SyncIntegrationTest {
     @Test
     void shouldPushMultipleFieldChanges() throws Exception {
         String taskId = createTask("Multi Field");
-        int version = getTaskVersion(taskId);
 
         SyncChangeRequest change1 = SyncChangeRequest.builder()
                 .entityType(SyncEntityType.TASK)
                 .entityId(UUID.fromString(taskId))
                 .fieldName("title")
+                .oldValue("Multi Field")
                 .newValue("New Title")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
-                .expectedVersion(version)
                 .build();
 
         SyncChangeRequest change2 = SyncChangeRequest.builder()
                 .entityType(SyncEntityType.TASK)
                 .entityId(UUID.fromString(taskId))
                 .fieldName("notes")
+                .oldValue(null)
                 .newValue("New Notes")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
@@ -346,6 +420,7 @@ class SyncIntegrationTest {
                 .entityType(SyncEntityType.TASK)
                 .entityId(UUID.fromString(taskId))
                 .fieldName("title")
+                .oldValue("Delete Me")
                 .newValue("Too Late")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
@@ -367,7 +442,6 @@ class SyncIntegrationTest {
     @Test
     void shouldChangeGtdListViaSync() throws Exception {
         String taskId = createTask("Move Me");
-        int version = getTaskVersion(taskId);
 
         SyncChangeRequest change = SyncChangeRequest.builder()
                 .entityType(SyncEntityType.TASK)
@@ -377,7 +451,6 @@ class SyncIntegrationTest {
                 .newValue("NEXT_ACTIONS")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
-                .expectedVersion(version)
                 .build();
 
         SyncPushRequest request = SyncPushRequest.builder()
@@ -395,6 +468,65 @@ class SyncIntegrationTest {
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.gtdList").value("NEXT_ACTIONS"));
+    }
+
+    @Test
+    void shouldRecordConflictInSyncLog() throws Exception {
+        String taskId = createTask("Conflict Log Test");
+
+        updateTaskTitle(taskId, "Server Changed");
+
+        SyncChangeRequest change = SyncChangeRequest.builder()
+                .entityType(SyncEntityType.TASK)
+                .entityId(UUID.fromString(taskId))
+                .fieldName("title")
+                .oldValue("Conflict Log Test")
+                .newValue("Client Changed")
+                .deviceSource(DeviceSource.ANDROID)
+                .clientTimestamp(Instant.parse("2020-01-01T00:00:00Z"))
+                .build();
+
+        SyncPushRequest request = SyncPushRequest.builder()
+                .changes(List.of(change))
+                .build();
+
+        mockMvc.perform(post("/api/v1/sync/push")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.conflictCount").value(1));
+
+        var logs = syncLogRepository.findByEntityIdOrderByCreatedAtDesc(UUID.fromString(taskId));
+        assertThat(logs).isNotEmpty();
+        assertThat(logs.get(0).getConflictStatus().name()).isEqualTo("RESOLVED_NOTIFY");
+    }
+
+    @Test
+    void shouldSkipWhenNoChangeDetected() throws Exception {
+        String taskId = createTask("Same Title");
+
+        SyncChangeRequest change = SyncChangeRequest.builder()
+                .entityType(SyncEntityType.TASK)
+                .entityId(UUID.fromString(taskId))
+                .fieldName("title")
+                .oldValue("Same Title")
+                .newValue("Same Title")
+                .deviceSource(DeviceSource.ANDROID)
+                .clientTimestamp(Instant.now())
+                .build();
+
+        SyncPushRequest request = SyncPushRequest.builder()
+                .changes(List.of(change))
+                .build();
+
+        mockMvc.perform(post("/api/v1/sync/push")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appliedCount").value(0))
+                .andExpect(jsonPath("$.conflictCount").value(0));
     }
 
     // --- Helper methods ---
@@ -493,5 +625,14 @@ class SyncIntegrationTest {
 
         return objectMapper.readTree(result.getResponse().getContentAsString())
                 .get("version").asInt();
+    }
+
+    private void updateTaskTitle(String taskId, String newTitle) throws Exception {
+        String body = "{\"title\":\"" + newTitle + "\"}";
+        mockMvc.perform(put("/api/v1/tasks/{id}", taskId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
     }
 }

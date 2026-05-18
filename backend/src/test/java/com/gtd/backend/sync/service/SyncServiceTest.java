@@ -80,7 +80,7 @@ class SyncServiceTest {
     }
 
     @Test
-    void pushChanges_shouldApplyTitleChange() {
+    void pushChanges_shouldApplyTitleChange_clientOnlyChange() {
         when(userRepository.getReferenceById(userId)).thenReturn(user);
         when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
         when(taskRepository.saveAndFlush(any(Task.class))).thenReturn(task);
@@ -93,7 +93,6 @@ class SyncServiceTest {
                 .newValue("Updated Title")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
-                .expectedVersion(1)
                 .build();
 
         SyncPushRequest request = SyncPushRequest.builder()
@@ -106,13 +105,17 @@ class SyncServiceTest {
         assertThat(response.getConflictCount()).isEqualTo(0);
         assertThat(response.getResults()).hasSize(1);
         assertThat(response.getResults().get(0).isApplied()).isTrue();
+        assertThat(response.getResults().get(0).getConflictStatus()).isEqualTo(ConflictStatus.NO_CONFLICT);
         assertThat(task.getTitle()).isEqualTo("Updated Title");
     }
 
     @Test
-    void pushChanges_shouldDetectVersionConflict() {
+    void pushChanges_shouldDetectFieldLevelConflict_serverWins() {
+        task.setTitle("Server Updated Title");
+        task.setUpdatedAt(Instant.parse("2026-05-18T12:00:00Z"));
         when(userRepository.getReferenceById(userId)).thenReturn(user);
         when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(syncLogRepository.save(any(SyncLog.class))).thenAnswer(inv -> inv.getArgument(0));
 
         SyncChangeRequest change = SyncChangeRequest.builder()
                 .entityType(SyncEntityType.TASK)
@@ -121,8 +124,7 @@ class SyncServiceTest {
                 .oldValue("Original Title")
                 .newValue("Client Updated Title")
                 .deviceSource(DeviceSource.ANDROID)
-                .clientTimestamp(Instant.now())
-                .expectedVersion(0) // stale version
+                .clientTimestamp(Instant.parse("2026-05-18T11:00:00Z"))
                 .build();
 
         SyncPushRequest request = SyncPushRequest.builder()
@@ -135,11 +137,42 @@ class SyncServiceTest {
         assertThat(response.getConflictCount()).isEqualTo(1);
         assertThat(response.getResults().get(0).isApplied()).isFalse();
         assertThat(response.getResults().get(0).getConflictStatus()).isEqualTo(ConflictStatus.RESOLVED_NOTIFY);
-        assertThat(response.getResults().get(0).getServerValue()).isEqualTo("Original Title");
+        assertThat(response.getResults().get(0).getServerValue()).isEqualTo("Server Updated Title");
     }
 
     @Test
-    void pushChanges_shouldApplyWithoutVersionCheck() {
+    void pushChanges_shouldDetectFieldLevelConflict_clientWins() {
+        task.setTitle("Server Updated Title");
+        task.setUpdatedAt(Instant.parse("2026-05-18T10:00:00Z"));
+        when(userRepository.getReferenceById(userId)).thenReturn(user);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.saveAndFlush(any(Task.class))).thenReturn(task);
+
+        SyncChangeRequest change = SyncChangeRequest.builder()
+                .entityType(SyncEntityType.TASK)
+                .entityId(taskId)
+                .fieldName("title")
+                .oldValue("Original Title")
+                .newValue("Client Updated Title")
+                .deviceSource(DeviceSource.ANDROID)
+                .clientTimestamp(Instant.parse("2026-05-18T12:00:00Z"))
+                .build();
+
+        SyncPushRequest request = SyncPushRequest.builder()
+                .changes(List.of(change))
+                .build();
+
+        SyncPushResponse response = syncService.pushChanges(request, userId);
+
+        assertThat(response.getAppliedCount()).isEqualTo(1);
+        assertThat(response.getConflictCount()).isEqualTo(1);
+        assertThat(response.getResults().get(0).isApplied()).isTrue();
+        assertThat(response.getResults().get(0).getConflictStatus()).isEqualTo(ConflictStatus.RESOLVED_NOTIFY);
+        assertThat(task.getTitle()).isEqualTo("Client Updated Title");
+    }
+
+    @Test
+    void pushChanges_shouldApplyClientOnlyChange_serverUnchanged() {
         when(userRepository.getReferenceById(userId)).thenReturn(user);
         when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
         when(taskRepository.saveAndFlush(any(Task.class))).thenReturn(task);
@@ -148,10 +181,11 @@ class SyncServiceTest {
                 .entityType(SyncEntityType.TASK)
                 .entityId(taskId)
                 .fieldName("notes")
+                .oldValue("Original Notes")
                 .newValue("New notes content")
                 .deviceSource(DeviceSource.WEB)
                 .clientTimestamp(Instant.now())
-                .build(); // no expectedVersion
+                .build();
 
         SyncPushRequest request = SyncPushRequest.builder()
                 .changes(List.of(change))
@@ -161,7 +195,64 @@ class SyncServiceTest {
 
         assertThat(response.getAppliedCount()).isEqualTo(1);
         assertThat(response.getResults().get(0).isApplied()).isTrue();
+        assertThat(response.getResults().get(0).getConflictStatus()).isEqualTo(ConflictStatus.NO_CONFLICT);
         assertThat(task.getNotes()).isEqualTo("New notes content");
+    }
+
+    @Test
+    void pushChanges_shouldSkipWhenNeitherSideChanged() {
+        when(userRepository.getReferenceById(userId)).thenReturn(user);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+
+        SyncChangeRequest change = SyncChangeRequest.builder()
+                .entityType(SyncEntityType.TASK)
+                .entityId(taskId)
+                .fieldName("title")
+                .oldValue("Original Title")
+                .newValue("Original Title")
+                .deviceSource(DeviceSource.ANDROID)
+                .clientTimestamp(Instant.now())
+                .build();
+
+        SyncPushRequest request = SyncPushRequest.builder()
+                .changes(List.of(change))
+                .build();
+
+        SyncPushResponse response = syncService.pushChanges(request, userId);
+
+        assertThat(response.getAppliedCount()).isEqualTo(0);
+        assertThat(response.getConflictCount()).isEqualTo(0);
+        assertThat(response.getResults().get(0).isApplied()).isFalse();
+        assertThat(response.getResults().get(0).getServerValue()).isEqualTo("Original Title");
+        verify(taskRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void pushChanges_shouldKeepServerValue_whenOnlyServerChanged() {
+        task.setTitle("Server Changed Title");
+        when(userRepository.getReferenceById(userId)).thenReturn(user);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+
+        SyncChangeRequest change = SyncChangeRequest.builder()
+                .entityType(SyncEntityType.TASK)
+                .entityId(taskId)
+                .fieldName("title")
+                .oldValue("Original Title")
+                .newValue("Original Title")
+                .deviceSource(DeviceSource.ANDROID)
+                .clientTimestamp(Instant.now())
+                .build();
+
+        SyncPushRequest request = SyncPushRequest.builder()
+                .changes(List.of(change))
+                .build();
+
+        SyncPushResponse response = syncService.pushChanges(request, userId);
+
+        assertThat(response.getAppliedCount()).isEqualTo(0);
+        assertThat(response.getConflictCount()).isEqualTo(0);
+        assertThat(response.getResults().get(0).getServerValue()).isEqualTo("Server Changed Title");
+        assertThat(task.getTitle()).isEqualTo("Server Changed Title");
     }
 
     @Test
@@ -255,7 +346,6 @@ class SyncServiceTest {
                 .newValue("NEXT_ACTIONS")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
-                .expectedVersion(1)
                 .build();
 
         SyncPushRequest request = SyncPushRequest.builder()
@@ -305,6 +395,7 @@ class SyncServiceTest {
                 .entityType(SyncEntityType.TASK)
                 .entityId(taskId)
                 .fieldName("dueDate")
+                .oldValue(task.getDueDate().toString())
                 .newValue("")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
@@ -330,6 +421,7 @@ class SyncServiceTest {
                 .entityType(SyncEntityType.TASK)
                 .entityId(taskId)
                 .fieldName("title")
+                .oldValue("Original Title")
                 .newValue("Title 1")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
@@ -339,6 +431,7 @@ class SyncServiceTest {
                 .entityType(SyncEntityType.TASK)
                 .entityId(taskId)
                 .fieldName("notes")
+                .oldValue("Original Notes")
                 .newValue("Notes 2")
                 .deviceSource(DeviceSource.ANDROID)
                 .clientTimestamp(Instant.now())
@@ -390,9 +483,12 @@ class SyncServiceTest {
     }
 
     @Test
-    void pushChanges_shouldLogConflictEntry() {
+    void pushChanges_shouldLogConflictEntry_serverWins() {
+        task.setTitle("Server Changed Title");
+        task.setUpdatedAt(Instant.parse("2026-05-18T12:00:00Z"));
         when(userRepository.getReferenceById(userId)).thenReturn(user);
         when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(syncLogRepository.save(any(SyncLog.class))).thenAnswer(inv -> inv.getArgument(0));
 
         SyncChangeRequest change = SyncChangeRequest.builder()
                 .entityType(SyncEntityType.TASK)
@@ -401,8 +497,7 @@ class SyncServiceTest {
                 .oldValue("Original Title")
                 .newValue("Conflicting Title")
                 .deviceSource(DeviceSource.ANDROID)
-                .clientTimestamp(Instant.now())
-                .expectedVersion(0)
+                .clientTimestamp(Instant.parse("2026-05-18T11:00:00Z"))
                 .build();
 
         SyncPushRequest request = SyncPushRequest.builder()
@@ -416,6 +511,38 @@ class SyncServiceTest {
 
         SyncLog saved = captor.getValue();
         assertThat(saved.getConflictStatus()).isEqualTo(ConflictStatus.RESOLVED_NOTIFY);
+    }
+
+    @Test
+    void pushChanges_shouldLogConflictEntry_clientWins() {
+        task.setTitle("Server Changed Title");
+        task.setUpdatedAt(Instant.parse("2026-05-18T10:00:00Z"));
+        when(userRepository.getReferenceById(userId)).thenReturn(user);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.saveAndFlush(any(Task.class))).thenReturn(task);
+
+        SyncChangeRequest change = SyncChangeRequest.builder()
+                .entityType(SyncEntityType.TASK)
+                .entityId(taskId)
+                .fieldName("title")
+                .oldValue("Original Title")
+                .newValue("Client Wins Title")
+                .deviceSource(DeviceSource.ANDROID)
+                .clientTimestamp(Instant.parse("2026-05-18T12:00:00Z"))
+                .build();
+
+        SyncPushRequest request = SyncPushRequest.builder()
+                .changes(List.of(change))
+                .build();
+
+        syncService.pushChanges(request, userId);
+
+        ArgumentCaptor<SyncLog> captor = ArgumentCaptor.forClass(SyncLog.class);
+        verify(syncLogRepository).save(captor.capture());
+
+        SyncLog saved = captor.getValue();
+        assertThat(saved.getConflictStatus()).isEqualTo(ConflictStatus.RESOLVED_NOTIFY);
+        assertThat(saved.getNewValue()).isEqualTo("Client Wins Title");
     }
 
     @Test
@@ -522,5 +649,113 @@ class SyncServiceTest {
         assertThat(syncService.getTaskFieldValue(task, "sortOrder")).isEqualTo("0");
         assertThat(syncService.getTaskFieldValue(task, "recurrenceRule")).isEqualTo("{\"type\":\"daily\"}");
         assertThat(syncService.getTaskFieldValue(task, "unknown")).isNull();
+    }
+
+    @Test
+    void pushChanges_shouldMergeNonConflictingFields() {
+        task.setTitle("Server Updated Title");
+        task.setUpdatedAt(Instant.parse("2026-05-18T12:00:00Z"));
+        when(userRepository.getReferenceById(userId)).thenReturn(user);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.saveAndFlush(any(Task.class))).thenReturn(task);
+
+        SyncChangeRequest change = SyncChangeRequest.builder()
+                .entityType(SyncEntityType.TASK)
+                .entityId(taskId)
+                .fieldName("notes")
+                .oldValue("Original Notes")
+                .newValue("Updated Notes")
+                .deviceSource(DeviceSource.ANDROID)
+                .clientTimestamp(Instant.now())
+                .build();
+
+        SyncPushRequest request = SyncPushRequest.builder()
+                .changes(List.of(change))
+                .build();
+
+        SyncPushResponse response = syncService.pushChanges(request, userId);
+
+        assertThat(response.getAppliedCount()).isEqualTo(1);
+        assertThat(response.getConflictCount()).isEqualTo(0);
+        assertThat(task.getNotes()).isEqualTo("Updated Notes");
+        assertThat(task.getTitle()).isEqualTo("Server Updated Title");
+    }
+
+    @Test
+    void valuesEqual_shouldCompareCorrectly() {
+        assertThat(syncService.valuesEqual(null, null)).isTrue();
+        assertThat(syncService.valuesEqual("a", "a")).isTrue();
+        assertThat(syncService.valuesEqual("a", "b")).isFalse();
+        assertThat(syncService.valuesEqual(null, "b")).isFalse();
+        assertThat(syncService.valuesEqual("a", null)).isFalse();
+    }
+
+    @Test
+    void isKnownField_shouldIdentifyFields() {
+        assertThat(syncService.isKnownField("title")).isTrue();
+        assertThat(syncService.isKnownField("notes")).isTrue();
+        assertThat(syncService.isKnownField("gtdList")).isTrue();
+        assertThat(syncService.isKnownField("dueDate")).isTrue();
+        assertThat(syncService.isKnownField("categoryId")).isTrue();
+        assertThat(syncService.isKnownField("sortOrder")).isTrue();
+        assertThat(syncService.isKnownField("recurrenceRule")).isTrue();
+        assertThat(syncService.isKnownField("nonExistent")).isFalse();
+    }
+
+    @Test
+    void pushChanges_fieldLevelConflict_equalTimestamps_clientWins() {
+        Instant sameTime = Instant.parse("2026-05-18T12:00:00Z");
+        task.setTitle("Server Changed");
+        task.setUpdatedAt(sameTime);
+        when(userRepository.getReferenceById(userId)).thenReturn(user);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.saveAndFlush(any(Task.class))).thenReturn(task);
+
+        SyncChangeRequest change = SyncChangeRequest.builder()
+                .entityType(SyncEntityType.TASK)
+                .entityId(taskId)
+                .fieldName("title")
+                .oldValue("Original Title")
+                .newValue("Client Changed")
+                .deviceSource(DeviceSource.ANDROID)
+                .clientTimestamp(sameTime)
+                .build();
+
+        SyncPushRequest request = SyncPushRequest.builder()
+                .changes(List.of(change))
+                .build();
+
+        SyncPushResponse response = syncService.pushChanges(request, userId);
+
+        assertThat(response.getResults().get(0).isApplied()).isTrue();
+        assertThat(response.getResults().get(0).getConflictStatus()).isEqualTo(ConflictStatus.RESOLVED_NOTIFY);
+        assertThat(task.getTitle()).isEqualTo("Client Changed");
+    }
+
+    @Test
+    void pushChanges_shouldApplyWithNullOldValue_clientOnlyChange() {
+        task.setNotes(null);
+        when(userRepository.getReferenceById(userId)).thenReturn(user);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.saveAndFlush(any(Task.class))).thenReturn(task);
+
+        SyncChangeRequest change = SyncChangeRequest.builder()
+                .entityType(SyncEntityType.TASK)
+                .entityId(taskId)
+                .fieldName("notes")
+                .oldValue(null)
+                .newValue("First notes")
+                .deviceSource(DeviceSource.ANDROID)
+                .clientTimestamp(Instant.now())
+                .build();
+
+        SyncPushRequest request = SyncPushRequest.builder()
+                .changes(List.of(change))
+                .build();
+
+        SyncPushResponse response = syncService.pushChanges(request, userId);
+
+        assertThat(response.getAppliedCount()).isEqualTo(1);
+        assertThat(task.getNotes()).isEqualTo("First notes");
     }
 }

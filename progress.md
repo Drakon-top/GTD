@@ -605,3 +605,34 @@
   - serverTimestamp в SyncPullResponse используется как "since" для следующего pull — гарантирует отсутствие пропущенных изменений
   - Разблокирован: TASK-024 (field-level merge логика, зависит от TASK-023, теперь done)
   - Следующий приоритет: TASK-024 (functional, high) — Field-level merge для синхронизации (зависит от TASK-023, done), TASK-025 (functional, medium) — Export API (зависит от TASK-014 + TASK-016, оба done), TASK-026 (infrastructure, medium) — React project init (нет dependencies)
+
+### TASK-024 — Field-level merge логика для синхронизации
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Полностью переработан `SyncService.processTaskChange()` — заменена version-based конфликт-детекция на field-level merge
+  - Реализована 3-way merge логика для каждого поля:
+    - Если поле изменено только на клиенте (oldValue == serverValue, oldValue != newValue) → применяется клиентская версия (NO_CONFLICT)
+    - Если поле изменено только на сервере (oldValue != serverValue, oldValue == newValue) → сохраняется серверная версия, изменение не применяется
+    - Если поле изменено на обоих (oldValue != serverValue && oldValue != newValue) → побеждает более поздний timestamp (clientTimestamp vs task.updatedAt)
+    - Если ни одна сторона не изменила поле (oldValue == serverValue == newValue) → пропуск, ничего не делается
+  - При field-level конфликте (оба изменили одно поле):
+    - Если клиент побеждает (более поздний или равный timestamp): изменение применяется, RESOLVED_NOTIFY, запись в sync_log
+    - Если сервер побеждает (более поздний timestamp): изменение НЕ применяется, RESOLVED_NOTIFY, запись в sync_log, клиенту возвращается serverValue
+  - Добавлена отправка `SyncConflictNotification` в очередь `notification.sync_conflict` при конфликтах (через `RabbitTemplate`)
+  - `RabbitTemplate` и `RabbitMQProperties` инжектятся через `@Autowired(required = false)` — код работает в тестах без RabbitMQ
+  - Добавлены helper-методы: `valuesEqual()` (null-safe сравнение строк), `isKnownField()` (проверка допустимых полей), `resolveFieldConflict()` (разрешение конфликтов), `applyAndLogChange()` (применение + логирование)
+  - Рефакторинг: `processTaskChange()` теперь делегирует в `resolveFieldConflict()` и `applyAndLogChange()` вместо монолитного if/else
+  - Обновлены unit-тесты SyncServiceTest (26 тестов, было 17, +9 новых): field-level conflict server wins, client wins, equal timestamps client wins, client-only change, server-only change (keep server), neither side changed (skip), non-conflicting field merge, null oldValue, valuesEqual, isKnownField
+  - Обновлены интеграционные тесты SyncIntegrationTest (14 тестов, было 10, +4 новых): field conflict server wins (через PUT + sync/push), field conflict client wins (future clientTimestamp), merge non-conflicting fields (server changed title + client changed notes), conflict logged in sync_log, no-op when no change
+  - Controller тесты SyncControllerTest не изменены (8 тестов) — используют моки SyncService
+  - Все 453 теста проходят (440 старых + 13 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add field-level merge logic for sync with conflict notifications
+- **Заметки:**
+  - Field-level merge позволяет двум устройствам одновременно менять РАЗНЫЕ поля одной задачи без конфликтов (e.g. Android меняет notes, Web меняет title — оба применяются)
+  - Конфликт возникает только когда оба устройства изменили ОДНО и то же поле — побеждает более поздний clientTimestamp (last-write-wins на уровне поля)
+  - При равных timestamp (clientTimestamp == task.updatedAt) побеждает клиент — это намеренно, т.к. клиентское изменение более "свежее" (пользователь видел текущее состояние)
+  - SyncConflictNotification отправляется в RabbitMQ при каждом конфликте — consumer (TASK-019) логирует уведомление, FCM push будет добавлен в TASK-020
+  - Старый механизм version-based detection удалён — field-level merge полностью заменяет его. Version (optimistic locking) по-прежнему инкрементируется Hibernate при сохранении задачи
+  - Разблокирован: TASK-044 (Android Sync Manager через WorkManager + field-level merge, зависит от TASK-024 + TASK-043)
+  - Следующий приоритет: TASK-025 (functional, medium) — Export API (зависит от TASK-014 + TASK-016, оба done), TASK-026 (infrastructure, medium) — React project init (нет dependencies), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done)
