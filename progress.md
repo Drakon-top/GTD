@@ -636,3 +636,34 @@
   - Старый механизм version-based detection удалён — field-level merge полностью заменяет его. Version (optimistic locking) по-прежнему инкрементируется Hibernate при сохранении задачи
   - Разблокирован: TASK-044 (Android Sync Manager через WorkManager + field-level merge, зависит от TASK-024 + TASK-043)
   - Следующий приоритет: TASK-025 (functional, medium) — Export API (зависит от TASK-014 + TASK-016, оба done), TASK-026 (infrastructure, medium) — React project init (нет dependencies), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done)
+
+### TASK-025 — API экспорта данных в JSON
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан пакет `com.gtd.backend.export` с подпакетами `dto`, `service`, `controller`
+  - Созданы 5 DTO для экспорта: `ExportResponse` (exportDate, version, contexts), `ExportContextData` (id, name, theme, icon, sortOrder, categories, tasks), `ExportTaskData` (все поля задачи + вложенные subtasks + reminders), `ExportCategoryData` (все поля категории), `ExportReminderData` (все поля напоминания)
+  - Структура JSON соответствует PRD (секция 3.5): `export_date`, `version: "1.0"`, вложенные `contexts` → `categories` + `tasks` → `subtasks` + `reminders`
+  - Создан `ExportService` с 2 методами:
+    - `exportAll(userId)` — экспорт всех активных контекстов пользователя со всеми вложенными данными
+    - `exportContext(contextId, userId)` — экспорт конкретного контекста с проверкой ownership (403 если чужой, 404 если не найден)
+  - Рекурсивный обход дерева задач: `toExportTask()` загружает подзадачи на всех уровнях вложенности
+  - Soft-deleted данные исключены: контексты, задачи, категории с `is_deleted=true` не включаются в экспорт
+  - Напоминания включаются для каждой задачи (все, включая отправленные)
+  - Создан `ExportController` с одним эндпоинтом:
+    - `GET /api/v1/export` — экспорт всех контекстов текущего пользователя
+    - `GET /api/v1/export?context_id={id}` — экспорт конкретного контекста
+  - Эндпоинт задокументирован OpenAPI аннотациями (@Operation, @ApiResponses, @Tag)
+  - Endpoint защищён JWT (anyRequest().authenticated() в SecurityConfig)
+  - Написаны unit-тесты ExportServiceTest (11 тестов: exportAll with full data, empty contexts, multiple contexts, nested subtasks, single context, 404 not found, 403 not owner, all task fields, all category fields, all reminder fields, context fields mapping)
+  - Написаны controller-тесты ExportControllerTest (5 тестов: export all with data, empty export, export single context, 404, 403)
+  - Написаны интеграционные тесты ExportIntegrationTest (11 тестов: full data export, specific context, exclude soft-deleted tasks, exclude soft-deleted categories, empty export, 404 non-existent context, 403 other user's context, multiple contexts, recursive subtasks, multiple reminders, user isolation)
+  - Все 480 тестов проходят (453 старых + 27 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add Export API with JSON export for contexts, tasks, categories, and reminders
+- **Заметки:**
+  - Экспорт выполняет множество SELECT-запросов: по одному на каждый контекст (categories + tasks), по одному на каждую задачу (subtasks + reminders). Для пользователей с сотнями задач может потребоваться оптимизация (batch fetch, JOIN FETCH)
+  - Version в экспорте — фиксированная строка "1.0", может использоваться для миграции формата при импорте
+  - ExportService использует @Transactional(readOnly = true) — гарантирует консистентный snapshot данных
+  - Soft-deleted данные не включаются на всех уровнях: контексты (findByUserIdAndIsDeletedFalse), категории (findByContextIdAndIsDeletedFalse), задачи (findByContextIdAndParentTaskIsNullAndIsDeletedFalse), подзадачи (findByParentTaskIdAndIsDeletedFalse)
+  - Разблокирован: TASK-036 (Web: экспорт данных из настроек, зависит от TASK-029 + TASK-025)
+  - Следующий приоритет: TASK-026 (infrastructure, medium) — React project init (нет dependencies), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done), TASK-046 (infrastructure, medium) — Dockerfile + Yandex Cloud (зависит от TASK-002, done)

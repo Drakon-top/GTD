@@ -561,7 +561,7 @@
         "Шаг 5: GET /api/v1/export?context_id={id} — только выбранный контекст"
       ],
       "dependencies": ["TASK-014", "TASK-016"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-026",
