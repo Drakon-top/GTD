@@ -976,3 +976,40 @@
   - Sent-напоминания визуально отличаются (зачёркнутые + badge "sent") но не удаляются автоматически — пользователь может удалить вручную
   - Разблокированы: никаких прямых зависимостей от TASK-034 в tasks.json
   - Следующий приоритет: TASK-035 (ui, medium) — 5 тем оформления (зависит от TASK-029, done), TASK-036 (ui, medium) — экспорт из настроек (зависит от TASK-029 + TASK-025, оба done), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done)
+
+### TASK-035 — Web: 5 тем оформления для контекстов
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан централизованный модуль тем `frontend/src/utils/themes.ts` — единый источник правды для 5 тем оформления
+  - Определены 5 полных цветовых палитр (ThemeColors interface с 44 свойствами) для каждой темы:
+    - **Minimalist** — stone palette (серые тона, белый фон, минималистичные акценты)
+    - **Design** — violet palette (фиолетовые акценты, светло-сиреневый sidebar)
+    - **Formal** — slate palette (строгие сине-серые тона, деловой стиль)
+    - **Nature** — emerald palette (зелёные акценты, природный стиль)
+    - **Dark** — zinc palette (тёмный фон, светлый текст, инвертированные кнопки — bg-zinc-100 text-zinc-900)
+  - Каждая тема определяет: фон, header, sidebar, task list, detail panel, inputs, buttons, progress bars, badges, checkboxes, drag & drop overlays, empty states
+  - Обновлён `ContextWorkspacePage` — загружает тему из `context.theme`, передаёт `ThemeColors` во все дочерние компоненты (Sidebar, TaskList, TaskDetailPanel)
+  - Обновлён `Sidebar` — все GTD-списки, категории, dividers, badges, labels используют цвета темы
+  - Обновлён `TaskList` — header, task items, checkboxes, progress bars, empty state, add task form, DnD overlay — всё тематизировано
+  - Обновлён `TaskDetailPanel` — title, GTD select, due date input, category select, notes textarea, progress bar — всё использует цвета темы
+  - Обновлены внутренние компоненты: `SubtaskSection`, `SubtaskTree`, `SubtaskItem`, `AddSubtaskInline`, `ReminderSection`, `RecurrenceSection` — все принимают и используют `ThemeColors`
+  - Обновлён `DroppableGtdItem` — drop target highlight использует цвета темы
+  - Добавлен **Theme Picker** в header workspace (иконка палитры):
+    - Dropdown с 5 вариантами тем, каждый с цветным кружком-превью
+    - Текущая тема отмечена галочкой и жирным текстом
+    - При выборе: PUT /contexts/{id} обновляет тему на сервере, UI обновляется мгновенно
+  - Тема Dark: полностью инвертированная — тёмный фон (zinc-900), светлый текст (zinc-100), инвертированные кнопки (bg-zinc-100 text-zinc-900)
+  - TypeScript: без ошибок, `npm run build` — 99 модулей, 392KB JS gzip 120KB
+  - ESLint: `npm run lint` — без ошибок
+  - Backend: все 480 тестов проходят, `./mvnw clean package` — успешно (бэкенд не изменялся)
+- **Коммиты:** feat: add 5 context themes with full workspace theming and theme picker
+- **Заметки:**
+  - ThemeColors interface содержит 44 свойства — покрывает все элементы UI workspace
+  - Тема применяется через Tailwind CSS классы (строки) — не используются CSS-переменные, что обеспечивает полную совместимость с Tailwind v4
+  - Context menu и CategoryManager модал остаются в stone palette (не тематизируются) — они модальные/overlay элементы, которые должны быть нейтральными
+  - Theme picker dropdown также в stone palette — это overlay поверх тематизированного workspace
+  - Темы карточек контекстов (ContextsPage) остались без изменений — они уже были тематизированы в TASK-028
+  - Дубликация тем между ContextsPage.THEME_STYLES, CreateContextModal.THEMES и themes.ts — ContextsPage/CreateContextModal используют собственные упрощённые стили для карточек; themes.ts — полная палитра для workspace
+  - Разблокированных задач от TASK-035 нет в tasks.json
+  - Следующий приоритет: TASK-036 (ui, medium) — экспорт из настроек (зависит от TASK-029 + TASK-025, оба done), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done), TASK-046 (infrastructure, medium) — Dockerfile + Yandex Cloud (зависит от TASK-002, done)

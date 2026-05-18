@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import type { CategoryResponse, GtdList, ReminderResponse, TaskResponse } from '../types';
+import type { ThemeColors } from '../utils/themes';
 import { gtdListLabel } from '../utils/gtdLabels';
 
 interface TaskDetailPanelProps {
@@ -9,6 +10,7 @@ interface TaskDetailPanelProps {
   categories: CategoryResponse[];
   onClose: () => void;
   onTaskChanged: () => void;
+  theme: ThemeColors;
 }
 
 const GTD_OPTIONS: GtdList[] = [
@@ -27,6 +29,7 @@ export default function TaskDetailPanel({
   categories,
   onClose,
   onTaskChanged,
+  theme,
 }: TaskDetailPanelProps) {
   const [task, setTask] = useState<TaskResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -166,7 +169,7 @@ export default function TaskDetailPanel({
 
   if (loading) {
     return (
-      <div className="flex h-full w-80 shrink-0 items-center justify-center border-l border-stone-200 bg-white">
+      <div className={`flex h-full w-80 shrink-0 items-center justify-center border-l ${theme.panelBorder} ${theme.panelBg}`}>
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-800" />
       </div>
     );
@@ -179,14 +182,13 @@ export default function TaskDetailPanel({
     : null;
 
   return (
-    <div className="flex h-full w-80 shrink-0 flex-col border-l border-stone-200 bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
-        <span className="text-xs font-medium uppercase tracking-wide text-stone-400">Details</span>
+    <div className={`flex h-full w-80 shrink-0 flex-col border-l ${theme.panelBorder} ${theme.panelBg}`}>
+      <div className={`flex items-center justify-between border-b ${theme.panelBorder} px-4 py-3`}>
+        <span className={`text-xs font-medium uppercase tracking-wide ${theme.labelText}`}>Details</span>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
+          className={`rounded-md p-1 ${theme.labelText} transition hover:opacity-80`}
           aria-label="Close details"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -195,9 +197,7 @@ export default function TaskDetailPanel({
         </button>
       </div>
 
-      {/* Body */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        {/* Title */}
         {editingTitle ? (
           <input
             autoFocus
@@ -208,31 +208,30 @@ export default function TaskDetailPanel({
               if (e.key === 'Enter') saveTitle();
               if (e.key === 'Escape') { setTitleDraft(task.title); setEditingTitle(false); }
             }}
-            className="mb-3 w-full rounded border border-stone-300 px-2 py-1 text-sm font-semibold text-stone-900 outline-none focus:border-stone-500"
+            className={`mb-3 w-full rounded border ${theme.inputBorder} px-2 py-1 text-sm font-semibold ${theme.inputText} ${theme.inputBg} outline-none ${theme.inputFocus}`}
           />
         ) : (
           <h3
             onClick={() => { if (!task.isCompleted) setEditingTitle(true); }}
             className={`mb-3 rounded px-1 -mx-1 text-sm font-semibold ${
               task.isCompleted
-                ? 'text-stone-400 line-through'
-                : 'cursor-pointer text-stone-900 hover:bg-stone-50'
+                ? `${theme.taskCompletedText} line-through`
+                : `cursor-pointer ${theme.taskText} ${theme.taskHover}`
             }`}
           >
             {task.title}
           </h3>
         )}
 
-        {/* GTD List */}
         <div className="mb-4">
-          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
+          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
             GTD List
           </label>
           <select
             value={task.gtdList}
             onChange={(e) => handleMove(e.target.value as GtdList)}
             disabled={task.isCompleted}
-            className="w-full rounded-md border border-stone-200 bg-white px-2 py-1.5 text-sm text-stone-700 outline-none focus:border-stone-400 disabled:opacity-50"
+            className={`w-full rounded-md border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
           >
             {GTD_OPTIONS.map((g) => (
               <option key={g} value={g}>{gtdListLabel(g)}</option>
@@ -241,9 +240,8 @@ export default function TaskDetailPanel({
           </select>
         </div>
 
-        {/* Due Date */}
         <div className="mb-4">
-          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
+          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
             Due Date
           </label>
           <div className="flex items-center gap-2">
@@ -252,13 +250,13 @@ export default function TaskDetailPanel({
               value={dueDateInputValue()}
               onChange={(e) => handleDueDateChange(e.target.value)}
               disabled={task.isCompleted}
-              className="flex-1 rounded-md border border-stone-200 bg-white px-2 py-1.5 text-sm text-stone-700 outline-none focus:border-stone-400 disabled:opacity-50"
+              className={`flex-1 rounded-md border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
             />
             {task.dueDate && !task.isCompleted && (
               <button
                 type="button"
                 onClick={() => handleDueDateChange('')}
-                className="rounded-md p-1.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
+                className={`rounded-md p-1.5 ${theme.labelText} transition hover:opacity-80`}
                 title="Clear due date"
               >
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -269,16 +267,15 @@ export default function TaskDetailPanel({
           </div>
         </div>
 
-        {/* Category */}
         <div className="mb-4">
-          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
+          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
             Category
           </label>
           <select
             value={task.categoryId ?? ''}
             onChange={(e) => handleCategoryChange(e.target.value)}
             disabled={task.isCompleted}
-            className="w-full rounded-md border border-stone-200 bg-white px-2 py-1.5 text-sm text-stone-700 outline-none focus:border-stone-400 disabled:opacity-50"
+            className={`w-full rounded-md border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
           >
             <option value="">No category</option>
             {categories.map((cat) => (
@@ -288,15 +285,14 @@ export default function TaskDetailPanel({
             ))}
           </select>
           {categoryName && (
-            <p className="mt-1 text-xs text-stone-400">
+            <p className={`mt-1 text-xs ${theme.labelText}`}>
               Currently: {categoryName}
             </p>
           )}
         </div>
 
-        {/* Notes */}
         <div className="mb-4">
-          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
+          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
             Notes
           </label>
           <textarea
@@ -306,45 +302,43 @@ export default function TaskDetailPanel({
             rows={4}
             placeholder="Add notes..."
             disabled={task.isCompleted}
-            className="w-full resize-none rounded-md border border-stone-200 px-2 py-1.5 text-sm text-stone-700 outline-none placeholder:text-stone-400 focus:border-stone-400 disabled:opacity-50"
+            className={`w-full resize-none rounded-md border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputPlaceholder} ${theme.inputFocus} disabled:opacity-50`}
           />
-          {savingNotes && <p className="mt-0.5 text-[10px] text-stone-400">Saving...</p>}
+          {savingNotes && <p className={`mt-0.5 text-[10px] ${theme.labelText}`}>Saving...</p>}
         </div>
 
-        {/* Reminders */}
         <ReminderSection
           taskId={task.id}
           isCompleted={task.isCompleted}
+          theme={theme}
         />
 
-        {/* Recurrence */}
         <RecurrenceSection
           task={task}
           onRecurrenceChanged={(rule) => {
             setTask((prev) => prev ? { ...prev, recurrenceRule: rule, isRecurring: !!rule } : prev);
             onTaskChanged();
           }}
+          theme={theme}
         />
 
-        {/* Progress */}
         {task.progress != null && (
           <div className="mb-4">
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
+            <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
               Progress
             </label>
             <div className="flex items-center gap-2">
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-stone-200">
+              <div className={`h-2 flex-1 overflow-hidden rounded-full ${theme.progressBg}`}>
                 <div
-                  className="h-full rounded-full bg-stone-600 transition-all"
+                  className={`h-full rounded-full ${theme.progressFill} transition-all`}
                   style={{ width: `${task.progress}%` }}
                 />
               </div>
-              <span className="text-xs font-medium text-stone-600">{task.progress}%</span>
+              <span className={`text-xs font-medium ${theme.taskText}`}>{task.progress}%</span>
             </div>
           </div>
         )}
 
-        {/* Subtasks */}
         <SubtaskSection
           parentId={task.id}
           subtasks={task.subtasks ?? []}
@@ -352,10 +346,10 @@ export default function TaskDetailPanel({
           isCompleted={task.isCompleted}
           onToggle={handleSubtaskToggle}
           onAdd={handleAddSubtask}
+          theme={theme}
         />
 
-        {/* Metadata */}
-        <div className="mb-2 text-[10px] text-stone-400">
+        <div className={`mb-2 text-[10px] ${theme.labelText}`}>
           Created {new Date(task.createdAt).toLocaleDateString('en-US', {
             month: 'short', day: 'numeric', year: 'numeric',
           })}
@@ -364,11 +358,10 @@ export default function TaskDetailPanel({
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="border-t border-stone-200 px-4 py-3">
+      <div className={`border-t ${theme.panelBorder} px-4 py-3`}>
         {confirmDelete ? (
           <div className="space-y-2">
-            <p className="text-xs text-stone-500">Are you sure? This cannot be undone.</p>
+            <p className={`text-xs ${theme.labelText}`}>Are you sure? This cannot be undone.</p>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -380,7 +373,7 @@ export default function TaskDetailPanel({
               <button
                 type="button"
                 onClick={() => setConfirmDelete(false)}
-                className="flex-1 rounded-md border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:bg-stone-50"
+                className={`flex-1 rounded-md border ${theme.inputBorder} px-3 py-1.5 text-sm font-medium ${theme.taskText} transition hover:opacity-80`}
               >
                 Cancel
               </button>
@@ -392,7 +385,7 @@ export default function TaskDetailPanel({
               <button
                 type="button"
                 onClick={handleComplete}
-                className="flex-1 rounded-md bg-stone-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-stone-800"
+                className={`flex-1 rounded-md ${theme.btnPrimary} px-3 py-1.5 text-sm font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover}`}
               >
                 Complete
               </button>
@@ -418,6 +411,7 @@ function SubtaskSection({
   isCompleted,
   onToggle,
   onAdd,
+  theme,
 }: {
   parentId: string;
   subtasks: TaskResponse[];
@@ -425,6 +419,7 @@ function SubtaskSection({
   isCompleted: boolean;
   onToggle: (subtaskId: string) => void;
   onAdd: (parentId: string, title: string) => void;
+  theme: ThemeColors;
 }) {
   const canAddMore = nestingLevel < 4;
   const completedCount = countCompleted(subtasks);
@@ -433,7 +428,7 @@ function SubtaskSection({
   return (
     <div className="mb-4">
       <div className="mb-1 flex items-center justify-between">
-        <label className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
+        <label className={`text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
           Subtasks
           {totalCount > 0 && (
             <span className="ml-1 normal-case">
@@ -445,13 +440,13 @@ function SubtaskSection({
 
       {totalCount > 0 && (
         <div className="mb-2 flex items-center gap-2">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-200">
+          <div className={`h-1.5 flex-1 overflow-hidden rounded-full ${theme.progressBg}`}>
             <div
-              className="h-full rounded-full bg-emerald-500 transition-all"
+              className={`h-full rounded-full ${theme.progressFill} transition-all`}
               style={{ width: `${totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%` }}
             />
           </div>
-          <span className="text-[10px] font-medium text-stone-500">
+          <span className={`text-[10px] font-medium ${theme.taskSubtext}`}>
             {totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%
           </span>
         </div>
@@ -464,17 +459,18 @@ function SubtaskSection({
           parentIsCompleted={isCompleted}
           onToggle={onToggle}
           onAdd={onAdd}
+          theme={theme}
         />
       )}
 
       {subtasks.length === 0 && (
-        <p className="text-xs text-stone-400">
+        <p className={`text-xs ${theme.labelText}`}>
           {canAddMore && !isCompleted ? 'No subtasks yet.' : 'No subtasks.'}
         </p>
       )}
 
       {canAddMore && !isCompleted && (
-        <AddSubtaskInline parentId={parentId} onAdd={onAdd} depth={0} />
+        <AddSubtaskInline parentId={parentId} onAdd={onAdd} depth={0} theme={theme} />
       )}
 
       {!canAddMore && !isCompleted && (
@@ -509,15 +505,17 @@ function SubtaskTree({
   parentIsCompleted,
   onToggle,
   onAdd,
+  theme,
 }: {
   subtasks: TaskResponse[];
   depth: number;
   parentIsCompleted: boolean;
   onToggle: (subtaskId: string) => void;
   onAdd: (parentId: string, title: string) => void;
+  theme: ThemeColors;
 }) {
   return (
-    <ul className={depth > 0 ? 'ml-4 border-l border-stone-100 pl-2' : ''}>
+    <ul className={depth > 0 ? `ml-4 border-l ${theme.sidebarDivider} pl-2` : ''}>
       {subtasks.map((sub) => (
         <SubtaskItem
           key={sub.id}
@@ -526,6 +524,7 @@ function SubtaskTree({
           parentIsCompleted={parentIsCompleted}
           onToggle={onToggle}
           onAdd={onAdd}
+          theme={theme}
         />
       ))}
     </ul>
@@ -538,12 +537,14 @@ function SubtaskItem({
   parentIsCompleted,
   onToggle,
   onAdd,
+  theme,
 }: {
   subtask: TaskResponse;
   depth: number;
   parentIsCompleted: boolean;
   onToggle: (subtaskId: string) => void;
   onAdd: (parentId: string, title: string) => void;
+  theme: ThemeColors;
 }) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = subtask.subtasks && subtask.subtasks.length > 0;
@@ -552,12 +553,11 @@ function SubtaskItem({
   return (
     <li className="py-0.5">
       <div className="group flex items-center gap-1.5 rounded px-1 py-0.5">
-        {/* Expand/collapse toggle */}
         {hasChildren ? (
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded ${theme.labelText} hover:opacity-80`}
           >
             <svg
               className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
@@ -573,15 +573,12 @@ function SubtaskItem({
           <span className="w-4 shrink-0" />
         )}
 
-        {/* Checkbox */}
         <button
           type="button"
           onClick={() => { if (!subtask.isCompleted) onToggle(subtask.id); }}
           disabled={subtask.isCompleted}
           className={`h-3.5 w-3.5 shrink-0 rounded-sm border transition ${
-            subtask.isCompleted
-              ? 'border-stone-300 bg-stone-200 text-stone-500'
-              : 'border-stone-300 hover:border-stone-500 cursor-pointer'
+            subtask.isCompleted ? theme.checkboxChecked : `${theme.checkbox} cursor-pointer`
           } flex items-center justify-center`}
         >
           {subtask.isCompleted && (
@@ -591,20 +588,17 @@ function SubtaskItem({
           )}
         </button>
 
-        {/* Title */}
-        <span className={`flex-1 text-sm ${subtask.isCompleted ? 'text-stone-400 line-through' : 'text-stone-700'}`}>
+        <span className={`flex-1 text-sm ${subtask.isCompleted ? `${theme.taskCompletedText} line-through` : theme.taskText}`}>
           {subtask.title}
         </span>
 
-        {/* Subtask count badge */}
         {hasChildren && (
-          <span className="text-[10px] text-stone-400">
+          <span className={`text-[10px] ${theme.labelText}`}>
             {subtask.subtasks!.filter((s) => s.isCompleted).length}/{subtask.subtasks!.length}
           </span>
         )}
       </div>
 
-      {/* Nested subtasks */}
       {hasChildren && expanded && (
         <SubtaskTree
           subtasks={subtask.subtasks!}
@@ -612,13 +606,13 @@ function SubtaskItem({
           parentIsCompleted={parentIsCompleted || subtask.isCompleted}
           onToggle={onToggle}
           onAdd={onAdd}
+          theme={theme}
         />
       )}
 
-      {/* Add subtask at this level */}
       {expanded && canNest && !parentIsCompleted && !subtask.isCompleted && (
-        <div className="ml-4 border-l border-stone-100 pl-2">
-          <AddSubtaskInline parentId={subtask.id} onAdd={onAdd} depth={depth + 1} />
+        <div className={`ml-4 border-l ${theme.sidebarDivider} pl-2`}>
+          <AddSubtaskInline parentId={subtask.id} onAdd={onAdd} depth={depth + 1} theme={theme} />
         </div>
       )}
     </li>
@@ -629,10 +623,12 @@ function AddSubtaskInline({
   parentId,
   onAdd,
   depth,
+  theme,
 }: {
   parentId: string;
   onAdd: (parentId: string, title: string) => void;
   depth: number;
+  theme: ThemeColors;
 }) {
   const [adding, setAdding] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -657,7 +653,7 @@ function AddSubtaskInline({
       <button
         type="button"
         onClick={() => setAdding(true)}
-        className={`mt-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-stone-400 transition hover:bg-stone-100 hover:text-stone-600 ${depth > 0 ? '' : 'mt-1'}`}
+        className={`mt-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium ${theme.labelText} transition hover:opacity-80 ${depth > 0 ? '' : 'mt-1'}`}
       >
         + Add subtask
       </button>
@@ -673,20 +669,20 @@ function AddSubtaskInline({
         onChange={(e) => setNewTitle(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Escape') { setAdding(false); setNewTitle(''); } }}
         placeholder="Subtask title..."
-        className="flex-1 rounded border border-stone-200 px-2 py-1 text-xs text-stone-800 outline-none placeholder:text-stone-400 focus:border-stone-400"
+        className={`flex-1 rounded border ${theme.inputBorder} px-2 py-1 text-xs ${theme.inputText} ${theme.inputBg} outline-none ${theme.inputPlaceholder} ${theme.inputFocus}`}
         disabled={submitting}
       />
       <button
         type="submit"
         disabled={submitting || !newTitle.trim()}
-        className="rounded bg-stone-900 px-2 py-1 text-[10px] font-medium text-white transition hover:bg-stone-800 disabled:opacity-40"
+        className={`rounded ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
       >
         Add
       </button>
       <button
         type="button"
         onClick={() => { setAdding(false); setNewTitle(''); }}
-        className="rounded px-1.5 py-0.5 text-[10px] text-stone-500 transition hover:bg-stone-100"
+        className={`rounded px-1.5 py-0.5 text-[10px] ${theme.labelText} transition hover:opacity-80`}
       >
         ✕
       </button>
@@ -704,7 +700,7 @@ const OFFSET_PRESETS: OffsetPreset[] = [
   { label: '3 days before', offsetType: 'DAYS_BEFORE', offsetValue: 3 },
 ];
 
-function ReminderSection({ taskId, isCompleted }: { taskId: string; isCompleted: boolean }) {
+function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCompleted: boolean; theme: ThemeColors }) {
   const [reminders, setReminders] = useState<ReminderResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -777,10 +773,10 @@ function ReminderSection({ taskId, isCompleted }: { taskId: string; isCompleted:
   if (loading) {
     return (
       <div className="mb-4">
-        <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
+        <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
           Reminders
         </label>
-        <p className="text-xs text-stone-400">Loading...</p>
+        <p className={`text-xs ${theme.labelText}`}>Loading...</p>
       </div>
     );
   }
@@ -788,7 +784,7 @@ function ReminderSection({ taskId, isCompleted }: { taskId: string; isCompleted:
   return (
     <div className="mb-4">
       <div className="mb-1 flex items-center justify-between">
-        <label className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
+        <label className={`text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
           Reminders
           {reminders.length > 0 && (
             <span className="ml-1 normal-case">({reminders.length})</span>
@@ -798,33 +794,32 @@ function ReminderSection({ taskId, isCompleted }: { taskId: string; isCompleted:
           <button
             type="button"
             onClick={() => setShowAdd(true)}
-            className="rounded px-1.5 py-0.5 text-[11px] font-medium text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
+            className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${theme.labelText} transition hover:opacity-80`}
           >
             + Add
           </button>
         )}
       </div>
 
-      {/* Existing reminders */}
       {reminders.length > 0 && (
         <ul className="space-y-1">
           {reminders.map((r) => (
-            <li key={r.id} className="group flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-stone-50">
+            <li key={r.id} className={`group flex items-center gap-1.5 rounded px-1.5 py-1 ${theme.taskHover}`}>
               <span className="text-xs">🔔</span>
-              <span className={`flex-1 text-xs ${r.isSent ? 'text-stone-400 line-through' : 'text-stone-600'}`}>
+              <span className={`flex-1 text-xs ${r.isSent ? `${theme.taskCompletedText} line-through` : theme.taskText}`}>
                 {formatReminderDate(r.remindAt)}
                 {r.offsetType && (
-                  <span className="ml-1 text-stone-400">
+                  <span className={`ml-1 ${theme.labelText}`}>
                     ({formatOffset(r.offsetType, r.offsetValue)})
                   </span>
                 )}
               </span>
-              {r.isSent && <span className="text-[10px] text-stone-400">sent</span>}
+              {r.isSent && <span className={`text-[10px] ${theme.labelText}`}>sent</span>}
               {!isCompleted && (
                 <button
                   type="button"
                   onClick={() => handleDelete(r.id)}
-                  className="hidden rounded p-0.5 text-stone-400 transition hover:bg-stone-200 hover:text-stone-600 group-hover:block"
+                  className={`hidden rounded p-0.5 ${theme.labelText} transition hover:opacity-80 group-hover:block`}
                   title="Delete reminder"
                 >
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -838,18 +833,17 @@ function ReminderSection({ taskId, isCompleted }: { taskId: string; isCompleted:
       )}
 
       {reminders.length === 0 && !showAdd && (
-        <p className="text-xs text-stone-400">No reminders set.</p>
+        <p className={`text-xs ${theme.labelText}`}>No reminders set.</p>
       )}
 
-      {/* Add reminder form */}
       {showAdd && (
-        <div className="mt-2 rounded-md border border-stone-200 bg-stone-50 p-2">
+        <div className={`mt-2 rounded-md border ${theme.inputBorder} ${theme.bg} p-2`}>
           <div className="mb-2 flex gap-1">
             <button
               type="button"
               onClick={() => setAddMode('exact')}
               className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${
-                addMode === 'exact' ? 'bg-stone-900 text-white' : 'text-stone-500 hover:bg-stone-200'
+                addMode === 'exact' ? `${theme.btnPrimary} ${theme.btnPrimaryText}` : `${theme.labelText} hover:opacity-80`
               }`}
             >
               Exact time
@@ -858,7 +852,7 @@ function ReminderSection({ taskId, isCompleted }: { taskId: string; isCompleted:
               type="button"
               onClick={() => setAddMode('offset')}
               className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${
-                addMode === 'offset' ? 'bg-stone-900 text-white' : 'text-stone-500 hover:bg-stone-200'
+                addMode === 'offset' ? `${theme.btnPrimary} ${theme.btnPrimaryText}` : `${theme.labelText} hover:opacity-80`
               }`}
             >
               Offset
@@ -871,13 +865,13 @@ function ReminderSection({ taskId, isCompleted }: { taskId: string; isCompleted:
                 type="datetime-local"
                 value={remindAt}
                 onChange={(e) => setRemindAt(e.target.value)}
-                className="flex-1 rounded border border-stone-200 bg-white px-2 py-1 text-xs text-stone-700 outline-none focus:border-stone-400"
+                className={`flex-1 rounded border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
               />
               <button
                 type="button"
                 onClick={handleAddExact}
                 disabled={submitting || !remindAt}
-                className="rounded bg-stone-900 px-2 py-1 text-[10px] font-medium text-white transition hover:bg-stone-800 disabled:opacity-40"
+                className={`rounded ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
               >
                 Save
               </button>
@@ -887,7 +881,7 @@ function ReminderSection({ taskId, isCompleted }: { taskId: string; isCompleted:
               <select
                 value={selectedPreset}
                 onChange={(e) => setSelectedPreset(Number(e.target.value))}
-                className="flex-1 rounded border border-stone-200 bg-white px-2 py-1 text-xs text-stone-700 outline-none focus:border-stone-400"
+                className={`flex-1 rounded border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
               >
                 {OFFSET_PRESETS.map((p, i) => (
                   <option key={i} value={i}>{p.label}</option>
@@ -897,7 +891,7 @@ function ReminderSection({ taskId, isCompleted }: { taskId: string; isCompleted:
                 type="button"
                 onClick={handleAddOffset}
                 disabled={submitting}
-                className="rounded bg-stone-900 px-2 py-1 text-[10px] font-medium text-white transition hover:bg-stone-800 disabled:opacity-40"
+                className={`rounded ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
               >
                 Save
               </button>
@@ -907,7 +901,7 @@ function ReminderSection({ taskId, isCompleted }: { taskId: string; isCompleted:
           <button
             type="button"
             onClick={() => { setShowAdd(false); setRemindAt(''); }}
-            className="mt-1.5 rounded px-1.5 py-0.5 text-[10px] text-stone-500 transition hover:bg-stone-200"
+            className={`mt-1.5 rounded px-1.5 py-0.5 text-[10px] ${theme.labelText} transition hover:opacity-80`}
           >
             Cancel
           </button>
@@ -951,9 +945,11 @@ const RECURRENCE_PRESETS: { label: string; rule: RecurrencePattern }[] = [
 function RecurrenceSection({
   task,
   onRecurrenceChanged,
+  theme,
 }: {
   task: TaskResponse;
   onRecurrenceChanged: (rule: unknown) => void;
+  theme: ThemeColors;
 }) {
   const [editing, setEditing] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(0);
@@ -995,14 +991,14 @@ function RecurrenceSection({
   return (
     <div className="mb-4">
       <div className="mb-1 flex items-center justify-between">
-        <label className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
+        <label className={`text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
           Recurrence
         </label>
         {!task.isCompleted && !editing && (
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="rounded px-1.5 py-0.5 text-[11px] font-medium text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
+            className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${theme.labelText} transition hover:opacity-80`}
           >
             {isRecurring ? 'Edit' : '+ Set'}
           </button>
@@ -1010,22 +1006,22 @@ function RecurrenceSection({
       </div>
 
       {!editing && isRecurring && (
-        <div className="flex items-center gap-1.5 rounded px-1.5 py-1 text-xs text-stone-600">
+        <div className={`flex items-center gap-1.5 rounded px-1.5 py-1 text-xs ${theme.taskText}`}>
           <span>🔁</span>
           <span>{describeRecurrence(currentRule)}</span>
         </div>
       )}
 
       {!editing && !isRecurring && (
-        <p className="text-xs text-stone-400">Not recurring.</p>
+        <p className={`text-xs ${theme.labelText}`}>Not recurring.</p>
       )}
 
       {editing && (
-        <div className="mt-1 rounded-md border border-stone-200 bg-stone-50 p-2">
+        <div className={`mt-1 rounded-md border ${theme.inputBorder} ${theme.bg} p-2`}>
           <select
             value={selectedPreset}
             onChange={(e) => setSelectedPreset(Number(e.target.value))}
-            className="mb-2 w-full rounded border border-stone-200 bg-white px-2 py-1 text-xs text-stone-700 outline-none focus:border-stone-400"
+            className={`mb-2 w-full rounded border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
           >
             {RECURRENCE_PRESETS.map((p, i) => (
               <option key={i} value={i}>{p.label}</option>
@@ -1036,7 +1032,7 @@ function RecurrenceSection({
               type="button"
               onClick={handleSetRecurrence}
               disabled={saving}
-              className="rounded bg-stone-900 px-2 py-1 text-[10px] font-medium text-white transition hover:bg-stone-800 disabled:opacity-40"
+              className={`rounded ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
             >
               {isRecurring ? 'Update' : 'Enable'}
             </button>
@@ -1053,7 +1049,7 @@ function RecurrenceSection({
             <button
               type="button"
               onClick={() => setEditing(false)}
-              className="rounded px-1.5 py-0.5 text-[10px] text-stone-500 transition hover:bg-stone-200"
+              className={`rounded px-1.5 py-0.5 text-[10px] ${theme.labelText} transition hover:opacity-80`}
             >
               Cancel
             </button>
