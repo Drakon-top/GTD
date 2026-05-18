@@ -54,6 +54,20 @@ rate-limit:
   max-requests: 100
   window-ms: 60000
 
+rabbitmq:
+  notification:
+    exchange: notification.exchange
+    dead-letter-exchange: notification.dlx
+    reminder-queue: notification.reminder
+    deadline-queue: notification.deadline
+    recurrence-queue: notification.recurrence
+    sync-conflict-queue: notification.sync_conflict
+    dead-letter-queue: notification.dlq
+    reminder-routing-key: notification.reminder
+    deadline-routing-key: notification.deadline
+    recurrence-routing-key: notification.recurrence
+    sync-conflict-routing-key: notification.sync_conflict
+
 springdoc:
   api-docs:
     path: /api-docs

@@ -458,3 +458,31 @@
   - Напоминания копируются с оригинальными remind_at timestamps — TASK-022 (scheduler) будет отвечать за корректировку дат на следующий цикл
   - Разблокированы: TASK-022 (scheduler для создания экземпляров повторяющихся задач, зависит от TASK-021 + TASK-017)
   - Следующий приоритет: TASK-017 (integration, high) — RabbitMQ setup (разблокирует TASK-018, TASK-019, TASK-022), TASK-023 (functional, high) — Sync API (зависит от TASK-012, done), TASK-025 (functional, medium) — Export API (зависит от TASK-014 + TASK-016, оба done)
+
+### TASK-017 — Настройка RabbitMQ + Spring AMQP: очереди для уведомлений
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан `RabbitMQConfig` в пакете `com.gtd.backend.config` — конфигурация Spring AMQP: exchanges, queues, bindings, JSON message converter
+  - Создан `RabbitMQProperties` (@ConfigurationProperties prefix=rabbitmq.notification) — все имена очередей, exchange, routing keys конфигурируются через application.yml
+  - Созданы 4 основные очереди: `notification.reminder`, `notification.deadline`, `notification.recurrence`, `notification.sync_conflict`
+  - Все 4 очереди durable, с аргументами x-dead-letter-exchange и x-dead-letter-routing-key для маршрутизации отклонённых сообщений в DLQ
+  - Создана dead letter queue `notification.dlq` (durable, без DLX-аргументов)
+  - Созданы 2 DirectExchange: `notification.exchange` (основной) и `notification.dlx` (dead letter exchange), оба durable
+  - Созданы 5 bindings: 4 binding основных очередей к notification.exchange (по routing key = имя очереди) + 1 binding DLQ к DLX (routing key = "dlq")
+  - Настроен `Jackson2JsonMessageConverter` для сериализации/десериализации сообщений в JSON
+  - Настроен `RabbitTemplate` с JSON message converter для отправки сообщений
+  - `RabbitMQConfig` помечен `@ConditionalOnBean(ConnectionFactory.class)` — не загружается в тестах, где RabbitAutoConfiguration исключена
+  - Добавлена секция `rabbitmq.notification.*` в application.yml с дефолтными значениями для всех queue/exchange/routing key имён
+  - Написаны unit-тесты RabbitMQConfigTest (15 тестов: 2 exchange, 5 queues, 5 bindings, DLX arguments, custom properties override, message converter)
+  - Написаны unit-тесты RabbitMQPropertiesTest (2 теста: defaults, setter override)
+  - Все 364 теста проходят (347 старых + 17 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add RabbitMQ notification queues with dead letter queue configuration
+- **Заметки:**
+  - `@ConditionalOnBean(ConnectionFactory.class)` гарантирует, что RabbitMQConfig не загружается при отсутствии RabbitMQ (тестовый профиль исключает RabbitAutoConfiguration)
+  - spring.rabbitmq.* (connection config) и rabbitmq.notification.* (queue naming config) — разные секции application.yml
+  - Имена очередей, exchange, routing keys вынесены в properties — можно переопределить через env-переменные
+  - Dead letter routing: все 4 очереди при reject/nack/TTL маршрутизируют в notification.dlx → notification.dlq
+  - Jackson2JsonMessageConverter обеспечивает автоматическую JSON-сериализацию POJO при отправке и десериализацию при получении
+  - Разблокированы: TASK-018 (scheduler для проверки напоминаний и дедлайнов), TASK-019 (consumer для обработки очередей), TASK-022 (scheduler для повторяющихся задач)
+  - Следующий приоритет: TASK-023 (functional, high) — Sync API (зависит от TASK-012, done), TASK-018 (functional, high) — Reminder/deadline scheduler (зависит от TASK-016 + TASK-017, оба done), TASK-019 (integration, high) — Notification consumer (зависит от TASK-017, done), TASK-025 (functional, medium) — Export API
