@@ -247,3 +247,34 @@
   - sort_order при создании автоматически = текущему количеству контекстов (append to end)
   - Разблокированы: TASK-011 (CRUD API для задач, зависит от TASK-009 + TASK-010, оба done), TASK-014 (категории, зависит от TASK-009 + TASK-010, оба done)
   - Следующий приоритет: TASK-011 (functional, critical) — CRUD API для задач внутри контекста
+
+### TASK-011 — CRUD API для задач внутри контекста
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан `TaskService` в пакете `com.gtd.backend.task.service` — бизнес-логика CRUD задач с проверкой прав доступа (user isolation через context ownership)
+  - Создан `TaskController` с 5 эндпоинтами на двух базовых путях:
+    - GET /api/v1/contexts/{contextId}/tasks — список задач контекста (top-level, без подзадач)
+    - GET /api/v1/contexts/{contextId}/tasks?gtd_list=INBOX — фильтр по GTD-списку
+    - POST /api/v1/contexts/{contextId}/tasks — создать задачу (минимум: title)
+    - GET /api/v1/tasks/{id} — получить задачу с прямыми подзадачами
+    - PUT /api/v1/tasks/{id} — обновить задачу (partial update, только предоставленные поля)
+    - DELETE /api/v1/tasks/{id} — soft delete
+  - Созданы DTO: `CreateTaskRequest` (title обязателен, @NotBlank, @Size(max=500)), `UpdateTaskRequest` (partial update), `TaskResponse` (с subtasks для single GET)
+  - Созданы исключения: `TaskNotFoundException` (404), `TaskAccessDeniedException` (403)
+  - Обновлён `GlobalExceptionHandler` — добавлены обработчики для 2 новых task-исключений
+  - Обновлён `TaskRepository` — добавлены 2 новых метода для фильтрации top-level задач (parentTask IS NULL): `findByContextIdAndParentTaskIsNullAndIsDeletedFalseOrderBySortOrderAsc()` и `findByContextIdAndGtdListAndParentTaskIsNullAndIsDeletedFalseOrderBySortOrderAsc()`
+  - Новая задача по умолчанию: gtd_list=INBOX, nesting_level=1, sort_order=count of existing tasks
+  - Все эндпоинты задокументированы OpenAPI аннотациями (@Operation, @ApiResponses, @Tag)
+  - Написаны unit-тесты TaskServiceTest (20 тестов: CRUD, trim title, defaults, ownership, context not found, access denied)
+  - Написаны controller-тесты TaskControllerTest (15 тестов: все endpoints + validation + error cases + GTD filter)
+  - Написаны интеграционные тесты TaskIntegrationTest (11 тестов: full CRUD flow, GTD filter, isolation between contexts, isolation between users, soft delete, validation)
+  - Все 178 тестов проходят (132 старых + 46 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add CRUD API for tasks within context
+- **Заметки:**
+  - GET /contexts/{contextId}/tasks возвращает только top-level задачи (parentTask IS NULL) — подзадачи доступны через GET /tasks/{id}
+  - TaskController использует два базовых пути: /api/v1/contexts/{contextId}/tasks для контекстных операций и /api/v1/tasks/{id} для операций с конкретной задачей
+  - Ownership проверяется через context.user — задача принадлежит пользователю, если он владелец контекста
+  - sort_order при создании = текущему количеству задач в контексте (append to end)
+  - Разблокированы: TASK-012 (перемещение между GTD-списками), TASK-013 (вложенные подзадачи), TASK-014 (категории, если TASK-009 done), TASK-016 (напоминания)
+  - Следующий приоритет: TASK-012 (functional, critical) — перемещение задач между GTD-списками и выполнение задач, или TASK-013 (functional, critical) — вложенные подзадачи до 4 уровней

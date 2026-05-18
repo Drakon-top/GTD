@@ -14,7 +14,11 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     List<Task> findByContextIdAndIsDeletedFalseOrderBySortOrderAsc(UUID contextId);
 
+    List<Task> findByContextIdAndParentTaskIsNullAndIsDeletedFalseOrderBySortOrderAsc(UUID contextId);
+
     List<Task> findByContextIdAndGtdListAndIsDeletedFalseOrderBySortOrderAsc(UUID contextId, GtdList gtdList);
+
+    List<Task> findByContextIdAndGtdListAndParentTaskIsNullAndIsDeletedFalseOrderBySortOrderAsc(UUID contextId, GtdList gtdList);
 
     List<Task> findByParentTaskIdAndIsDeletedFalseOrderBySortOrderAsc(UUID parentTaskId);
 

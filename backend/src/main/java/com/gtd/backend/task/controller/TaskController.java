@@ -1,0 +1,146 @@
+package com.gtd.backend.task.controller;
+
+import com.gtd.backend.auth.dto.ErrorResponse;
+import com.gtd.backend.task.dto.CreateTaskRequest;
+import com.gtd.backend.task.dto.TaskResponse;
+import com.gtd.backend.task.dto.UpdateTaskRequest;
+import com.gtd.backend.task.model.GtdList;
+import com.gtd.backend.task.service.TaskService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1")
+@RequiredArgsConstructor
+@Tag(name = "Tasks", description = "CRUD operations for tasks within a context")
+public class TaskController {
+
+    private final TaskService taskService;
+
+    @Operation(summary = "List tasks in a context",
+            description = "Returns all non-deleted top-level tasks for the given context. Optionally filter by GTD list.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Tasks retrieved successfully",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = TaskResponse.class)))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Access denied to context",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Context not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/contexts/{contextId}/tasks")
+    public ResponseEntity<List<TaskResponse>> getTasks(
+            @PathVariable UUID contextId,
+            @Parameter(description = "Filter by GTD list") @RequestParam(name = "gtd_list", required = false) GtdList gtdList,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(taskService.getTasks(contextId, gtdList, userId));
+    }
+
+    @Operation(summary = "Create a task in a context",
+            description = "Creates a new task. Only title is required; defaults to INBOX with nesting_level=1.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Task created successfully",
+                    content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Access denied to context",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Context not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/contexts/{contextId}/tasks")
+    public ResponseEntity<TaskResponse> createTask(
+            @PathVariable UUID contextId,
+            @Valid @RequestBody CreateTaskRequest request,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        TaskResponse response = taskService.createTask(contextId, request, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Operation(summary = "Get a task by ID",
+            description = "Returns a single task with its direct subtasks.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Task retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Access denied to task",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Task not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/tasks/{id}")
+    public ResponseEntity<TaskResponse> getTask(@PathVariable UUID id, Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(taskService.getTask(id, userId));
+    }
+
+    @Operation(summary = "Update a task",
+            description = "Updates task fields (title, notes, gtd_list, due_date, category_id, sort_order). Only provided fields are updated.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Task updated successfully",
+                    content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Access denied to task",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Task not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PutMapping("/tasks/{id}")
+    public ResponseEntity<TaskResponse> updateTask(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateTaskRequest request,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(taskService.updateTask(id, request, userId));
+    }
+
+    @Operation(summary = "Delete a task (soft delete)",
+            description = "Marks the task as deleted. It will no longer appear in listings.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Task deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Access denied to task",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Task not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @DeleteMapping("/tasks/{id}")
+    public ResponseEntity<Void> deleteTask(@PathVariable UUID id, Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        taskService.deleteTask(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+}

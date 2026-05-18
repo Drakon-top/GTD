@@ -249,7 +249,7 @@
         "Шаг 6: GET — удалённая задача не возвращается"
       ],
       "dependencies": ["TASK-009", "TASK-010"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-012",

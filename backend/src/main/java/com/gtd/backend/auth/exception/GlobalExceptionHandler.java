@@ -4,6 +4,8 @@ import com.gtd.backend.auth.dto.ErrorResponse;
 import com.gtd.backend.context.exception.ContextAccessDeniedException;
 import com.gtd.backend.context.exception.ContextLimitExceededException;
 import com.gtd.backend.context.exception.ContextNotFoundException;
+import com.gtd.backend.task.exception.TaskAccessDeniedException;
+import com.gtd.backend.task.exception.TaskNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -80,6 +82,28 @@ public class GlobalExceptionHandler {
                 .timestamp(Instant.now())
                 .build();
         return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(TaskNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTaskNotFound(TaskNotFoundException ex) {
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.NOT_FOUND.value())
+                .error("Not Found")
+                .message(ex.getMessage())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(TaskAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleTaskAccessDenied(TaskAccessDeniedException ex) {
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Forbidden")
+                .message(ex.getMessage())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
