@@ -516,7 +516,7 @@
         "Шаг 5: Проверить запись в sync_log"
       ],
       "dependencies": ["TASK-012"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-024",

@@ -8,6 +8,7 @@ import com.gtd.backend.context.exception.ContextLimitExceededException;
 import com.gtd.backend.context.exception.ContextNotFoundException;
 import com.gtd.backend.reminder.exception.ReminderAccessDeniedException;
 import com.gtd.backend.reminder.exception.ReminderNotFoundException;
+import com.gtd.backend.sync.exception.SyncVersionConflictException;
 import com.gtd.backend.task.exception.MaxNestingLevelException;
 import com.gtd.backend.task.exception.TaskAccessDeniedException;
 import com.gtd.backend.task.exception.TaskNotFoundException;
@@ -164,6 +165,17 @@ public class GlobalExceptionHandler {
                 .timestamp(Instant.now())
                 .build();
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(SyncVersionConflictException.class)
+    public ResponseEntity<ErrorResponse> handleSyncVersionConflict(SyncVersionConflictException ex) {
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.CONFLICT.value())
+                .error("Conflict")
+                .message(ex.getMessage())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

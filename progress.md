@@ -568,3 +568,40 @@
   - Текущая реализация находит ВСЕ активные recurring задачи, независимо от recurrence_rule содержимого. Более тонкая логика (парсинг cron/daily/weekly/custom правил и проверка, что задача "due today") может быть добавлена позже — для MVP ежедневный trigger на все recurring задачи достаточен
   - Разблокированных задач от TASK-022 нет в tasks.json
   - Следующий приоритет: TASK-023 (functional, high) — Sync API + Sync_Log table (зависит от TASK-012, done), TASK-025 (functional, medium) — Export API (зависит от TASK-014 + TASK-016, оба done), TASK-026 (infrastructure, medium) — React project init (нет dependencies)
+
+### TASK-023 — Flyway-миграция для таблицы Sync_Log + Sync API endpoints
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создана Flyway-миграция `V7__create_sync_log_table.sql` с PostgreSQL enum types: `sync_entity_type` (TASK, CONTEXT, CATEGORY, REMINDER), `device_source` (WEB, ANDROID, IOS, API), `conflict_status` (NO_CONFLICT, RESOLVED_AUTO, RESOLVED_NOTIFY, UNRESOLVED)
+  - Таблица `sync_log`: id (UUID PK), user_id (FK → users, ON DELETE CASCADE), entity_type (ENUM, NOT NULL), entity_id (UUID, NOT NULL), field_name (VARCHAR 100, NOT NULL), old_value (TEXT), new_value (TEXT), device_source (ENUM, NOT NULL), conflict_status (ENUM, NOT NULL, default NO_CONFLICT), created_at (TIMESTAMPTZ, NOT NULL)
+  - Индексы: `idx_sync_log_user_id`, `idx_sync_log_user_created` (для pull по timestamp), `idx_sync_log_entity` (для поиска по entity_type + entity_id)
+  - Создана JPA-сущность `SyncLog` в пакете `com.gtd.backend.sync.model` с @ManyToOne(LAZY) → User, @Enumerated(STRING) для всех enum полей, @PrePersist для createdAt
+  - Создан `SyncLogRepository` с JPQL-запросом `findByUserIdAndCreatedAtAfter()` для pull и `findByEntityIdOrderByCreatedAtDesc()` для истории entity
+  - Создан `SyncService` с полной бизнес-логикой:
+    - `pushChanges()` — обрабатывает массив field-level изменений: проверяет ownership, version (optimistic locking), применяет изменения к Task entity, записывает в sync_log
+    - `pullChanges()` — возвращает все записи sync_log для пользователя после заданного timestamp
+    - Optimistic locking: если `expectedVersion` не совпадает с текущей version задачи → RESOLVED_NOTIFY конфликт, изменение не применяется, клиенту возвращается текущее серверное значение
+    - Поддерживаемые поля для sync: title, notes, gtdList, dueDate, categoryId, sortOrder, recurrenceRule
+  - Создан `SyncController` с 2 эндпоинтами:
+    - POST /api/v1/sync/push — принимает массив локальных изменений, возвращает результат каждого (applied/conflict/error)
+    - GET /api/v1/sync/pull?since={timestamp} — возвращает серверные изменения после timestamp с serverTimestamp для следующего pull
+  - Созданы DTO: `SyncPushRequest`, `SyncChangeRequest` (с Jakarta Validation), `SyncPushResponse`, `SyncChangeResult`, `SyncPullResponse`, `SyncLogResponse`
+  - Создано исключение `SyncVersionConflictException` (409 Conflict) с обработчиком в GlobalExceptionHandler
+  - Все эндпоинты задокументированы OpenAPI аннотациями (@Operation, @ApiResponses, @Tag)
+  - Sync endpoints защищены JWT (anyRequest().authenticated() в SecurityConfig)
+  - Написаны unit-тесты SyncServiceTest (17 тестов: push title/gtdList/dueDate/notes, version conflict, no version check, not found, access denied, unknown field, multiple changes, log entry on success/conflict, no log on not found, pull with/without changes, not implemented entity types, getTaskFieldValue)
+  - Написаны controller-тесты SyncControllerTest (8 тестов: push success, 400 empty changes, 400 null entityType, 400 blank fieldName, conflict result, pull with changes, pull empty, pull without since param)
+  - Написаны интеграционные тесты SyncIntegrationTest (10 тестов: push title change + verify task updated, version conflict detection, pull after push, empty pull, version increment, sync_log record, access denied for other user, multiple field changes, deleted task, gtdList change via sync)
+  - Все 440 тестов проходят (405 старых + 35 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add Sync API with sync_log table, push/pull endpoints, and optimistic locking
+- **Заметки:**
+  - Sync API реализует field-level tracking: каждое изменение отдельного поля записывается в sync_log — это основа для field-level merge в TASK-024
+  - Optimistic locking через version: клиент отправляет expectedVersion, если не совпадает — конфликт RESOLVED_NOTIFY с текущим серверным значением
+  - Без expectedVersion — изменение применяется всегда (last-write-wins) — подходит для начальной синхронизации
+  - Push обрабатывает каждый change независимо: один конфликт не блокирует остальные изменения в batch
+  - Pull возвращает ВСЕ изменения (включая конфликтные) — клиент сам решает, как обработать
+  - Пока реализован sync только для TASK entity type; CONTEXT, CATEGORY, REMINDER возвращают "not yet implemented" — будет расширено по мере необходимости
+  - serverTimestamp в SyncPullResponse используется как "since" для следующего pull — гарантирует отсутствие пропущенных изменений
+  - Разблокирован: TASK-024 (field-level merge логика, зависит от TASK-023, теперь done)
+  - Следующий приоритет: TASK-024 (functional, high) — Field-level merge для синхронизации (зависит от TASK-023, done), TASK-025 (functional, medium) — Export API (зависит от TASK-014 + TASK-016, оба done), TASK-026 (infrastructure, medium) — React project init (нет dependencies)
