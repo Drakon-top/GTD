@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,4 +46,9 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
     List<Object[]> countByContextIdGroupedByCategory(@Param("contextId") UUID contextId);
 
     int countByParentTaskIdAndIsCompletedTrueAndIsDeletedFalse(UUID parentTaskId);
+
+    @Query("SELECT t FROM Task t JOIN FETCH t.context c JOIN FETCH c.user " +
+            "WHERE t.isDeleted = false AND t.isCompleted = false " +
+            "AND t.dueDate IS NOT NULL AND t.dueDate > :now AND t.dueDate <= :deadline")
+    List<Task> findTasksWithUpcomingDeadlines(@Param("now") Instant now, @Param("deadline") Instant deadline);
 }

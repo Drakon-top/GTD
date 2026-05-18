@@ -517,3 +517,29 @@
   - DTO используют @Data (Lombok) а не records — для совместимости с Jackson @Builder.Default (records не поддерживают mutable defaults)
   - Разблокирован: TASK-020 (интеграция с FCM, зависит от TASK-019)
   - Следующий приоритет: TASK-018 (functional, high) — Scheduler для проверки напоминаний и дедлайнов (зависит от TASK-016 + TASK-017, оба done), TASK-022 (functional, high) — Scheduler для повторяющихся задач (зависит от TASK-021 + TASK-017, оба done), TASK-023 (functional, high) — Sync API (зависит от TASK-012, done)
+
+### TASK-018 — Scheduler для проверки напоминаний и дедлайнов
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Добавлен `@EnableScheduling` в `GtdBackendApplication` для активации Spring Scheduling
+  - Создан `NotificationScheduler` в пакете `com.gtd.backend.notification.scheduler` — два `@Scheduled`-метода:
+    - `checkReminders()` — каждую минуту (configurable: `scheduler.reminder-check-ms`): находит напоминания с `remind_at <= now()` и `is_sent = false` для неудалённых задач → строит `ReminderNotification` → отправляет в очередь `notification.reminder` через `RabbitTemplate` → помечает `is_sent = true`
+    - `checkDeadlines()` — каждый час (configurable: `scheduler.deadline-check-ms`): находит активные незавершённые задачи с `due_date` в ближайшие 24 часа → строит `DeadlineNotification` с `hoursUntilDeadline` → отправляет в очередь `notification.deadline`
+  - Дедупликация дедлайнов: in-memory `Set<UUID> recentlyNotifiedDeadlines` хранит ID задач, уведомлённых в текущем цикле; при следующем запуске set очищается и перезаполняется — задача не получит повторное уведомление в рамках одного цикла
+  - Напоминания не дублируются благодаря флагу `is_sent`: после отправки `is_sent = true`, запрос `findPendingReminders` больше не вернёт это напоминание
+  - Обработка ошибок: если отправка в RabbitMQ упала для конкретного элемента, scheduler продолжает обработку остальных (per-item try/catch)
+  - Scheduler помечен `@ConditionalOnBean(ConnectionFactory.class)` — не загружается в тестах без RabbitMQ
+  - Добавлен JPQL-запрос `findPendingReminders()` в `ReminderRepository` — JOIN FETCH task → context → user для eager loading всей цепочки
+  - Добавлен JPQL-запрос `findTasksWithUpcomingDeadlines()` в `TaskRepository` — JOIN FETCH context → user, фильтр по dueDate в окне (now, now+24h), исключает удалённые и завершённые
+  - Оба интервала конфигурируются через `scheduler.reminder-check-ms` и `scheduler.deadline-check-ms` в application.yml (дефолт: 60000ms и 3600000ms)
+  - Написаны unit-тесты NotificationSchedulerTest (11 тестов: send reminder, multiple reminders, no pending, continue after failure, send deadline, no duplicate, no upcoming, multiple tasks, resend after cache clear, continue after deadline failure, mark sent)
+  - Все 395 тестов проходят (384 старых + 11 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add reminder and deadline notification scheduler
+- **Заметки:**
+  - Дедупликация дедлайнов через in-memory set подходит для single-instance. Для multi-instance нужен Redis set или БД-таблица `deadline_notifications_sent`
+  - Scheduler @Transactional: `checkReminders()` — с записью (обновляет is_sent), `checkDeadlines()` — readOnly
+  - `clearDeadlineCache()` — public метод для тестов и ручного сброса кеша дедлайнов
+  - JOIN FETCH в запросах устраняет N+1 проблему: все связанные сущности (task → context → user) загружаются одним SQL-запросом
+  - Разблокированы: никаких прямых зависимостей от TASK-018 в tasks.json. Но scheduler завершает notification pipeline: TASK-016 (reminders) + TASK-017 (queues) + TASK-019 (consumer) + TASK-018 (scheduler) = полный цикл уведомлений
+  - Следующий приоритет: TASK-022 (functional, high) — Scheduler для повторяющихся задач (зависит от TASK-021 + TASK-017, оба done), TASK-023 (functional, high) — Sync API (зависит от TASK-012, done), TASK-025 (functional, medium) — Export API (зависит от TASK-014 + TASK-016, оба done)
