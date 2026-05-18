@@ -9,6 +9,7 @@ import com.gtd.backend.context.dto.CreateContextRequest;
 import com.gtd.backend.context.model.ContextTheme;
 import com.gtd.backend.context.repository.ContextRepository;
 import com.gtd.backend.task.dto.CreateTaskRequest;
+import com.gtd.backend.task.dto.MoveTaskRequest;
 import com.gtd.backend.task.dto.UpdateTaskRequest;
 import com.gtd.backend.task.model.GtdList;
 import com.gtd.backend.task.repository.TaskRepository;
@@ -23,8 +24,10 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -230,6 +233,132 @@ class TaskIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldMoveTaskToAnotherGtdList() throws Exception {
+        String taskId = createTask("Inbox task", null);
+
+        MoveTaskRequest request = MoveTaskRequest.builder()
+                .gtdList(GtdList.NEXT_ACTIONS)
+                .build();
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/move", taskId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.gtdList").value("NEXT_ACTIONS"))
+                .andExpect(jsonPath("$.id").value(taskId));
+
+        mockMvc.perform(get("/api/v1/contexts/{contextId}/tasks", contextId)
+                        .param("gtd_list", "NEXT_ACTIONS")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Inbox task"));
+
+        mockMvc.perform(get("/api/v1/contexts/{contextId}/tasks", contextId)
+                        .param("gtd_list", "INBOX")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void shouldCompleteTask() throws Exception {
+        String taskId = createTask("Task to complete", null);
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.completedAt").isNotEmpty())
+                .andExpect(jsonPath("$.gtdList").value("DONE"));
+    }
+
+    @Test
+    void shouldReturn404WhenMovingDeletedTask() throws Exception {
+        String taskId = createTask("To delete then move", null);
+
+        mockMvc.perform(delete("/api/v1/tasks/{id}", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNoContent());
+
+        MoveTaskRequest request = MoveTaskRequest.builder()
+                .gtdList(GtdList.NEXT_ACTIONS)
+                .build();
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/move", taskId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldIncrementVersionOnMove() throws Exception {
+        String taskId = createTask("Version test", null);
+
+        MvcResult getResult = mockMvc.perform(get("/api/v1/tasks/{id}", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        int versionBefore = objectMapper.readTree(getResult.getResponse().getContentAsString())
+                .get("version").asInt();
+
+        MoveTaskRequest request = MoveTaskRequest.builder()
+                .gtdList(GtdList.PROJECTS)
+                .build();
+
+        MvcResult moveResult = mockMvc.perform(patch("/api/v1/tasks/{id}/move", taskId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn();
+        int versionAfter = objectMapper.readTree(moveResult.getResponse().getContentAsString())
+                .get("version").asInt();
+
+        assertThat(versionAfter).isGreaterThan(versionBefore);
+    }
+
+    @Test
+    void shouldIncrementVersionOnComplete() throws Exception {
+        String taskId = createTask("Complete version test", null);
+
+        MvcResult getResult = mockMvc.perform(get("/api/v1/tasks/{id}", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        int versionBefore = objectMapper.readTree(getResult.getResponse().getContentAsString())
+                .get("version").asInt();
+
+        MvcResult completeResult = mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        int versionAfter = objectMapper.readTree(completeResult.getResponse().getContentAsString())
+                .get("version").asInt();
+
+        assertThat(versionAfter).isGreaterThan(versionBefore);
+    }
+
+    @Test
+    void shouldReturn403WhenMovingOtherUsersTask() throws Exception {
+        String taskId = createTask("My task", null);
+
+        String otherToken = registerAndLoginOther("other-move@test.com", "password123");
+
+        MoveTaskRequest request = MoveTaskRequest.builder()
+                .gtdList(GtdList.NEXT_ACTIONS)
+                .build();
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/move", taskId)
+                        .header("Authorization", "Bearer " + otherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
     }
 
     private void registerAndLogin(String email, String password) throws Exception {

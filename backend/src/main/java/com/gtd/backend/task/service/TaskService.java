@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -95,6 +96,28 @@ public class TaskService {
         }
 
         Task saved = taskRepository.save(task);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public TaskResponse moveTask(UUID taskId, GtdList targetList, UUID userId) {
+        Task task = findTaskOrThrow(taskId);
+        verifyTaskOwnership(task, userId);
+
+        task.setGtdList(targetList);
+        Task saved = taskRepository.saveAndFlush(task);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public TaskResponse completeTask(UUID taskId, UUID userId) {
+        Task task = findTaskOrThrow(taskId);
+        verifyTaskOwnership(task, userId);
+
+        task.setCompleted(true);
+        task.setCompletedAt(Instant.now());
+        task.setGtdList(GtdList.DONE);
+        Task saved = taskRepository.saveAndFlush(task);
         return toResponse(saved);
     }
 

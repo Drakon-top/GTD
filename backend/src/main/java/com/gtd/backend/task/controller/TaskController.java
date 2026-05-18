@@ -2,6 +2,7 @@ package com.gtd.backend.task.controller;
 
 import com.gtd.backend.auth.dto.ErrorResponse;
 import com.gtd.backend.task.dto.CreateTaskRequest;
+import com.gtd.backend.task.dto.MoveTaskRequest;
 import com.gtd.backend.task.dto.TaskResponse;
 import com.gtd.backend.task.dto.UpdateTaskRequest;
 import com.gtd.backend.task.model.GtdList;
@@ -21,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -124,6 +126,49 @@ public class TaskController {
             Authentication authentication) {
         UUID userId = (UUID) authentication.getPrincipal();
         return ResponseEntity.ok(taskService.updateTask(id, request, userId));
+    }
+
+    @Operation(summary = "Move a task to a different GTD list",
+            description = "Changes the GTD list of the task. Cannot move a deleted task.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Task moved successfully",
+                    content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Access denied to task",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Task not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/tasks/{id}/move")
+    public ResponseEntity<TaskResponse> moveTask(
+            @PathVariable UUID id,
+            @Valid @RequestBody MoveTaskRequest request,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(taskService.moveTask(id, request.getGtdList(), userId));
+    }
+
+    @Operation(summary = "Complete a task",
+            description = "Marks the task as completed. Sets is_completed=true, completed_at=now(), gtd_list=DONE.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Task completed successfully",
+                    content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Access denied to task",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Task not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/tasks/{id}/complete")
+    public ResponseEntity<TaskResponse> completeTask(
+            @PathVariable UUID id,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(taskService.completeTask(id, userId));
     }
 
     @Operation(summary = "Delete a task (soft delete)",

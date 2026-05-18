@@ -278,3 +278,28 @@
   - sort_order при создании = текущему количеству задач в контексте (append to end)
   - Разблокированы: TASK-012 (перемещение между GTD-списками), TASK-013 (вложенные подзадачи), TASK-014 (категории, если TASK-009 done), TASK-016 (напоминания)
   - Следующий приоритет: TASK-012 (functional, critical) — перемещение задач между GTD-списками и выполнение задач, или TASK-013 (functional, critical) — вложенные подзадачи до 4 уровней
+
+### TASK-012 — Перемещение задач между GTD-списками и выполнение задач
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан `MoveTaskRequest` DTO с валидацией (@NotNull gtdList)
+  - Добавлены методы `moveTask()` и `completeTask()` в `TaskService`
+  - `moveTask()` — меняет gtd_list задачи на указанный, использует `saveAndFlush()` для корректного отслеживания @Version
+  - `completeTask()` — устанавливает is_completed=true, completed_at=now(), gtd_list=DONE
+  - Нельзя переместить/выполнить удалённую задачу — `findByIdAndIsDeletedFalse()` вернёт 404
+  - @Version (optimistic locking) инкрементируется при каждом изменении — проверено в интеграционных тестах
+  - Добавлены 2 PATCH эндпоинта в `TaskController`:
+    - PATCH /api/v1/tasks/{id}/move — принимает `{gtdList: "NEXT_ACTIONS"}`
+    - PATCH /api/v1/tasks/{id}/complete — без тела запроса
+  - Оба эндпоинта задокументированы OpenAPI аннотациями (@Operation, @ApiResponses)
+  - Написаны unit-тесты TaskServiceTest (+7 тестов: moveTask success, not found, access denied; completeTask success, not found, access denied; version increment)
+  - Написаны controller-тесты TaskControllerTest (+6 тестов: move success, 400 null gtdList, 404 deleted, complete success, 404, 403)
+  - Написаны интеграционные тесты TaskIntegrationTest (+6 тестов: move to another list, complete, 404 on move deleted, version increment on move, version increment on complete, 403 on other user's task)
+  - Все 197 тестов проходят (178 старых + 19 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add move and complete task endpoints with optimistic locking
+- **Заметки:**
+  - Использован `saveAndFlush()` вместо `save()` для move/complete — гарантирует, что @Version инкрементируется и возвращается в ответе (важно для optimistic locking на клиенте)
+  - Deleted задачи (soft delete) не видны через `findByIdAndIsDeletedFalse()` — поэтому move/complete на удалённую задачу автоматически возвращает 404
+  - Разблокированы: TASK-021 (повторяющиеся задачи, зависит от TASK-012), TASK-023 (Sync API, зависит от TASK-012)
+  - Следующий приоритет: TASK-013 (functional, critical) — вложенные подзадачи до 4 уровней с валидацией (зависит только от TASK-011, уже done)

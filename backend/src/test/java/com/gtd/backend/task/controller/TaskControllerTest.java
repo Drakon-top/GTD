@@ -11,6 +11,7 @@ import com.gtd.backend.config.RateLimitingFilter;
 import com.gtd.backend.context.exception.ContextAccessDeniedException;
 import com.gtd.backend.context.exception.ContextNotFoundException;
 import com.gtd.backend.task.dto.CreateTaskRequest;
+import com.gtd.backend.task.dto.MoveTaskRequest;
 import com.gtd.backend.task.dto.TaskResponse;
 import com.gtd.backend.task.dto.UpdateTaskRequest;
 import com.gtd.backend.task.exception.TaskAccessDeniedException;
@@ -268,6 +269,84 @@ class TaskControllerTest {
                 .when(taskService).deleteTask(taskId, userId);
 
         mockMvc.perform(delete("/api/v1/tasks/{id}", taskId).with(withUser()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldMoveTask() throws Exception {
+        MoveTaskRequest request = MoveTaskRequest.builder()
+                .gtdList(GtdList.NEXT_ACTIONS)
+                .build();
+
+        TaskResponse response = buildResponse("My task", GtdList.NEXT_ACTIONS);
+        when(taskService.moveTask(eq(taskId), eq(GtdList.NEXT_ACTIONS), eq(userId)))
+                .thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/move", taskId)
+                        .with(withUser())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.gtdList").value("NEXT_ACTIONS"));
+    }
+
+    @Test
+    void shouldReturn400WhenMoveWithNullGtdList() throws Exception {
+        String json = "{}";
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/move", taskId)
+                        .with(withUser())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Bad Request"));
+    }
+
+    @Test
+    void shouldReturn404WhenMoveDeletedTask() throws Exception {
+        MoveTaskRequest request = MoveTaskRequest.builder()
+                .gtdList(GtdList.NEXT_ACTIONS)
+                .build();
+
+        when(taskService.moveTask(eq(taskId), eq(GtdList.NEXT_ACTIONS), eq(userId)))
+                .thenThrow(new TaskNotFoundException(taskId));
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/move", taskId)
+                        .with(withUser())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldCompleteTask() throws Exception {
+        TaskResponse response = buildResponse("Completed task", GtdList.DONE);
+        response.setCompleted(true);
+        response.setCompletedAt(Instant.now());
+        when(taskService.completeTask(eq(taskId), eq(userId))).thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId).with(withUser()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.completedAt").isNotEmpty())
+                .andExpect(jsonPath("$.gtdList").value("DONE"));
+    }
+
+    @Test
+    void shouldReturn404WhenCompleteDeletedTask() throws Exception {
+        when(taskService.completeTask(eq(taskId), eq(userId)))
+                .thenThrow(new TaskNotFoundException(taskId));
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId).with(withUser()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn403WhenCompleteNotOwned() throws Exception {
+        when(taskService.completeTask(eq(taskId), eq(userId)))
+                .thenThrow(new TaskAccessDeniedException(taskId));
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId).with(withUser()))
                 .andExpect(status().isForbidden());
     }
 

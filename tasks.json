@@ -271,7 +271,7 @@
         "Шаг 5: Проверить, что version увеличился"
       ],
       "dependencies": ["TASK-011"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-013",

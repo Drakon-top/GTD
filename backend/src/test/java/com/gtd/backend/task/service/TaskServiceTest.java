@@ -317,6 +317,93 @@ class TaskServiceTest {
     }
 
     @Test
+    void shouldMoveTaskToNewGtdList() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "My task", GtdList.INBOX);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TaskResponse result = taskService.moveTask(taskId, GtdList.NEXT_ACTIONS, userId);
+
+        assertThat(result.getGtdList()).isEqualTo(GtdList.NEXT_ACTIONS);
+        verify(taskRepository).saveAndFlush(task);
+    }
+
+    @Test
+    void shouldThrowNotFoundOnMoveWhenTaskDeleted() {
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.moveTask(taskId, GtdList.NEXT_ACTIONS, userId))
+                .isInstanceOf(TaskNotFoundException.class);
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowAccessDeniedOnMoveWhenNotOwner() {
+        UUID otherUserId = UUID.randomUUID();
+        Context context = buildContext(contextId, otherUserId);
+        Task task = buildTask(taskId, context, "Other's task", GtdList.INBOX);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+
+        assertThatThrownBy(() -> taskService.moveTask(taskId, GtdList.NEXT_ACTIONS, userId))
+                .isInstanceOf(TaskAccessDeniedException.class);
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldCompleteTask() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "Complete me", GtdList.NEXT_ACTIONS);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TaskResponse result = taskService.completeTask(taskId, userId);
+
+        assertThat(result.isCompleted()).isTrue();
+        assertThat(result.getCompletedAt()).isNotNull();
+        assertThat(result.getGtdList()).isEqualTo(GtdList.DONE);
+        verify(taskRepository).saveAndFlush(task);
+    }
+
+    @Test
+    void shouldThrowNotFoundOnCompleteWhenTaskDeleted() {
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.completeTask(taskId, userId))
+                .isInstanceOf(TaskNotFoundException.class);
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowAccessDeniedOnCompleteWhenNotOwner() {
+        UUID otherUserId = UUID.randomUUID();
+        Context context = buildContext(contextId, otherUserId);
+        Task task = buildTask(taskId, context, "Other's task", GtdList.INBOX);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+
+        assertThatThrownBy(() -> taskService.completeTask(taskId, userId))
+                .isInstanceOf(TaskAccessDeniedException.class);
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldIncrementVersionOnMove() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "My task", GtdList.INBOX);
+        task.setVersion(3);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> {
+            Task t = invocation.getArgument(0);
+            t.setVersion(t.getVersion() + 1);
+            return t;
+        });
+
+        TaskResponse result = taskService.moveTask(taskId, GtdList.WAITING_FOR, userId);
+
+        assertThat(result.getVersion()).isEqualTo(4);
+    }
+
+    @Test
     void shouldSoftDeleteTask() {
         Context context = buildContext(contextId, userId);
         Task task = buildTask(taskId, context, "To delete", GtdList.INBOX);
