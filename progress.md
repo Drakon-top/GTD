@@ -199,3 +199,24 @@
   - Partial indices оптимизируют самые частые запросы: активные задачи контекста, фильтр по GTD-списку, задачи с приближающимся дедлайном
   - Разблокированы: TASK-011 (CRUD API для задач, нужен также TASK-009), TASK-014 (категории, нужен также TASK-009)
   - Следующий приоритет: TASK-007 (infrastructure, critical) — Swagger документация (разблокирует TASK-009, который разблокирует TASK-011 и TASK-014)
+
+### TASK-007 — Swagger/OpenAPI документация для всех существующих эндпоинтов
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан `OpenApiConfig` — конфигурация OpenAPI с информацией о проекте и JWT security scheme (bearerAuth)
+  - JWT-авторизация настроена в Swagger: кнопка Authorize → ввод Bearer JWT token
+  - Все auth-эндпоинты задокументированы OpenAPI аннотациями: @Operation, @ApiResponses, @Tag
+  - Эндпоинты register, login, refresh, logout — описания, response codes (201, 200, 400, 401, 409), response schemas
+  - DTO-классы аннотированы @Schema с описаниями и примерами: RegisterRequest, LoginRequest, AuthResponse, RegisterResponse, ErrorResponse
+  - Auth-эндпоинты помечены `@SecurityRequirement(name = "")` — не требуют токен в Swagger UI
+  - SecurityConfig уже разрешал /swagger-ui/**, /api-docs/**, /swagger-ui.html — проверено
+  - application.yml уже имел springdoc секцию (api-docs.path=/api-docs, swagger-ui.path=/swagger-ui.html)
+  - Все 95 тестов проходят, проект собирается без ошибок
+- **Коммиты:** feat: add Swagger/OpenAPI documentation with JWT authorization
+- **Заметки:**
+  - springdoc-openapi-starter-webmvc-ui 2.8.6 уже был в pom.xml — дополнительных зависимостей не требовалось
+  - Swagger UI доступен по http://localhost:8080/swagger-ui.html, OpenAPI spec по http://localhost:8080/api-docs
+  - Global security scheme bearerAuth применяется ко всем эндпоинтам, auth-эндпоинты переопределяют через пустой @SecurityRequirement
+  - Разблокирован: TASK-009 (CRUD API для контекстов с лимитом 5) — зависел от TASK-007 + TASK-008 (оба done)
+  - Следующий приоритет: TASK-009 (functional, critical) — CRUD API для контекстов

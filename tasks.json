@@ -161,7 +161,7 @@
         "Шаг 4: Авторизоваться через кнопку Authorize и выполнить защищённый запрос"
       ],
       "dependencies": ["TASK-006"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-008",
