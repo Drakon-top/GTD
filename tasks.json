@@ -735,7 +735,7 @@
         "Шаг 5: Удалить категорию — исчезла из меню"
       ],
       "dependencies": ["TASK-029", "TASK-014"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-034",

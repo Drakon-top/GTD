@@ -907,3 +907,37 @@
   - @dnd-kit добавляет ~80KB к бандлу (363KB vs 317KB в TASK-031) — приемлемо для функциональности
   - Разблокированы: никаких прямых зависимостей от TASK-032 в tasks.json
   - Следующий приоритет: TASK-033 (ui, medium) — кастомные категории UI (зависит от TASK-029 + TASK-014, оба done), TASK-034 (ui, medium) — напоминания и повторяющиеся задачи UI (зависит от TASK-030 + TASK-016 + TASK-021), TASK-035 (ui, medium) — 5 тем оформления (зависит от TASK-029, done)
+
+### TASK-033 — Web: кастомные категории — создание, управление, привязка к задачам
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан компонент `CategoryManager` — полнофункциональный модальный менеджер категорий с 3 режимами: list (просмотр), create (создание), edit (редактирование)
+  - Режим list: отображает все категории контекста с иконкой/цветом, названием и количеством задач. Каждая категория с кнопками: перемещение вверх/вниз (reorder), edit (pencil), delete (trash) с двухэтапным подтверждением
+  - Режим create: форма создания категории — name (обязательно), icon (12 preset emoji с toggle-выбором), color (8 preset цветов + hex input). Валидация: name обязателен, color нормализуется к uppercase
+  - Режим edit: аналогичная форма с предзаполненными данными категории. Сохранение через PUT /categories/{id}
+  - Reordering: стрелки вверх/вниз меняют sort_order двух соседних категорий через параллельные PUT-запросы. Disabled для первого/последнего элемента
+  - Delete: двухэтапное подтверждение — первый клик показывает "Delete"/"Cancel", второй выполняет DELETE /categories/{id} (soft delete на бэкенде)
+  - Empty state: иконка 🏷️ + "No categories yet" + "Create one to organize your tasks" + кнопка "New Category"
+  - Error handling: ошибки бэкенда отображаются в красном блоке под формой
+  - Обновлён `Sidebar` — секция "Categories" теперь всегда видна (не только при наличии категорий):
+    - Добавлена иконка шестерёнки (gear) рядом с заголовком "Categories" → открывает CategoryManager
+    - При отсутствии категорий: кнопка "+ Add a category" с dashed border → открывает CategoryManager
+    - Категории кликабельны → фильтруют задачи по `cat:{id}` (уже работало с TASK-029)
+  - Обновлён `ContextWorkspacePage`:
+    - Добавлен state `showCategoryManager` + рендеринг `CategoryManager` модала
+    - Передан `onManageCategories` callback в Sidebar
+    - `onCategoriesChanged` вызывает `refresh()` для обновления всех данных (categories, counts, tasks)
+  - Привязка категории к задаче — уже реализована в TaskDetailPanel (TASK-030): select dropdown с категориями, сохранение через PUT /tasks/{id}
+  - `npm run lint` — ESLint без ошибок
+  - `npm run build` — TypeScript + Vite build без ошибок (98 модулей, 374KB JS gzip 116KB)
+  - Backend: все 480 тестов проходят, `./mvnw clean package` — успешно
+- **Коммиты:** feat: add category management UI with create, edit, delete, and reorder
+- **Заметки:**
+  - CategoryManager использует 3 режима (list/create/edit) вместо отдельных модалов — один компонент, переключение через state
+  - Reorder реализован через swap sort_order двух соседних категорий — простая реализация без drag & drop (DnD overkill для 5-10 категорий)
+  - Preset icons (12 emoji) и preset colors (8 HEX) покрывают большинство use cases — hex input для продвинутых пользователей
+  - Sidebar "Categories" section всегда видна — побуждает пользователей создавать категории даже если их ещё нет
+  - Бэкенд не требовал изменений — все API endpoints (GET/POST/PUT/DELETE для categories) уже реализованы в TASK-014
+  - Разблокированы: никаких прямых зависимостей от TASK-033 в tasks.json
+  - Следующий приоритет: TASK-034 (ui, medium) — напоминания и повторяющиеся задачи UI (зависит от TASK-030 + TASK-016 + TASK-021, все done), TASK-035 (ui, medium) — 5 тем оформления (зависит от TASK-029, done), TASK-036 (ui, medium) — экспорт из настроек (зависит от TASK-029 + TASK-025, оба done)

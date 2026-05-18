@@ -15,6 +15,7 @@ import TaskList from '../components/TaskList';
 import { gtdListLabel } from '../utils/gtdLabels';
 import TaskDetailPanel from '../components/TaskDetailPanel';
 import DragOverlayCard from '../components/DragOverlayCard';
+import CategoryManager from '../components/CategoryManager';
 
 export default function ContextWorkspacePage() {
   const { contextId } = useParams<{ contextId: string }>();
@@ -29,6 +30,7 @@ export default function ContextWorkspacePage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [refreshKey, refresh] = useReducer((x: number) => x + 1, 0);
   const [draggedTask, setDraggedTask] = useState<TaskResponse | null>(null);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -177,6 +179,7 @@ export default function ContextWorkspacePage() {
             categories={categories}
             activeSection={activeSection}
             onSectionChange={setActiveSection}
+            onManageCategories={() => setShowCategoryManager(true)}
           />
 
           <main className="min-w-0 flex-1 bg-white">
@@ -205,6 +208,15 @@ export default function ContextWorkspacePage() {
       <DragOverlay>
         {draggedTask && <DragOverlayCard task={draggedTask} />}
       </DragOverlay>
+
+      {showCategoryManager && (
+        <CategoryManager
+          contextId={contextId}
+          categories={categories}
+          onCategoriesChanged={() => { refresh(); }}
+          onClose={() => setShowCategoryManager(false)}
+        />
+      )}
     </DndContext>
   );
 }
