@@ -1011,7 +1011,7 @@
         "Шаг 4: Проверить подключение к PostgreSQL"
       ],
       "dependencies": ["TASK-002"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-047",

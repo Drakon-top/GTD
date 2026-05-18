@@ -1,5 +1,11 @@
 target/
 .git/
 .gitignore
+.gitattributes
 *.md
 .mvn/wrapper/maven-wrapper.jar
+.idea/
+*.iml
+.DS_Store
+Dockerfile
+.dockerignore

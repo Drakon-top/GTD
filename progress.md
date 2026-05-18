@@ -1045,3 +1045,39 @@
   - Разблокированных задач от TASK-036 нет напрямую, но TASK-050 (E2E тестирование) зависит от TASK-036 + TASK-042 + TASK-044
   - Все web UI задачи (TASK-027–036) теперь завершены
   - Следующий приоритет: TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done), TASK-046 (infrastructure, medium) — Dockerfile + Yandex Cloud (зависит от TASK-002, done), TASK-037 (infrastructure, medium) — Android инициализация (нет зависимостей)
+
+### TASK-046 — Dockerfile для Spring Boot + настройка production
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Улучшен `backend/Dockerfile` — production-ready multi-stage build:
+    - Stage 1 (build): eclipse-temurin:21-jdk-alpine, dependency caching через `dependency:go-offline`, `mvnw clean package -DskipTests`
+    - Stage 2 (runtime): eclipse-temurin:21-jre-alpine, non-root user (appuser:appgroup), JVM container tuning (`-XX:+UseContainerSupport`, `-XX:MaxRAMPercentage=75.0`), HEALTHCHECK через wget на `/actuator/health`
+    - Итоговый размер образа: ~347MB (JRE Alpine)
+  - Добавлена зависимость `spring-boot-starter-actuator` в pom.xml — для health check endpoint
+  - Настроен actuator в `application.yml`: expose health + info endpoints, `/actuator/health` уже был разрешён в SecurityConfig (permitAll)
+  - Улучшен `application-prod.yml`: HikariCP pool tuning (connection-timeout, idle-timeout, max-lifetime), отключён flyway baseline-on-migrate, настроены уровни логирования (root WARN, app INFO), actuator show-details=always для production мониторинга
+  - Создан `docker-compose.prod.yml` — полный production stack:
+    - **postgres**: PostgreSQL 16 Alpine с health check, named volume, env-driven credentials
+    - **rabbitmq**: RabbitMQ 3.13 с management, health check, named volume
+    - **app**: Spring Boot с `SPRING_PROFILES_ACTIVE=prod`, зависит от healthy postgres + rabbitmq, собственный health check через actuator
+    - **nginx**: Nginx 1.27 Alpine — reverse proxy для API (`/api/` → app:8080), static file serving для frontend (`/usr/share/nginx/html`), SPA fallback (`try_files $uri $uri/ /index.html`), static asset caching (1 year с immutable)
+    - Все сервисы в одной bridge-сети `backend`, restart: unless-stopped
+    - Required env vars через `${VAR:?error}` синтаксис (DB_PASSWORD, RABBITMQ_PASSWORD, JWT_SECRET обязательны)
+  - Создан `nginx/nginx.conf` — reverse proxy конфигурация: upstream backend, proxy headers (X-Real-IP, X-Forwarded-For, X-Forwarded-Proto), timeouts, static asset caching
+  - Создан `.env.example` — шаблон переменных окружения с документацией
+  - Обновлён `backend/.dockerignore` — исключены IDE файлы, Dockerfile, .dockerignore
+  - Docker build проверен: `docker build -t gtd-backend:test .` — успешно (все 16 steps пройдены)
+  - Docker compose config проверен: `docker-compose -f docker-compose.prod.yml config` — валидный
+  - Backend: все 480 тестов проходят, `./mvnw test` — BUILD SUCCESS
+  - Frontend: `npm run lint` — без ошибок, `npm run build` — 100 модулей, 396KB JS gzip 120KB
+- **Коммиты:** feat: add production Docker setup with multi-stage build, Nginx, and compose
+- **Заметки:**
+  - Yandex Cloud VM и внешний IP — требуют ручной настройки инфраструктуры (не автоматизируемо в коде). Docker-файлы полностью готовы к деплою на любую VM
+  - Nginx слушает только на порту 80. HTTPS (Let's Encrypt + TLS) — отдельная задача TASK-047
+  - Frontend dist не входит в Docker-образ бэкенда — подключается как volume в nginx из `./frontend/dist`. Для CI/CD нужно будет строить фронтенд отдельно или добавить stage в Dockerfile
+  - PostgreSQL credentials и JWT_SECRET обязательны в production (fail-fast через `${VAR:?error}`)
+  - RabbitMQ Management UI не экспонирует порты наружу в production compose — доступен только через docker exec или SSH tunnel
+  - Image size 347MB — можно уменьшить до ~200MB через jlink custom JRE или GraalVM native-image, но для MVP Alpine JRE достаточно
+  - Разблокированы: TASK-047 (HTTPS + домен), TASK-048 (CI/CD pipeline), TASK-049 (мониторинг + логирование) — все зависят от TASK-046
+  - Следующий приоритет: TASK-047 (infrastructure, medium) — HTTPS + Let's Encrypt (зависит от TASK-046, done), TASK-048 (infrastructure, medium) — CI/CD GitHub Actions (зависит от TASK-046, done), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done), TASK-037 (infrastructure, medium) — Android init (нет зависимостей)
