@@ -762,3 +762,51 @@
   - При 404/403 на workspace page — redirect на /contexts
   - Разблокирован: TASK-029 (Web: основной рабочий экран — боковое меню + список задач, зависит от TASK-028 + TASK-011, оба done)
   - Следующий приоритет: TASK-029 (ui, high) — Web: основной рабочий экран (зависит от TASK-028 + TASK-011, оба done), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done), TASK-046 (infrastructure, medium) — Dockerfile (зависит от TASK-002, done)
+
+### TASK-029 — Web: основной рабочий экран — боковое меню + список задач
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Полностью переработан `ContextWorkspacePage` — из placeholder в полнофункциональный рабочий экран с 3-column layout (sidebar + task list + detail panel)
+  - Создан компонент `Sidebar` — боковое меню с двумя секциями:
+    - GTD-списки (Inbox, Next Actions, Projects, Waiting For, Someday/Maybe, Reference, Calendar) с emoji-иконками и счётчиками задач
+    - Список "Done" визуально отделён разделителем от активных списков
+    - Кастомные категории (отображаются ниже GTD-списков) с color dot и счётчиками
+    - Активный пункт подсвечивается (bg-stone-100 + font-medium)
+  - Создан компонент `TaskList` — центральная панель:
+    - Отображает задачи выбранного раздела (GTD-список или категория)
+    - Каждая задача: круглый чекбокс + название + индикатор подзадач (n/m) + прогресс-бар (для Projects) + дедлайн (с цветовым индикатором: красный = overdue, amber = today/tomorrow, серый = позже) + иконка повторения
+    - Чекбокс выполнения задачи: клик отправляет PATCH /complete и обновляет список
+    - Выполненные задачи: зачёркнутый текст, серый цвет
+    - Форма быстрого добавления задачи внизу: input + кнопка "Add" → POST /contexts/{id}/tasks
+    - Empty state: иконка + текст "No tasks here yet"
+    - Выделение выбранной задачи (bg-stone-50)
+  - Создан компонент `TaskDetailPanel` — правая панель деталей (80 ширина, появляется при клике на задачу):
+    - Inline-редактирование title (клик → input, Enter/Blur → save)
+    - GTD List dropdown (select) → PATCH /move при изменении
+    - Due date отображение (formatted)
+    - Notes textarea с auto-save on blur → PUT /tasks/{id}
+    - Progress bar для задач-проектов (с процентом)
+    - Subtasks список (чекбоксы + названия, completed/total)
+    - Recurring indicator
+    - Metadata (created date, version)
+    - Кнопки действий: "Complete" (PATCH /complete) и "Delete" (DELETE /tasks/{id})
+  - `ContextWorkspacePage` оркестрирует все компоненты:
+    - Загружает context, categories, counts параллельно (Promise.all)
+    - Загружает задачи отдельным effect при смене activeSection
+    - Категории фильтруются клиентски по categoryId (API не поддерживает фильтр по категории)
+    - useReducer для refresh key, useCallback для стабильных коллбэков
+    - Header: кнопка "назад" → /contexts, иконка + название контекста, общее количество задач
+  - Создан утилитарный модуль `utils/gtdLabels.ts` — вынесена функция gtdListLabel() для реиспользования между компонентами (ESLint react-refresh/only-export-components требует, чтобы файлы компонентов экспортировали только компоненты)
+  - `npm run lint` — ESLint без ошибок
+  - `npm run build` — TypeScript компиляция + Vite build без ошибок (93 модуля, 310KB JS gzip 98KB)
+  - Backend: все 480 тестов проходят, `./mvnw clean package` — успешно
+- **Коммиты:** feat: add workspace screen with sidebar, task list, and detail panel
+- **Заметки:**
+  - ESLint react-hooks/set-state-in-effect запрещает setState внутри useEffect — решено вынесением async-функции за пределы компонента (паттерн из ContextsPage) и прямой зависимостью от taskId
+  - ESLint react-refresh/only-export-components запрещает экспорт не-компонентов из файлов с компонентами — решено вынесением gtdListLabel() в отдельный utils/gtdLabels.ts
+  - Категории фильтруются клиентски: GET /contexts/{id}/tasks загружает все задачи, затем filter по categoryId. При большом количестве задач стоит добавить серверный фильтр
+  - Detail panel загружает полные данные задачи через GET /tasks/{id} — включает subtasks, progress, notes
+  - 3-column layout: sidebar (w-56) + task list (flex-1) + detail panel (w-80, optional) — responsive через flex
+  - Разблокированы: TASK-030 (CRUD задач в UI), TASK-031 (подзадачи в UI), TASK-032 (drag & drop), TASK-033 (категории в UI), TASK-035 (темы оформления), TASK-036 (экспорт из настроек)
+  - Следующий приоритет: TASK-030 (ui, high) — Web: CRUD задач (зависит от TASK-029, done), TASK-032 (ui, high) — перемещение задач D&D (зависит от TASK-030 + TASK-012), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done)

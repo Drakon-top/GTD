@@ -651,7 +651,7 @@
         "Шаг 5: Кликнуть на задачу — раскрывается панель деталей"
       ],
       "dependencies": ["TASK-028", "TASK-011"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-030",
