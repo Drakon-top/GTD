@@ -159,6 +159,8 @@ export default function ContextWorkspacePage() {
         {selectedTaskId && (
           <TaskDetailPanel
             taskId={selectedTaskId}
+            contextId={contextId}
+            categories={categories}
             onClose={handleCloseDetail}
             onTaskChanged={handleTasksChanged}
           />

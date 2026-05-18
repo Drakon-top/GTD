@@ -810,3 +810,38 @@
   - 3-column layout: sidebar (w-56) + task list (flex-1) + detail panel (w-80, optional) — responsive через flex
   - Разблокированы: TASK-030 (CRUD задач в UI), TASK-031 (подзадачи в UI), TASK-032 (drag & drop), TASK-033 (категории в UI), TASK-035 (темы оформления), TASK-036 (экспорт из настроек)
   - Следующий приоритет: TASK-030 (ui, high) — Web: CRUD задач (зависит от TASK-029, done), TASK-032 (ui, high) — перемещение задач D&D (зависит от TASK-030 + TASK-012), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done)
+
+### TASK-030 — Web: CRUD задач — создание, редактирование, удаление
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Полностью переработан `TaskDetailPanel` — из минимальной панели просмотра в полнофункциональный редактор задач
+  - Добавлен **date picker** для due_date: нативный HTML `<input type="date">`, сохраняет через PUT /tasks/{id}, кнопка очистки даты (✕)
+  - Добавлен **category selector**: `<select>` с полным списком категорий контекста, "No category" опция, сохраняет через PUT /tasks/{id}
+  - Добавлен **delete confirmation**: двухэтапное удаление — первый клик показывает "Are you sure?", второй выполняет DELETE /tasks/{id}
+  - Добавлена **SubtaskSection** — отдельный компонент внутри TaskDetailPanel:
+    - Список подзадач с чекбоксами (PATCH /complete для каждой)
+    - Кнопка "+ Add" для добавления новой подзадачи (POST /tasks/{taskId}/subtasks)
+    - Inline-форма добавления с автофокусом, Escape для отмены
+    - Предупреждение при достижении 4 уровней вложенности
+    - Счётчик completed/total
+  - Обновлён `TaskDetailPanel` props: добавлены `contextId` и `categories` для отображения категорий
+  - Disabled-состояние всех полей для завершённых задач (isCompleted) — нельзя редактировать завершённую задачу
+  - Обновлён `TaskList` с контекстным меню (right-click):
+    - Edit (открывает detail panel), Complete (PATCH /complete), Delete (DELETE /tasks/{id})
+    - Контекстное меню с позиционированием относительно списка
+    - Кнопка "три точки" (more) при hover для вызова меню без right-click
+  - Обновлён `ContextWorkspacePage` — передаёт `contextId` и `categories` в TaskDetailPanel
+  - Исправлена ESLint ошибка `react-hooks/set-state-in-effect` — setState в effect заменён на derived state pattern (if taskId !== loadedTaskId)
+  - `npm run lint` — ESLint без ошибок
+  - `npm run build` — TypeScript компиляция + Vite build без ошибок (93 модуля, 317KB JS gzip 99KB)
+  - Backend: все 480 тестов проходят, `./mvnw clean package` — успешно
+- **Коммиты:** feat: add full task CRUD UI with date picker, category selector, subtasks, and context menu
+- **Заметки:**
+  - Due date сохраняется как ISO timestamp (конец дня UTC) — при очистке отправляется null
+  - Category selector показывает "No category" по умолчанию — при выборе отправляется categoryId, при сбросе — null
+  - SubtaskSection создана как отдельная функция-компонент внутри файла TaskDetailPanel.tsx — не экспортируется (ESLint react-refresh/only-export-components)
+  - Контекстное меню закрывается при клике вне меню (onClick на родительский div)
+  - Все поля disabled для isCompleted задач — UX: нельзя редактировать завершённую задачу, но можно удалить
+  - Разблокированы: TASK-031 (подзадачи в UI, зависит от TASK-030 + TASK-013, оба done), TASK-032 (drag & drop, зависит от TASK-030 + TASK-012, оба done), TASK-033 (категории в UI, зависит от TASK-029 + TASK-014, оба done, но также TASK-030 для task editing), TASK-034 (напоминания в UI, зависит от TASK-030 + TASK-016 + TASK-021)
+  - Следующий приоритет: TASK-031 (ui, high) — подзадачи в панели деталей (зависит от TASK-030, done), TASK-032 (ui, high) — drag & drop перемещение задач (зависит от TASK-030 + TASK-012, оба done), TASK-035 (ui, medium) — 5 тем оформления (зависит от TASK-029, done)
