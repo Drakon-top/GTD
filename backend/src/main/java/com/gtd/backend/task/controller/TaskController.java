@@ -172,7 +172,7 @@ public class TaskController {
     }
 
     @Operation(summary = "Delete a task (soft delete)",
-            description = "Marks the task as deleted. It will no longer appear in listings.")
+            description = "Marks the task as deleted. Cascades soft delete to all subtasks.")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Task deleted successfully"),
             @ApiResponse(responseCode = "401", description = "Unauthorized",
@@ -187,5 +187,49 @@ public class TaskController {
         UUID userId = (UUID) authentication.getPrincipal();
         taskService.deleteTask(id, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "List subtasks of a task",
+            description = "Returns all non-deleted direct subtasks of the given task.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Subtasks retrieved successfully",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = TaskResponse.class)))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Access denied to task",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Task not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/tasks/{taskId}/subtasks")
+    public ResponseEntity<List<TaskResponse>> getSubtasks(
+            @PathVariable UUID taskId,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(taskService.getSubtasks(taskId, userId));
+    }
+
+    @Operation(summary = "Create a subtask",
+            description = "Creates a subtask under the given parent task. Inherits context from parent. Maximum nesting level is 4.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Subtask created successfully",
+                    content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error or max nesting level exceeded",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Access denied to task",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Parent task not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/tasks/{taskId}/subtasks")
+    public ResponseEntity<TaskResponse> createSubtask(
+            @PathVariable UUID taskId,
+            @Valid @RequestBody CreateTaskRequest request,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        TaskResponse response = taskService.createSubtask(taskId, request, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

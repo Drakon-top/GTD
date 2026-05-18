@@ -361,6 +361,135 @@ class TaskIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void shouldCreateSubtaskWithCorrectNestingLevel() throws Exception {
+        String parentId = createTask("Parent task", null);
+
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Subtask level 2")
+                .build();
+
+        mockMvc.perform(post("/api/v1/tasks/{taskId}/subtasks", parentId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("Subtask level 2"))
+                .andExpect(jsonPath("$.nestingLevel").value(2))
+                .andExpect(jsonPath("$.parentTaskId").value(parentId))
+                .andExpect(jsonPath("$.contextId").value(contextId));
+    }
+
+    @Test
+    void shouldCreateNestedSubtasksUpToLevel4() throws Exception {
+        String level1 = createTask("Level 1", null);
+        String level2 = createSubtask(level1, "Level 2");
+        String level3 = createSubtask(level2, "Level 3");
+        String level4 = createSubtask(level3, "Level 4");
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", level4)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nestingLevel").value(4));
+    }
+
+    @Test
+    void shouldReturn400WhenCreatingSubtaskBeyondLevel4() throws Exception {
+        String level1 = createTask("Level 1", null);
+        String level2 = createSubtask(level1, "Level 2");
+        String level3 = createSubtask(level2, "Level 3");
+        String level4 = createSubtask(level3, "Level 4");
+
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Level 5 attempt")
+                .build();
+
+        mockMvc.perform(post("/api/v1/tasks/{taskId}/subtasks", level4)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Maximum nesting level (4) exceeded. Cannot create subtask at level 5."));
+    }
+
+    @Test
+    void shouldGetSubtasksList() throws Exception {
+        String parentId = createTask("Parent", null);
+        createSubtask(parentId, "Sub 1");
+        createSubtask(parentId, "Sub 2");
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}/subtasks", parentId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].title").value("Sub 1"))
+                .andExpect(jsonPath("$[1].title").value("Sub 2"));
+    }
+
+    @Test
+    void shouldCascadeSoftDeleteToSubtasks() throws Exception {
+        String parentId = createTask("Parent", null);
+        String childId = createSubtask(parentId, "Child");
+        String grandchildId = createSubtask(childId, "Grandchild");
+
+        mockMvc.perform(delete("/api/v1/tasks/{id}", parentId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", parentId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", childId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", grandchildId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturnHasIncompleteSubtasksOnComplete() throws Exception {
+        String parentId = createTask("Parent", null);
+        createSubtask(parentId, "Incomplete subtask");
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", parentId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.hasIncompleteSubtasks").value(true));
+    }
+
+    @Test
+    void shouldNotReturnHasIncompleteSubtasksWhenNoSubtasks() throws Exception {
+        String taskId = createTask("No children", null);
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.hasIncompleteSubtasks").doesNotExist());
+    }
+
+    @Test
+    void shouldInheritContextFromParentOnSubtaskCreation() throws Exception {
+        String parentId = createTask("Parent in Work", null);
+
+        String otherContextId = createContext("Home", ContextTheme.NATURE, "house");
+
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Subtask inherits context")
+                .build();
+
+        mockMvc.perform(post("/api/v1/tasks/{taskId}/subtasks", parentId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.contextId").value(contextId));
+    }
+
     private void registerAndLogin(String email, String password) throws Exception {
         RegisterRequest regRequest = RegisterRequest.builder()
                 .email(email)
@@ -448,5 +577,20 @@ class TaskIntegrationTest {
 
     private String createTaskWithGtdList(String title, GtdList gtdList) throws Exception {
         return createTask(title, gtdList);
+    }
+
+    private String createSubtask(String parentTaskId, String title) throws Exception {
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title(title)
+                .build();
+
+        MvcResult result = mockMvc.perform(post("/api/v1/tasks/{taskId}/subtasks", parentTaskId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
     }
 }

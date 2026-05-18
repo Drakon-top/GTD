@@ -7,6 +7,7 @@ import com.gtd.backend.context.repository.ContextRepository;
 import com.gtd.backend.task.dto.CreateTaskRequest;
 import com.gtd.backend.task.dto.TaskResponse;
 import com.gtd.backend.task.dto.UpdateTaskRequest;
+import com.gtd.backend.task.exception.MaxNestingLevelException;
 import com.gtd.backend.task.exception.TaskAccessDeniedException;
 import com.gtd.backend.task.exception.TaskNotFoundException;
 import com.gtd.backend.task.model.GtdList;
@@ -118,6 +119,48 @@ public class TaskService {
         task.setCompletedAt(Instant.now());
         task.setGtdList(GtdList.DONE);
         Task saved = taskRepository.saveAndFlush(task);
+
+        TaskResponse response = toResponse(saved);
+        int incompleteSubtasks = taskRepository.countByParentTaskIdAndIsCompletedFalseAndIsDeletedFalse(taskId);
+        if (incompleteSubtasks > 0) {
+            response.setHasIncompleteSubtasks(true);
+        }
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskResponse> getSubtasks(UUID parentTaskId, UUID userId) {
+        Task parentTask = findTaskOrThrow(parentTaskId);
+        verifyTaskOwnership(parentTask, userId);
+
+        List<Task> subtasks = taskRepository.findByParentTaskIdAndIsDeletedFalseOrderBySortOrderAsc(parentTaskId);
+        return subtasks.stream().map(this::toResponse).toList();
+    }
+
+    @Transactional
+    public TaskResponse createSubtask(UUID parentTaskId, CreateTaskRequest request, UUID userId) {
+        Task parentTask = findTaskOrThrow(parentTaskId);
+        verifyTaskOwnership(parentTask, userId);
+
+        if (parentTask.getNestingLevel() >= 4) {
+            throw new MaxNestingLevelException();
+        }
+
+        int sortOrder = taskRepository.countByParentTaskIdAndIsDeletedFalse(parentTaskId);
+
+        Task subtask = Task.builder()
+                .context(parentTask.getContext())
+                .parentTask(parentTask)
+                .title(request.getTitle().trim())
+                .notes(request.getNotes())
+                .gtdList(request.getGtdList() != null ? request.getGtdList() : GtdList.INBOX)
+                .dueDate(request.getDueDate())
+                .categoryId(request.getCategoryId())
+                .nestingLevel(parentTask.getNestingLevel() + 1)
+                .sortOrder(sortOrder)
+                .build();
+
+        Task saved = taskRepository.save(subtask);
         return toResponse(saved);
     }
 
@@ -128,6 +171,17 @@ public class TaskService {
 
         task.setDeleted(true);
         taskRepository.save(task);
+
+        cascadeSoftDelete(taskId);
+    }
+
+    private void cascadeSoftDelete(UUID parentTaskId) {
+        List<Task> children = taskRepository.findByParentTaskIdAndIsDeletedFalse(parentTaskId);
+        for (Task child : children) {
+            child.setDeleted(true);
+            taskRepository.save(child);
+            cascadeSoftDelete(child.getId());
+        }
     }
 
     private Context findContextOrThrow(UUID contextId) {

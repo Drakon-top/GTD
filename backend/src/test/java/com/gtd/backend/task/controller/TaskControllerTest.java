@@ -14,6 +14,7 @@ import com.gtd.backend.task.dto.CreateTaskRequest;
 import com.gtd.backend.task.dto.MoveTaskRequest;
 import com.gtd.backend.task.dto.TaskResponse;
 import com.gtd.backend.task.dto.UpdateTaskRequest;
+import com.gtd.backend.task.exception.MaxNestingLevelException;
 import com.gtd.backend.task.exception.TaskAccessDeniedException;
 import com.gtd.backend.task.exception.TaskNotFoundException;
 import com.gtd.backend.task.model.GtdList;
@@ -347,6 +348,115 @@ class TaskControllerTest {
                 .thenThrow(new TaskAccessDeniedException(taskId));
 
         mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId).with(withUser()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldGetSubtasks() throws Exception {
+        TaskResponse subtask = buildResponse("Subtask 1", GtdList.INBOX);
+        subtask.setNestingLevel(2);
+        subtask.setParentTaskId(taskId);
+        when(taskService.getSubtasks(eq(taskId), eq(userId)))
+                .thenReturn(List.of(subtask));
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}/subtasks", taskId).with(withUser()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value("Subtask 1"))
+                .andExpect(jsonPath("$[0].nestingLevel").value(2))
+                .andExpect(jsonPath("$[0].parentTaskId").value(taskId.toString()));
+    }
+
+    @Test
+    void shouldReturn404WhenGetSubtasksParentNotFound() throws Exception {
+        when(taskService.getSubtasks(eq(taskId), eq(userId)))
+                .thenThrow(new TaskNotFoundException(taskId));
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}/subtasks", taskId).with(withUser()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldCreateSubtask() throws Exception {
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("New subtask")
+                .build();
+
+        TaskResponse response = buildResponse("New subtask", GtdList.INBOX);
+        response.setNestingLevel(2);
+        response.setParentTaskId(taskId);
+        when(taskService.createSubtask(eq(taskId), any(CreateTaskRequest.class), eq(userId)))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/tasks/{taskId}/subtasks", taskId)
+                        .with(withUser())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("New subtask"))
+                .andExpect(jsonPath("$.nestingLevel").value(2))
+                .andExpect(jsonPath("$.parentTaskId").value(taskId.toString()));
+    }
+
+    @Test
+    void shouldReturn400WhenMaxNestingLevelExceeded() throws Exception {
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Too deep")
+                .build();
+
+        when(taskService.createSubtask(eq(taskId), any(CreateTaskRequest.class), eq(userId)))
+                .thenThrow(new MaxNestingLevelException());
+
+        mockMvc.perform(post("/api/v1/tasks/{taskId}/subtasks", taskId)
+                        .with(withUser())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Maximum nesting level (4) exceeded. Cannot create subtask at level 5."));
+    }
+
+    @Test
+    void shouldReturn400WhenSubtaskTitleBlank() throws Exception {
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("")
+                .build();
+
+        mockMvc.perform(post("/api/v1/tasks/{taskId}/subtasks", taskId)
+                        .with(withUser())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn404WhenCreateSubtaskParentNotFound() throws Exception {
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Orphan subtask")
+                .build();
+
+        when(taskService.createSubtask(eq(taskId), any(CreateTaskRequest.class), eq(userId)))
+                .thenThrow(new TaskNotFoundException(taskId));
+
+        mockMvc.perform(post("/api/v1/tasks/{taskId}/subtasks", taskId)
+                        .with(withUser())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn403WhenCreateSubtaskNotOwner() throws Exception {
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Not my subtask")
+                .build();
+
+        when(taskService.createSubtask(eq(taskId), any(CreateTaskRequest.class), eq(userId)))
+                .thenThrow(new TaskAccessDeniedException(taskId));
+
+        mockMvc.perform(post("/api/v1/tasks/{taskId}/subtasks", taskId)
+                        .with(withUser())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
     }
 

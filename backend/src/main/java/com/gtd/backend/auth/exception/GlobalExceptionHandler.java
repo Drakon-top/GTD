@@ -4,6 +4,7 @@ import com.gtd.backend.auth.dto.ErrorResponse;
 import com.gtd.backend.context.exception.ContextAccessDeniedException;
 import com.gtd.backend.context.exception.ContextLimitExceededException;
 import com.gtd.backend.context.exception.ContextNotFoundException;
+import com.gtd.backend.task.exception.MaxNestingLevelException;
 import com.gtd.backend.task.exception.TaskAccessDeniedException;
 import com.gtd.backend.task.exception.TaskNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -75,6 +76,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ContextLimitExceededException.class)
     public ResponseEntity<ErrorResponse> handleContextLimitExceeded(ContextLimitExceededException ex) {
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Bad Request")
+                .message(ex.getMessage())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(MaxNestingLevelException.class)
+    public ResponseEntity<ErrorResponse> handleMaxNestingLevel(MaxNestingLevelException ex) {
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Bad Request")

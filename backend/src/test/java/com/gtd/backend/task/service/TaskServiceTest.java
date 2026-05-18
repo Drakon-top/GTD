@@ -9,6 +9,7 @@ import com.gtd.backend.context.repository.ContextRepository;
 import com.gtd.backend.task.dto.CreateTaskRequest;
 import com.gtd.backend.task.dto.TaskResponse;
 import com.gtd.backend.task.dto.UpdateTaskRequest;
+import com.gtd.backend.task.exception.MaxNestingLevelException;
 import com.gtd.backend.task.exception.TaskAccessDeniedException;
 import com.gtd.backend.task.exception.TaskNotFoundException;
 import com.gtd.backend.task.model.GtdList;
@@ -433,6 +434,184 @@ class TaskServiceTest {
 
         assertThatThrownBy(() -> taskService.deleteTask(taskId, userId))
                 .isInstanceOf(TaskAccessDeniedException.class);
+    }
+
+    @Test
+    void shouldCreateSubtask() {
+        Context context = buildContext(contextId, userId);
+        Task parentTask = buildTask(taskId, context, "Parent", GtdList.INBOX);
+        parentTask.setNestingLevel(1);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(parentTask));
+        when(taskRepository.countByParentTaskIdAndIsDeletedFalse(taskId)).thenReturn(0);
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task t = invocation.getArgument(0);
+            t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        CreateTaskRequest request = CreateTaskRequest.builder().title("Subtask 1").build();
+        TaskResponse result = taskService.createSubtask(taskId, request, userId);
+
+        assertThat(result.getNestingLevel()).isEqualTo(2);
+        assertThat(result.getTitle()).isEqualTo("Subtask 1");
+        assertThat(result.getContextId()).isEqualTo(contextId);
+        assertThat(result.getParentTaskId()).isEqualTo(taskId);
+    }
+
+    @Test
+    void shouldCreateSubtaskAtLevel4() {
+        Context context = buildContext(contextId, userId);
+        Task parentTask = buildTask(taskId, context, "Level 3 task", GtdList.INBOX);
+        parentTask.setNestingLevel(3);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(parentTask));
+        when(taskRepository.countByParentTaskIdAndIsDeletedFalse(taskId)).thenReturn(0);
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task t = invocation.getArgument(0);
+            t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        CreateTaskRequest request = CreateTaskRequest.builder().title("Level 4 subtask").build();
+        TaskResponse result = taskService.createSubtask(taskId, request, userId);
+
+        assertThat(result.getNestingLevel()).isEqualTo(4);
+    }
+
+    @Test
+    void shouldThrowMaxNestingLevelWhenParentIsLevel4() {
+        Context context = buildContext(contextId, userId);
+        Task parentTask = buildTask(taskId, context, "Level 4 task", GtdList.INBOX);
+        parentTask.setNestingLevel(4);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(parentTask));
+
+        CreateTaskRequest request = CreateTaskRequest.builder().title("Level 5 attempt").build();
+
+        assertThatThrownBy(() -> taskService.createSubtask(taskId, request, userId))
+                .isInstanceOf(MaxNestingLevelException.class);
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowNotFoundOnCreateSubtaskWhenParentNotFound() {
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.empty());
+
+        CreateTaskRequest request = CreateTaskRequest.builder().title("Orphan").build();
+
+        assertThatThrownBy(() -> taskService.createSubtask(taskId, request, userId))
+                .isInstanceOf(TaskNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowAccessDeniedOnCreateSubtaskWhenNotOwner() {
+        UUID otherUserId = UUID.randomUUID();
+        Context context = buildContext(contextId, otherUserId);
+        Task parentTask = buildTask(taskId, context, "Other's task", GtdList.INBOX);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(parentTask));
+
+        CreateTaskRequest request = CreateTaskRequest.builder().title("My subtask").build();
+
+        assertThatThrownBy(() -> taskService.createSubtask(taskId, request, userId))
+                .isInstanceOf(TaskAccessDeniedException.class);
+    }
+
+    @Test
+    void shouldGetSubtasks() {
+        Context context = buildContext(contextId, userId);
+        Task parentTask = buildTask(taskId, context, "Parent", GtdList.INBOX);
+        UUID subtask1Id = UUID.randomUUID();
+        UUID subtask2Id = UUID.randomUUID();
+        Task subtask1 = buildTask(subtask1Id, context, "Sub 1", GtdList.INBOX);
+        subtask1.setParentTask(parentTask);
+        subtask1.setNestingLevel(2);
+        Task subtask2 = buildTask(subtask2Id, context, "Sub 2", GtdList.INBOX);
+        subtask2.setParentTask(parentTask);
+        subtask2.setNestingLevel(2);
+
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(parentTask));
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalseOrderBySortOrderAsc(taskId))
+                .thenReturn(List.of(subtask1, subtask2));
+
+        List<TaskResponse> result = taskService.getSubtasks(taskId, userId);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getTitle()).isEqualTo("Sub 1");
+        assertThat(result.get(1).getTitle()).isEqualTo("Sub 2");
+    }
+
+    @Test
+    void shouldThrowNotFoundOnGetSubtasksWhenParentNotFound() {
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.getSubtasks(taskId, userId))
+                .isInstanceOf(TaskNotFoundException.class);
+    }
+
+    @Test
+    void shouldCascadeSoftDeleteToSubtasks() {
+        Context context = buildContext(contextId, userId);
+        Task parentTask = buildTask(taskId, context, "Parent", GtdList.INBOX);
+        UUID childId = UUID.randomUUID();
+        Task childTask = buildTask(childId, context, "Child", GtdList.INBOX);
+        childTask.setParentTask(parentTask);
+
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(parentTask));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(taskId)).thenReturn(List.of(childTask));
+        when(taskRepository.findByParentTaskIdAndIsDeletedFalse(childId)).thenReturn(List.of());
+
+        taskService.deleteTask(taskId, userId);
+
+        assertThat(parentTask.isDeleted()).isTrue();
+        assertThat(childTask.isDeleted()).isTrue();
+    }
+
+    @Test
+    void shouldReturnHasIncompleteSubtasksOnComplete() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "Parent", GtdList.NEXT_ACTIONS);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(taskRepository.countByParentTaskIdAndIsCompletedFalseAndIsDeletedFalse(taskId)).thenReturn(2);
+
+        TaskResponse result = taskService.completeTask(taskId, userId);
+
+        assertThat(result.isCompleted()).isTrue();
+        assertThat(result.getHasIncompleteSubtasks()).isTrue();
+    }
+
+    @Test
+    void shouldNotSetHasIncompleteSubtasksWhenAllComplete() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "Parent", GtdList.NEXT_ACTIONS);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(taskRepository.countByParentTaskIdAndIsCompletedFalseAndIsDeletedFalse(taskId)).thenReturn(0);
+
+        TaskResponse result = taskService.completeTask(taskId, userId);
+
+        assertThat(result.isCompleted()).isTrue();
+        assertThat(result.getHasIncompleteSubtasks()).isNull();
+    }
+
+    @Test
+    void shouldInheritContextFromParentOnCreateSubtask() {
+        Context context = buildContext(contextId, userId);
+        Task parentTask = buildTask(taskId, context, "Parent", GtdList.NEXT_ACTIONS);
+        parentTask.setNestingLevel(2);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(parentTask));
+        when(taskRepository.countByParentTaskIdAndIsDeletedFalse(taskId)).thenReturn(3);
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task t = invocation.getArgument(0);
+            t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        CreateTaskRequest request = CreateTaskRequest.builder().title("Sub").build();
+        TaskResponse result = taskService.createSubtask(taskId, request, userId);
+
+        assertThat(result.getNestingLevel()).isEqualTo(3);
+        assertThat(result.getContextId()).isEqualTo(contextId);
+        assertThat(result.getSortOrder()).isEqualTo(3);
     }
 
     private Context buildContext(UUID id, UUID ownerId) {

@@ -24,7 +24,13 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     Optional<Task> findByIdAndIsDeletedFalse(UUID id);
 
+    List<Task> findByParentTaskIdAndIsDeletedFalse(UUID parentTaskId);
+
     int countByContextIdAndIsDeletedFalse(UUID contextId);
 
     int countByContextIdAndGtdListAndIsDeletedFalse(UUID contextId, GtdList gtdList);
+
+    int countByParentTaskIdAndIsDeletedFalse(UUID parentTaskId);
+
+    int countByParentTaskIdAndIsCompletedFalseAndIsDeletedFalse(UUID parentTaskId);
 }

@@ -303,3 +303,28 @@
   - Deleted задачи (soft delete) не видны через `findByIdAndIsDeletedFalse()` — поэтому move/complete на удалённую задачу автоматически возвращает 404
   - Разблокированы: TASK-021 (повторяющиеся задачи, зависит от TASK-012), TASK-023 (Sync API, зависит от TASK-012)
   - Следующий приоритет: TASK-013 (functional, critical) — вложенные подзадачи до 4 уровней с валидацией (зависит только от TASK-011, уже done)
+
+### TASK-013 — Вложенные подзадачи до 4 уровней с валидацией
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Добавлен `POST /api/v1/tasks/{taskId}/subtasks` — создание подзадачи (наследует context_id от родителя, nesting_level = parent + 1)
+  - Добавлен `GET /api/v1/tasks/{taskId}/subtasks` — получение списка прямых подзадач
+  - Валидация: при попытке создать подзадачу у задачи с nesting_level=4 возвращается 400 (MaxNestingLevelException)
+  - Создан `MaxNestingLevelException` с обработкой в `GlobalExceptionHandler` → 400 Bad Request
+  - Soft delete родителя каскадно помечает все подзадачи (рекурсивно) is_deleted=true
+  - При выполнении задачи с незавершёнными подзадачами: в ответе `hasIncompleteSubtasks=true` (флаг-информация для клиента)
+  - Добавлены 2 новых метода в `TaskRepository`: countByParentTaskIdAndIsDeletedFalse(), countByParentTaskIdAndIsCompletedFalseAndIsDeletedFalse()
+  - Обновлён `TaskResponse` — добавлено поле `hasIncompleteSubtasks` (Boolean, nullable)
+  - Написаны unit-тесты TaskServiceTest (+12 тестов: createSubtask success, level 4, max nesting error, not found, access denied, getSubtasks, cascade delete, hasIncompleteSubtasks true/null, inherit context)
+  - Написаны controller-тесты TaskControllerTest (+7 тестов: getSubtasks, createSubtask, 400 max nesting, 400 blank title, 404 parent not found, 403 not owner)
+  - Написаны интеграционные тесты TaskIntegrationTest (+8 тестов: create subtask level 2, nested to level 4, 400 on level 5, get subtasks list, cascade soft delete, hasIncompleteSubtasks on complete, no flag when no subtasks, inherit context)
+  - Все 223 теста проходят (197 старых + 26 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add nested subtasks up to 4 levels with cascading soft delete
+- **Заметки:**
+  - Каскадное удаление реализовано рекурсивно через TaskService.cascadeSoftDelete() — обходит все уровни вложенности
+  - `hasIncompleteSubtasks` возвращается только при completeTask() и только если есть незавершённые подзадачи (null если нет) — клиент может показать предупреждение
+  - sort_order подзадачи = количеству существующих подзадач у родителя (append to end)
+  - Подзадача наследует контекст от родителя автоматически — нет возможности создать подзадачу в другом контексте
+  - Разблокированы: TASK-015 (прогресс-бар проектов, зависит от TASK-013), TASK-031 (UI подзадачи)
+  - Следующий приоритет: TASK-014 (functional, high) — Category CRUD API, или TASK-015 (functional, high) — прогресс-бар проектов

@@ -62,6 +62,9 @@ public class TaskResponse {
     @Schema(description = "Subtasks (only included in single-task GET)")
     private List<TaskResponse> subtasks;
 
+    @Schema(description = "Whether the task has incomplete subtasks (only included on complete)")
+    private Boolean hasIncompleteSubtasks;
+
     @Schema(description = "Creation timestamp")
     private Instant createdAt;
 
