@@ -162,7 +162,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "docker-compose.prod.yml,nginx/,.env.example,frontend/dist/"
+          source: "docker-compose.prod.yml,nginx/,scripts/,.env.example,frontend/dist/"
           target: /opt/gtd
 
       - name: Deploy via SSH
@@ -173,8 +173,15 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             cd /opt/gtd
+            chmod +x scripts/*.sh
             docker pull ${{ vars.DOCKER_REGISTRY }}/gtd-backend:${{ github.sha }}
             docker tag ${{ vars.DOCKER_REGISTRY }}/gtd-backend:${{ github.sha }} gtd-backend:latest
+            # Generate nginx config from template if DOMAIN is set
+            if [ -n "${DOMAIN:-}" ] && [ -f certbot/conf/live/${DOMAIN}/fullchain.pem ]; then
+              sed "s/__DOMAIN__/${DOMAIN}/g" nginx/nginx.conf > nginx/nginx-generated.conf
+            else
+              sed "s/__DOMAIN__/${DOMAIN:-localhost}/g" nginx/nginx-init.conf > nginx/nginx-generated.conf
+            fi
             docker compose -f docker-compose.prod.yml up -d --no-build
             docker compose -f docker-compose.prod.yml exec -T app wget -qO- http://localhost:8080/actuator/health
             echo "Deployment successful!"

@@ -26,4 +26,10 @@ node_modules/
 dist/
 .cache/
 
+# SSL certificates and ACME challenge files
+certbot/
+
+# Generated Nginx config (created by init-ssl.sh from templates)
+nginx/nginx-generated.conf
+
 # Backend build artifacts are handled by backend/.gitignore

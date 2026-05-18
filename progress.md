@@ -1155,3 +1155,46 @@
   - Разблокировано: нет задач, напрямую зависящих от TASK-049
   - Оставшиеся pending задачи: TASK-020 (FCM push, medium, integration — требует Firebase credentials), TASK-037 (Android init, medium, infrastructure — требует Android SDK), TASK-047 (HTTPS + домен, medium, infrastructure — требует VM + домен), TASK-038-045 (Android chain, зависят от TASK-037), TASK-050 (E2E, зависит от TASK-044 + TASK-036 + TASK-042)
   - Следующий приоритет: TASK-047 (HTTPS + Let's Encrypt) или TASK-020 (FCM push) — оба medium, оба имеют dependencies met. TASK-047 можно частично реализовать (Nginx HTTPS конфигурация + certbot скрипты), TASK-020 требует Firebase project setup
+
+### TASK-047 — HTTPS сертификат (Let's Encrypt) + настройка домена
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Обновлён `nginx/nginx.conf` — полная HTTPS конфигурация:
+    - HTTP→HTTPS 301 редирект на порту 80
+    - SSL на порту 443 с TLS 1.2/1.3, современный cipher suite, OCSP stapling
+    - HTTP/2 включён (`http2 on`)
+    - Security headers: HSTS (2 года с preload), X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy
+    - ACME challenge location (`/.well-known/acme-challenge/`) для Let's Encrypt валидации
+    - Прокси для API (`/api/`), actuator endpoints (health, info, prometheus), SPA fallback
+    - Домен подставляется из placeholder `__DOMAIN__` скриптом `init-ssl.sh`
+  - Создан `nginx/nginx-init.conf` — минимальный HTTP-only конфиг для первичного получения сертификата (только ACME challenge + информационная страница)
+  - Создан `scripts/init-ssl.sh` — полный скрипт первичной настройки SSL:
+    - Принимает `DOMAIN` и `EMAIL` через env variables, поддерживает `STAGING=1` для тестовых сертификатов
+    - 5-шаговый процесс: генерация начального Nginx config → запуск Nginx → certbot webroot challenge → переключение на HTTPS config → reload Nginx
+    - Использует `certbot/certbot` Docker-образ (не требует установки certbot на хост)
+    - Валидация: проверка наличия env vars, проверка статуса Nginx, проверка получения сертификата
+  - Создан `scripts/renew-ssl.sh` — скрипт обновления сертификатов:
+    - Запускает `certbot renew --quiet` через Docker
+    - Перезагружает Nginx для применения обновлённых сертификатов
+    - Предназначен для cron: `0 3 * * * /opt/gtd/scripts/renew-ssl.sh >> /var/log/gtd-ssl-renew.log 2>&1`
+  - Обновлён `docker-compose.prod.yml`:
+    - Nginx: добавлен HTTPS порт 443 (`${HTTPS_PORT:-443}`), volumes для certbot (conf + www), используется `nginx-generated.conf` вместо прямого `nginx.conf`
+    - Добавлен сервис `certbot` — автоматическое обновление сертификатов каждые 12 часов (бесконечный цикл `certbot renew + sleep 12h`)
+    - Health check Nginx: добавлен `--no-check-certificate` для совместимости с HTTP и HTTPS
+  - Обновлён `.env.example`: добавлены `DOMAIN`, `SSL_EMAIL`, `HTTPS_PORT`
+  - Обновлён `.gitignore`: добавлены `certbot/` (сертификаты) и `nginx/nginx-generated.conf` (генерируется скриптом)
+  - Обновлён `.github/workflows/ci.yml`: deploy step теперь копирует `scripts/`, генерирует `nginx-generated.conf` из шаблона с подстановкой DOMAIN, определяет HTTP-only или HTTPS режим по наличию сертификата
+  - Все 485 backend-тестов проходят: `./mvnw test` — BUILD SUCCESS (0 failures, 0 errors)
+  - Frontend: `npm run lint` — без ошибок, `npm run build` — 100 модулей, 396KB JS gzip 120KB
+- **Коммиты:** feat: add HTTPS support with Let's Encrypt, Certbot auto-renewal, and TLS 1.3
+- **Заметки:**
+  - Для первичной настройки SSL на сервере: `DOMAIN=example.com EMAIL=admin@example.com ./scripts/init-ssl.sh`
+  - Для тестирования без реального сертификата: `STAGING=1 DOMAIN=example.com EMAIL=admin@example.com ./scripts/init-ssl.sh`
+  - Certbot сервис в docker-compose автоматически проверяет и обновляет сертификаты каждые 12 часов; Let's Encrypt сертификаты действительны 90 дней, certbot обновляет за 30 дней до истечения
+  - DNS (Yandex Cloud DNS или другой провайдер) должен быть настроен вручную: A-запись для домена → IP сервера
+  - Nginx конфиг использует `__DOMAIN__` placeholder вместо envsubst — проще, нет конфликтов с nginx переменными ($host, $uri, etc.)
+  - HSTS preload включён (max-age=63072000 = 2 года); перед добавлением домена в HSTS preload list убедиться что HTTPS стабильно работает
+  - Разблокировано: нет задач, напрямую зависящих от TASK-047
+  - Оставшиеся pending задачи: TASK-020 (FCM push, medium — требует Firebase), TASK-037 (Android init, medium — требует Android SDK), TASK-038-045 (Android chain), TASK-050 (E2E, low — зависит от Android задач)
+  - Следующий приоритет: TASK-020 (FCM push, medium, integration) или TASK-037 (Android init, medium, infrastructure). Все оставшиеся web/backend задачи завершены
