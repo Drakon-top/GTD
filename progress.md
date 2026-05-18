@@ -667,3 +667,39 @@
   - Soft-deleted данные не включаются на всех уровнях: контексты (findByUserIdAndIsDeletedFalse), категории (findByContextIdAndIsDeletedFalse), задачи (findByContextIdAndParentTaskIsNullAndIsDeletedFalse), подзадачи (findByParentTaskIdAndIsDeletedFalse)
   - Разблокирован: TASK-036 (Web: экспорт данных из настроек, зависит от TASK-029 + TASK-025)
   - Следующий приоритет: TASK-026 (infrastructure, medium) — React project init (нет dependencies), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done), TASK-046 (infrastructure, medium) — Dockerfile + Yandex Cloud (зависит от TASK-002, done)
+
+### TASK-026 — Инициализация React + TypeScript проекта для веб-приложения
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан React 19 + TypeScript 6 проект через Vite 8 (`npm create vite@latest frontend -- --template react-ts`)
+  - Подключены все зависимости из acceptance criteria:
+    - Tailwind CSS 4.3 через `@tailwindcss/vite` Vite plugin (v4 — CSS-first configuration, без tailwind.config.js)
+    - React Router v6 (`react-router-dom`)
+    - Axios с настроенным API клиентом (baseURL `/api/v1`, JWT interceptor, auto-refresh на 401, proxy на backend в dev)
+    - Zustand — auth store с accessToken и isAuthenticated
+    - dnd-kit (`@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`)
+  - Настроена базовая структура папок:
+    - `src/pages/` — LoginPage, RegisterPage, ContextsPage, NotFoundPage
+    - `src/components/` — ProtectedRoute (JWT guard для маршрутов)
+    - `src/store/` — authStore (Zustand)
+    - `src/api/` — client.ts (Axios instance с interceptors)
+    - `src/types/` — TypeScript типы, зеркалящие backend DTO (ContextResponse, TaskResponse, CategoryResponse, ReminderResponse, TaskCountsResponse, GtdList, ContextTheme, AuthResponse, ErrorResponse)
+  - Настроен Vite: proxy `/api` → `http://localhost:8080` для локальной разработки
+  - Настроен React Router v6: /login, /register, /contexts (protected), / → redirect to /contexts, * → 404
+  - Удалён boilerplate Vite (App.css, hero.png, react.svg, vite.svg)
+  - Обновлён index.html — title "GTD — Personal Task Manager"
+  - Все страницы используют Tailwind CSS классы (минималистичный стиль)
+  - Проект собирается и запускается:
+    - `npm run build` — TypeScript компиляция + Vite build без ошибок (86 модулей, 282KB JS gzipped 92KB)
+    - `npm run lint` — ESLint без ошибок
+    - `npm run dev` — dev server стартует на http://localhost:5173/ за 155ms
+- **Коммиты:** feat: initialize React + TypeScript frontend with Vite, Tailwind, Router, Zustand
+- **Заметки:**
+  - React 19.2.6 + TypeScript 6.0.2 + Vite 8.0.12 — latest versions на момент создания
+  - Tailwind CSS v4 использует CSS-first подход: `@import "tailwindcss"` в index.css, без tailwind.config.js
+  - TypeScript 6 deprecated `baseUrl` в tsconfig — path aliases (@/) не используются, относительные импорты работают нормально
+  - API client настроен с auto-refresh: при 401 автоматически вызывает POST /auth/refresh, обновляет токен и повторяет запрос
+  - Vite proxy избавляет от CORS-проблем в dev-режиме
+  - Разблокированы: TASK-027 (Web: авторизация, зависит от TASK-026 + TASK-005, оба done), TASK-028 (Web: экран контекстов, зависит от TASK-027 + TASK-009)
+  - Следующий приоритет: TASK-027 (ui, high) — Web: экран авторизации (login/register/logout), TASK-020 (integration, medium) — FCM push, TASK-046 (infrastructure, medium) — Dockerfile + Yandex Cloud
