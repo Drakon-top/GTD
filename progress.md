@@ -1081,3 +1081,29 @@
   - Image size 347MB — можно уменьшить до ~200MB через jlink custom JRE или GraalVM native-image, но для MVP Alpine JRE достаточно
   - Разблокированы: TASK-047 (HTTPS + домен), TASK-048 (CI/CD pipeline), TASK-049 (мониторинг + логирование) — все зависят от TASK-046
   - Следующий приоритет: TASK-047 (infrastructure, medium) — HTTPS + Let's Encrypt (зависит от TASK-046, done), TASK-048 (infrastructure, medium) — CI/CD GitHub Actions (зависит от TASK-046, done), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done), TASK-037 (infrastructure, medium) — Android init (нет зависимостей)
+
+### TASK-048 — CI/CD pipeline (GitHub Actions) для автоматического деплоя
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан `.github/workflows/ci.yml` — полный CI/CD pipeline:
+    - **Job `backend`:** Java 21 + PostgreSQL 16 + RabbitMQ 3.13 services, `./mvnw verify`, `./mvnw package`, upload JAR artifact
+    - **Job `frontend`:** Node 22, `npm ci`, `npm run lint`, `npm run build`, upload dist artifact
+    - **Job `docker`:** Docker Buildx, login to registry, build & push image с SHA-тегом + latest, GHA cache
+    - **Job `deploy`:** SCP файлов на сервер, SSH deploy — pull image, compose up, health check
+  - Triggers: push to main (full CI+CD), pull_request to main (CI only)
+  - Concurrency: `cancel-in-progress: true` для оптимизации ресурсов
+  - Deploy использует `environment: production` для ручного approval при необходимости
+  - Удалён устаревший файл `mockito-extensions/org.mockito.plugins.MockMaker` (вызывал ошибки в sandbox-средах, но inline mock maker уже дефолтный в Mockito 5.x / Spring Boot 3.5)
+  - Все 480 backend тестов проходят: `./mvnw test` — BUILD SUCCESS (0 failures, 0 errors)
+  - Frontend: `npm run lint` — без ошибок, `npm run build` — 100 модулей, 396KB JS gzip 120KB
+- **Коммиты:** feat: add CI/CD pipeline with GitHub Actions for automated testing and deployment
+- **Заметки:**
+  - Required GitHub Secrets: `DOCKER_USERNAME`, `DOCKER_PASSWORD`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`
+  - Required GitHub Variables: `DOCKER_REGISTRY` (e.g. `cr.yandex/your-registry-id` или `ghcr.io/username`)
+  - CI тесты используют service containers (postgres, rabbitmq) — полностью изолированная среда
+  - Deploy предполагает VM с Docker и docker compose уже установленными. Файлы копируются в /opt/gtd
+  - `environment: production` позволяет настроить required reviewers для деплоя в GitHub settings
+  - Mockito sandbox issue: ByteBuddy agent attachment блокируется в restrictive environments; CI runners не имеют этого ограничения
+  - Разблокировано: нет новых задач, зависящих от TASK-048. TASK-050 (E2E) зависит от TASK-044 + TASK-036 + TASK-042
+  - Следующий приоритет: TASK-047 (HTTPS + домен), TASK-020 (FCM push), TASK-037 (Android init), TASK-049 (мониторинг)

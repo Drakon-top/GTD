@@ -1052,7 +1052,7 @@
         "Шаг 4: На VM обновляется приложение — новая версия доступна"
       ],
       "dependencies": ["TASK-046"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-049",
