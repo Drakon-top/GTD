@@ -6,6 +6,8 @@ import com.gtd.backend.category.exception.CategoryNotFoundException;
 import com.gtd.backend.context.exception.ContextAccessDeniedException;
 import com.gtd.backend.context.exception.ContextLimitExceededException;
 import com.gtd.backend.context.exception.ContextNotFoundException;
+import com.gtd.backend.reminder.exception.ReminderAccessDeniedException;
+import com.gtd.backend.reminder.exception.ReminderNotFoundException;
 import com.gtd.backend.task.exception.MaxNestingLevelException;
 import com.gtd.backend.task.exception.TaskAccessDeniedException;
 import com.gtd.backend.task.exception.TaskNotFoundException;
@@ -133,6 +135,28 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CategoryAccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleCategoryAccessDenied(CategoryAccessDeniedException ex) {
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Forbidden")
+                .message(ex.getMessage())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(ReminderNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleReminderNotFound(ReminderNotFoundException ex) {
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.NOT_FOUND.value())
+                .error("Not Found")
+                .message(ex.getMessage())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(ReminderAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleReminderAccessDenied(ReminderAccessDeniedException ex) {
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.FORBIDDEN.value())
                 .error("Forbidden")

@@ -368,7 +368,7 @@
         "Шаг 5: DELETE — напоминание удалено"
       ],
       "dependencies": ["TASK-011"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-017",

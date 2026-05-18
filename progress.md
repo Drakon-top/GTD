@@ -394,3 +394,38 @@
   - Категорийные счётчики в /tasks/counts дублируют task_count из GET /categories, но в более удобном формате (один запрос для всего сайдбара)
   - Разблокированы: никаких новых зависимостей от TASK-015 не определено в tasks.json
   - Следующий приоритет: TASK-016 (functional, high) — Reminder CRUD API (зависит только от TASK-011, уже done), или TASK-021 (functional, high) — повторяющиеся задачи (зависит только от TASK-012, уже done), или TASK-023 (functional, high) — Sync API (зависит только от TASK-012, уже done)
+
+### TASK-016 — Flyway-миграция и JPA-сущность для таблицы Reminder + CRUD API
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создана Flyway-миграция `V6__create_reminders_table.sql` с PostgreSQL enum type `reminder_offset_type` (MINUTES_BEFORE, HOURS_BEFORE, DAYS_BEFORE, EXACT_TIME)
+  - Таблица `reminders`: id (UUID PK), task_id (FK → tasks, ON DELETE CASCADE), remind_at (TIMESTAMPTZ, NOT NULL), offset_type (ENUM), offset_value (INTEGER), is_sent (BOOLEAN, default false), created_at (TIMESTAMPTZ)
+  - Индексы: `idx_reminders_task_id` и частичный `idx_reminders_pending` (WHERE is_sent = FALSE) для scheduler
+  - Создана JPA-сущность `Reminder` в пакете `com.gtd.backend.reminder.model` с @ManyToOne(LAZY) → Task, @Enumerated(STRING), @Builder.Default для isSent, @PrePersist для createdAt
+  - Создан enum `ReminderOffsetType` с 4 значениями
+  - Создан `ReminderRepository` (JpaRepository) с методами: findByTaskIdOrderByRemindAtAsc(), countByTaskId()
+  - Создан `ReminderService` с полной бизнес-логикой: CRUD, проверка ownership через task.context.user, при обновлении remindAt автоматически сбрасывается is_sent=false
+  - Создан `ReminderController` с 4 эндпоинтами:
+    - GET /api/v1/tasks/{taskId}/reminders — список напоминаний задачи
+    - POST /api/v1/tasks/{taskId}/reminders — создать напоминание (remindAt обязателен)
+    - PUT /api/v1/reminders/{id} — обновить напоминание (partial update)
+    - DELETE /api/v1/reminders/{id} — удалить напоминание (permanent delete, не soft delete)
+  - Созданы DTO: `CreateReminderRequest` (remindAt обязателен, offsetType/offsetValue опционально), `UpdateReminderRequest` (partial update), `ReminderResponse`
+  - Созданы исключения: `ReminderNotFoundException` (404), `ReminderAccessDeniedException` (403) с обработчиками в GlobalExceptionHandler
+  - Все эндпоинты задокументированы OpenAPI аннотациями (@Operation, @ApiResponses, @Tag)
+  - Удаление напоминания — permanent (не soft delete), т.к. reminder не имеет смысла хранить после удаления
+  - К одной задаче можно привязать неограниченное количество напоминаний
+  - ON DELETE CASCADE на FK task_id — при физическом удалении задачи из БД напоминания удаляются автоматически
+  - При soft delete задачи напоминания остаются в БД, но GET /tasks/{id}/reminders возвращает 404 (задача не найдена)
+  - Написаны unit-тесты ReminderServiceTest (15 тестов: getReminders, createReminder, updateReminder, deleteReminder, ownership checks, not found, access denied)
+  - Написаны controller-тесты ReminderControllerTest (14 тестов: все endpoints + validation + error cases)
+  - Написаны интеграционные тесты ReminderIntegrationTest (11 тестов: full CRUD flow, multiple reminders, ordering, cascade on task delete, isolation between users)
+  - Все 329 тестов проходят (289 старых + 40 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add Reminder CRUD API with Flyway migration and full test coverage
+- **Заметки:**
+  - Partial index `idx_reminders_pending` оптимизирует запрос scheduler: поиск напоминаний WHERE is_sent = FALSE AND remind_at <= now()
+  - При обновлении remindAt автоматически сбрасывается is_sent в false — позволяет перенастроить уже отправленное напоминание
+  - Reminder не использует soft delete (в отличие от tasks/contexts/categories) — удаление безвозвратное
+  - Разблокированы: TASK-018 (scheduler для проверки напоминаний и дедлайнов, зависит от TASK-016 + TASK-017), TASK-025 (экспорт данных, зависит от TASK-014 + TASK-016, оба done)
+  - Следующий приоритет: TASK-021 (functional, high) — повторяющиеся задачи (зависит от TASK-012, done), TASK-017 (integration, high) — RabbitMQ setup (зависит от TASK-002, done), TASK-023 (functional, high) — Sync API (зависит от TASK-012, done)
