@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gtd.backend.auth.dto.RegisterRequest;
 import com.gtd.backend.auth.repository.RefreshTokenRepository;
 import com.gtd.backend.auth.repository.UserRepository;
+import com.gtd.backend.context.repository.ContextRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,8 +42,12 @@ class RateLimitingIntegrationTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private ContextRepository contextRepository;
+
     @BeforeEach
     void setUp() {
+        contextRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
         rateLimitingFilter.clearBuckets();

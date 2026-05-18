@@ -5,6 +5,7 @@ import com.gtd.backend.auth.dto.LoginRequest;
 import com.gtd.backend.auth.dto.RegisterRequest;
 import com.gtd.backend.auth.repository.RefreshTokenRepository;
 import com.gtd.backend.auth.repository.UserRepository;
+import com.gtd.backend.context.repository.ContextRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,8 +38,12 @@ class JwtAuthIntegrationTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private ContextRepository contextRepository;
+
     @BeforeEach
     void setUp() {
+        contextRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }

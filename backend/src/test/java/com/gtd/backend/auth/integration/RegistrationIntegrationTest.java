@@ -5,6 +5,7 @@ import com.gtd.backend.auth.dto.RegisterRequest;
 import com.gtd.backend.auth.model.User;
 import com.gtd.backend.auth.repository.RefreshTokenRepository;
 import com.gtd.backend.auth.repository.UserRepository;
+import com.gtd.backend.context.repository.ContextRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,10 +39,14 @@ class RegistrationIntegrationTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
+    private ContextRepository contextRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        contextRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }

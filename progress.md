@@ -220,3 +220,30 @@
   - Global security scheme bearerAuth применяется ко всем эндпоинтам, auth-эндпоинты переопределяют через пустой @SecurityRequirement
   - Разблокирован: TASK-009 (CRUD API для контекстов с лимитом 5) — зависел от TASK-007 + TASK-008 (оба done)
   - Следующий приоритет: TASK-009 (functional, critical) — CRUD API для контекстов
+
+### TASK-009 — CRUD API для контекстов с лимитом 5 контекстов
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан `ContextService` в пакете `com.gtd.backend.context.service` — бизнес-логика CRUD контекстов с проверкой лимита (max 5) и прав доступа (user isolation)
+  - Создан `ContextController` (`/api/v1/contexts`) с 5 эндпоинтами: GET (list), GET /{id}, POST, PUT /{id}, DELETE /{id}
+  - Созданы DTO: `CreateContextRequest` (name, theme, icon обязательны), `UpdateContextRequest` (partial update), `ContextResponse`
+  - Созданы исключения: `ContextNotFoundException` (404), `ContextAccessDeniedException` (403), `ContextLimitExceededException` (400)
+  - Обновлён `GlobalExceptionHandler` — добавлены обработчики для 3 новых исключений
+  - Все эндпоинты задокументированы OpenAPI аннотациями (@Operation, @ApiResponses, @Tag)
+  - DELETE выполняет soft delete (is_deleted=true), контекст пропадает из листинга
+  - При создании 6-го контекста возвращается 400 с сообщением о лимите
+  - Удалённые контексты не учитываются в лимите (можно создать новый после удаления)
+  - Контексты изолированы: пользователь видит/изменяет только свои (403 при попытке доступа к чужому)
+  - Написаны unit-тесты ContextServiceTest (13 тестов: CRUD, trim, limit, ownership, not found)
+  - Написаны controller-тесты ContextControllerTest (14 тестов: все endpoints + validation + error cases)
+  - Написаны интеграционные тесты ContextIntegrationTest (10 тестов: full CRUD flow, limit enforcement, isolation between users, soft delete behaviour)
+  - Исправлена проблема FK constraint в существующих интеграционных тестах — добавлен `contextRepository.deleteAll()` перед `userRepository.deleteAll()` в setUp() всех @SpringBootTest классов
+  - Все 132 теста проходят (95 старых + 37 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add CRUD API for contexts with 5-context limit
+- **Заметки:**
+  - SecurityContext propagation в @WebMvcTest: при addFilters=false нужен custom RequestPostProcessor для установки Authentication (SecurityContextHolder.getContext() не пробрасывается в MockMvc request thread)
+  - `userRepository.getReferenceById()` используется вместо `findById()` при создании контекста — не делает лишний SELECT для проверки существования пользователя (JWT уже гарантирует)
+  - sort_order при создании автоматически = текущему количеству контекстов (append to end)
+  - Разблокированы: TASK-011 (CRUD API для задач, зависит от TASK-009 + TASK-010, оба done), TASK-014 (категории, зависит от TASK-009 + TASK-010, оба done)
+  - Следующий приоритет: TASK-011 (functional, critical) — CRUD API для задач внутри контекста

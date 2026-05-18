@@ -205,7 +205,7 @@
         "Шаг 6: GET /api/v1/contexts — удалённый контекст не в списке"
       ],
       "dependencies": ["TASK-007", "TASK-008"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-010",
