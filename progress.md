@@ -328,3 +328,41 @@
   - Подзадача наследует контекст от родителя автоматически — нет возможности создать подзадачу в другом контексте
   - Разблокированы: TASK-015 (прогресс-бар проектов, зависит от TASK-013), TASK-031 (UI подзадачи)
   - Следующий приоритет: TASK-014 (functional, high) — Category CRUD API, или TASK-015 (functional, high) — прогресс-бар проектов
+
+### TASK-014 — Flyway-миграция и JPA-сущность для таблицы Category + CRUD API
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создана Flyway-миграция `V5__create_categories_table.sql` с таблицей `categories`: id (UUID PK), context_id (FK → contexts), name (VARCHAR 100, NOT NULL), icon (VARCHAR 50), color (VARCHAR 7, HEX), sort_order (INTEGER, NOT NULL, default 0), is_deleted (BOOLEAN, NOT NULL, default false), created_at (TIMESTAMPTZ), updated_at (TIMESTAMPTZ)
+  - Добавлен FK constraint `fk_tasks_category_id` на `tasks.category_id → categories.id ON DELETE SET NULL` — ранее category_id был UUID без FK
+  - Индексы: `idx_categories_context_id` и частичный `idx_categories_context_not_deleted` (WHERE is_deleted = FALSE)
+  - Создана JPA-сущность `Category` в пакете `com.gtd.backend.category.model` с @ManyToOne(LAZY) → Context, @PrePersist/@PreUpdate для timestamps, @Builder.Default для sortOrder и isDeleted
+  - Создан `CategoryRepository` (JpaRepository) с методами: findByContextIdAndIsDeletedFalseOrderBySortOrderAsc(), findByIdAndIsDeletedFalse(), countByContextIdAndIsDeletedFalse()
+  - Добавлен `countByCategoryIdAndIsDeletedFalse()` в `TaskRepository` для подсчёта task_count
+  - Создан `CategoryService` с полной бизнес-логикой: CRUD, проверка ownership через context.user, task_count вычисляется динамически
+  - Создан `CategoryController` с 5 эндпоинтами на двух базовых путях:
+    - GET /api/v1/contexts/{contextId}/categories — список категорий контекста с task_count
+    - POST /api/v1/contexts/{contextId}/categories — создать категорию (name обязателен, icon/color опционально)
+    - GET /api/v1/categories/{id} — получить категорию с task_count
+    - PUT /api/v1/categories/{id} — обновить категорию (partial update)
+    - DELETE /api/v1/categories/{id} — soft delete
+  - Созданы DTO: `CreateCategoryRequest` (name обязателен, color валидируется regexp для HEX #RRGGBB), `UpdateCategoryRequest` (partial update), `CategoryResponse` (с taskCount)
+  - Созданы исключения: `CategoryNotFoundException` (404), `CategoryAccessDeniedException` (403) с обработчиками в GlobalExceptionHandler
+  - Все эндпоинты задокументированы OpenAPI аннотациями (@Operation, @ApiResponses, @Tag)
+  - Color нормализуется к uppercase при создании и обновлении
+  - sort_order при создании = текущему количеству категорий в контексте (append to end)
+  - Написаны unit-тесты CategoryServiceTest (16 тестов: CRUD, trim, null icon/color, uppercase color, ownership, not found, access denied)
+  - Написаны controller-тесты CategoryControllerTest (14 тестов: все endpoints + validation + error cases + invalid color)
+  - Написаны интеграционные тесты CategoryIntegrationTest (11 тестов: full CRUD flow, task_count, isolation between contexts, isolation between users, sort_order, task_count decrement on task delete)
+  - Обновлены все существующие интеграционные тесты: добавлен `categoryRepository.deleteAll()` перед `contextRepository.deleteAll()` в setUp() для корректного удаления по FK chain
+  - Добавлен `rateLimitingFilter.clearBuckets()` во все @SpringBootTest интеграционные тесты для изоляции от rate limiter state
+  - Сделан `clearBuckets()` публичным (был package-private) для использования из тестовых пакетов
+  - Все 264 теста проходят (223 старых + 41 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add Category CRUD API with task_count and FK constraint
+- **Заметки:**
+  - task_count вычисляется динамически через TaskRepository.countByCategoryIdAndIsDeletedFalse() — не хранится в БД, всегда актуален
+  - ON DELETE SET NULL для FK tasks.category_id — при удалении категории задачи не теряются, только обнуляется category_id
+  - Категории изолированы через контекст → пользователь: ownership проверяется через category.context.user
+  - Интеграционные тесты ранее не очищали rate limiter state — это вызывало спорадические 429 ошибки при большом количестве тестов. Теперь все @SpringBootTest тесты очищают buckets в setUp()
+  - Разблокированы: TASK-025 (экспорт данных, зависит от TASK-014 + TASK-016), TASK-033 (UI категории, зависит от TASK-029 + TASK-014)
+  - Следующий приоритет: TASK-015 (functional, high) — прогресс-бар проектов (зависит только от TASK-013, уже done), или TASK-016 (functional, high) — Reminder CRUD API (зависит только от TASK-011, уже done), или TASK-021 (functional, high) — повторяющиеся задачи (зависит только от TASK-012, уже done)

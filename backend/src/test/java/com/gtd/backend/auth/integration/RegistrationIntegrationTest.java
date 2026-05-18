@@ -5,6 +5,8 @@ import com.gtd.backend.auth.dto.RegisterRequest;
 import com.gtd.backend.auth.model.User;
 import com.gtd.backend.auth.repository.RefreshTokenRepository;
 import com.gtd.backend.auth.repository.UserRepository;
+import com.gtd.backend.category.repository.CategoryRepository;
+import com.gtd.backend.config.RateLimitingFilter;
 import com.gtd.backend.context.repository.ContextRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,13 +44,21 @@ class RegistrationIntegrationTest {
     private ContextRepository contextRepository;
 
     @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private RateLimitingFilter rateLimitingFilter;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        categoryRepository.deleteAll();
         contextRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
+        rateLimitingFilter.clearBuckets();
     }
 
     @Test

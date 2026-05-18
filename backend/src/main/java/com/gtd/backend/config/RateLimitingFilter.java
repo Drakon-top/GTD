@@ -85,7 +85,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         return "ip:" + request.getRemoteAddr();
     }
 
-    void clearBuckets() {
+    public void clearBuckets() {
         requestCounts.clear();
     }
 }

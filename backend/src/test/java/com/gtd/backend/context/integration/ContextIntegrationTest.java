@@ -5,9 +5,11 @@ import com.gtd.backend.auth.dto.LoginRequest;
 import com.gtd.backend.auth.dto.RegisterRequest;
 import com.gtd.backend.auth.repository.RefreshTokenRepository;
 import com.gtd.backend.auth.repository.UserRepository;
+import com.gtd.backend.category.repository.CategoryRepository;
 import com.gtd.backend.context.dto.CreateContextRequest;
 import com.gtd.backend.context.dto.UpdateContextRequest;
 import com.gtd.backend.context.model.ContextTheme;
+import com.gtd.backend.config.RateLimitingFilter;
 import com.gtd.backend.context.repository.ContextRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,13 +46,21 @@ class ContextIntegrationTest {
     @Autowired
     private ContextRepository contextRepository;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private RateLimitingFilter rateLimitingFilter;
+
     private String accessToken;
 
     @BeforeEach
     void setUp() throws Exception {
+        categoryRepository.deleteAll();
         contextRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
+        rateLimitingFilter.clearBuckets();
 
         registerAndLogin("ctx@test.com", "password123");
     }

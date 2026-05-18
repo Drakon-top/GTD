@@ -5,6 +5,8 @@ import com.gtd.backend.auth.dto.LoginRequest;
 import com.gtd.backend.auth.dto.RegisterRequest;
 import com.gtd.backend.auth.repository.RefreshTokenRepository;
 import com.gtd.backend.auth.repository.UserRepository;
+import com.gtd.backend.category.repository.CategoryRepository;
+import com.gtd.backend.config.RateLimitingFilter;
 import com.gtd.backend.context.dto.CreateContextRequest;
 import com.gtd.backend.context.model.ContextTheme;
 import com.gtd.backend.context.repository.ContextRepository;
@@ -55,15 +57,23 @@ class TaskIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private RateLimitingFilter rateLimitingFilter;
+
     private String accessToken;
     private String contextId;
 
     @BeforeEach
     void setUp() throws Exception {
         taskRepository.deleteAll();
+        categoryRepository.deleteAll();
         contextRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
+        rateLimitingFilter.clearBuckets();
 
         registerAndLogin("task-test@test.com", "password123");
         contextId = createContext("Work", ContextTheme.FORMAL, "briefcase");

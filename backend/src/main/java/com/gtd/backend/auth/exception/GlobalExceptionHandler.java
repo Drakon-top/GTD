@@ -1,6 +1,8 @@
 package com.gtd.backend.auth.exception;
 
 import com.gtd.backend.auth.dto.ErrorResponse;
+import com.gtd.backend.category.exception.CategoryAccessDeniedException;
+import com.gtd.backend.category.exception.CategoryNotFoundException;
 import com.gtd.backend.context.exception.ContextAccessDeniedException;
 import com.gtd.backend.context.exception.ContextLimitExceededException;
 import com.gtd.backend.context.exception.ContextNotFoundException;
@@ -109,6 +111,28 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(TaskAccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleTaskAccessDenied(TaskAccessDeniedException ex) {
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Forbidden")
+                .message(ex.getMessage())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(CategoryNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCategoryNotFound(CategoryNotFoundException ex) {
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.NOT_FOUND.value())
+                .error("Not Found")
+                .message(ex.getMessage())
+                .timestamp(Instant.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(CategoryAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleCategoryAccessDenied(CategoryAccessDeniedException ex) {
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.FORBIDDEN.value())
                 .error("Forbidden")

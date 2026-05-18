@@ -322,7 +322,7 @@
         "Шаг 6: DELETE — soft delete, категория не в списке"
       ],
       "dependencies": ["TASK-009", "TASK-010"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-015",

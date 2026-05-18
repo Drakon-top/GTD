@@ -2,6 +2,7 @@ package com.gtd.backend.config;
 
 import com.gtd.backend.auth.repository.RefreshTokenRepository;
 import com.gtd.backend.auth.repository.UserRepository;
+import com.gtd.backend.category.repository.CategoryRepository;
 import com.gtd.backend.context.repository.ContextRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,10 +35,14 @@ class SecurityConfigIntegrationTest {
     private ContextRepository contextRepository;
 
     @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
     private RateLimitingFilter rateLimitingFilter;
 
     @BeforeEach
     void setUp() {
+        categoryRepository.deleteAll();
         contextRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();

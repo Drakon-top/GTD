@@ -5,6 +5,8 @@ import com.gtd.backend.auth.dto.LoginRequest;
 import com.gtd.backend.auth.dto.RegisterRequest;
 import com.gtd.backend.auth.repository.RefreshTokenRepository;
 import com.gtd.backend.auth.repository.UserRepository;
+import com.gtd.backend.category.repository.CategoryRepository;
+import com.gtd.backend.config.RateLimitingFilter;
 import com.gtd.backend.context.repository.ContextRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,11 +43,19 @@ class JwtAuthIntegrationTest {
     @Autowired
     private ContextRepository contextRepository;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private RateLimitingFilter rateLimitingFilter;
+
     @BeforeEach
     void setUp() {
+        categoryRepository.deleteAll();
         contextRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
+        rateLimitingFilter.clearBuckets();
     }
 
     private void registerUser(String email, String password) throws Exception {
