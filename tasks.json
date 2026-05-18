@@ -693,7 +693,7 @@
         "Шаг 4: Попытаться добавить 5-й уровень — ошибка"
       ],
       "dependencies": ["TASK-030", "TASK-013"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-032",

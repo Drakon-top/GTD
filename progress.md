@@ -845,3 +845,31 @@
   - Все поля disabled для isCompleted задач — UX: нельзя редактировать завершённую задачу, но можно удалить
   - Разблокированы: TASK-031 (подзадачи в UI, зависит от TASK-030 + TASK-013, оба done), TASK-032 (drag & drop, зависит от TASK-030 + TASK-012, оба done), TASK-033 (категории в UI, зависит от TASK-029 + TASK-014, оба done, но также TASK-030 для task editing), TASK-034 (напоминания в UI, зависит от TASK-030 + TASK-016 + TASK-021)
   - Следующий приоритет: TASK-031 (ui, high) — подзадачи в панели деталей (зависит от TASK-030, done), TASK-032 (ui, high) — drag & drop перемещение задач (зависит от TASK-030 + TASK-012, оба done), TASK-035 (ui, medium) — 5 тем оформления (зависит от TASK-029, done)
+
+### TASK-031 — Web: подзадачи — отображение и управление в панели деталей
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Полностью переработан компонент `SubtaskSection` — из плоского списка в рекурсивную иерархическую структуру
+  - Создан компонент `SubtaskTree` — рекурсивно отображает подзадачи с визуальной вложенностью (border-left + padding-left на каждом уровне)
+  - Создан компонент `SubtaskItem` — каждая подзадача: expand/collapse toggle (chevron), checkbox, title, subtask count badge
+  - Создан компонент `AddSubtaskInline` — кнопка "+ Add subtask" появляется на каждом уровне, позволяет добавить подзадачу к любому элементу
+  - Иерархия: подзадачи отображаются с визуальным indent (ml-4 + border-l), каждый уровень collapse/expand независимо
+  - Expand/collapse: chevron-icon (>) поворачивается на 90° при раскрытии, отображается только если у подзадачи есть дети
+  - Прогресс-бар в секции подзадач: общий progress (completed/total) с процентом, зелёный (emerald-500), рекурсивно считает ВСЕ уровни вложенности
+  - При nestingLevel >= 4: кнопка "Add subtask" не отображается, показывается предупреждение "Maximum nesting depth reached (4 levels)"
+  - Backend: `toResponseWithSubtasksAndProgress()` теперь рекурсивно загружает ВСЕ уровни подзадач (раньше только первый уровень)
+  - Backend: `getSubtasks()` endpoint также возвращает рекурсивную иерархию
+  - Backend: `toResponseWithProgress()` теперь включает `subtaskCount` и `completedSubtaskCount` для задач с подзадачами — используется в list view
+  - Backend: `toResponse()` теперь включает `isRecurring` поле (true если recurrenceRule не null/blank) — ранее поле устанавливалось только при completeTask()
+  - Frontend: `TaskList` обновлён — показывает subtask count из `task.subtaskCount`/`task.completedSubtaskCount` (вместо полного subtasks array который не загружается для листинга)
+  - TypeScript: добавлены поля `subtaskCount` и `completedSubtaskCount` в `TaskResponse` тип
+  - Все 480 backend тестов проходят, frontend ESLint + build без ошибок
+- **Коммиты:** feat: add hierarchical subtask display with recursive nesting up to 4 levels
+- **Заметки:**
+  - Recursive subtask loading в backend может вызвать N+1 проблему при глубокой вложенности (4 уровня × много задач). Для MVP это приемлемо, при необходимости можно добавить batch-fetch через recursive CTE
+  - subtaskCount/completedSubtaskCount добавляет 2 дополнительных SQL-запроса на каждую задачу в list view. При большом количестве задач стоит рассмотреть batch-count или денормализацию
+  - AddSubtaskInline отображается на каждом уровне — UX позволяет добавить подзадачу к любому элементу напрямую из иерархии
+  - countCompleted/countTotal в React — рекурсивные функции для подсчёта прогресса на клиенте (дублирует backend логику для отзывчивого UI)
+  - Разблокированы: никаких прямых зависимостей от TASK-031 в tasks.json
+  - Следующий приоритет: TASK-032 (ui, high) — drag & drop перемещение задач (зависит от TASK-030 + TASK-012, оба done), TASK-033 (ui, medium) — кастомные категории UI (зависит от TASK-029 + TASK-014, оба done), TASK-035 (ui, medium) — 5 тем оформления (зависит от TASK-029, done)

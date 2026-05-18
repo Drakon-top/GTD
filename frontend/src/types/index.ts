@@ -64,6 +64,8 @@ export interface TaskResponse {
   hasIncompleteSubtasks: boolean | null;
   nextInstanceId: string | null;
   subtasks: TaskResponse[];
+  subtaskCount: number | null;
+  completedSubtaskCount: number | null;
   createdAt: string;
   updatedAt: string;
   version: number;

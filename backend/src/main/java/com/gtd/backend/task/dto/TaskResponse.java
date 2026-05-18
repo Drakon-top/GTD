@@ -77,6 +77,12 @@ public class TaskResponse {
     @Schema(description = "Whether the completed instance was part of a recurring task")
     private Boolean isRecurring;
 
+    @Schema(description = "Total number of direct subtasks (for list views)")
+    private Integer subtaskCount;
+
+    @Schema(description = "Number of completed direct subtasks (for list views)")
+    private Integer completedSubtaskCount;
+
     @Schema(description = "Creation timestamp")
     private Instant createdAt;
 

@@ -186,7 +186,7 @@ public class TaskService {
         verifyTaskOwnership(parentTask, userId);
 
         List<Task> subtasks = taskRepository.findByParentTaskIdAndIsDeletedFalseOrderBySortOrderAsc(parentTaskId);
-        return subtasks.stream().map(this::toResponseWithProgress).toList();
+        return subtasks.stream().map(this::toResponseWithSubtasksAndProgress).toList();
     }
 
     @Transactional(readOnly = true)
@@ -328,6 +328,7 @@ public class TaskService {
                 .notes(task.getNotes())
                 .dueDate(task.getDueDate())
                 .recurrenceRule(task.getRecurrenceRule())
+                .isRecurring(task.getRecurrenceRule() != null && !task.getRecurrenceRule().isBlank() ? true : null)
                 .nestingLevel(task.getNestingLevel())
                 .sortOrder(task.getSortOrder())
                 .completed(task.isCompleted())
@@ -343,12 +344,20 @@ public class TaskService {
         if (task.getGtdList() == GtdList.PROJECTS) {
             response.setProgress(computeProgress(task.getId()));
         }
+        int subtaskCount = taskRepository.countByParentTaskIdAndIsDeletedFalse(task.getId());
+        if (subtaskCount > 0) {
+            int completedSubtasks = taskRepository.countByParentTaskIdAndIsCompletedTrueAndIsDeletedFalse(task.getId());
+            response.setSubtaskCount(subtaskCount);
+            response.setCompletedSubtaskCount(completedSubtasks);
+        }
         return response;
     }
 
     private TaskResponse toResponseWithSubtasksAndProgress(Task task) {
         List<Task> subtasks = taskRepository.findByParentTaskIdAndIsDeletedFalseOrderBySortOrderAsc(task.getId());
-        List<TaskResponse> subtaskResponses = subtasks.stream().map(this::toResponseWithProgress).toList();
+        List<TaskResponse> subtaskResponses = subtasks.stream()
+                .map(this::toResponseWithSubtasksAndProgress)
+                .toList();
 
         TaskResponse response = toResponseWithProgress(task);
         response.setSubtasks(subtaskResponses);

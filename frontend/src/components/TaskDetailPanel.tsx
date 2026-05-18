@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import apiClient from '../api/client';
 import type { CategoryResponse, GtdList, TaskResponse } from '../types';
 import { gtdListLabel } from '../utils/gtdLabels';
@@ -139,23 +139,23 @@ export default function TaskDetailPanel({
     } catch { /* silently fail */ }
   }
 
-  async function handleSubtaskToggle(subtask: TaskResponse) {
-    if (subtask.isCompleted) return;
+  const reloadTask = useCallback(async () => {
+    const updated = await fetchTask(taskId);
+    setTask(updated);
+    onTaskChanged();
+  }, [taskId, onTaskChanged]);
+
+  async function handleSubtaskToggle(subtaskId: string) {
     try {
-      await apiClient.patch(`/tasks/${subtask.id}/complete`);
-      const updated = await fetchTask(taskId);
-      setTask(updated);
-      onTaskChanged();
+      await apiClient.patch(`/tasks/${subtaskId}/complete`);
+      await reloadTask();
     } catch { /* silently fail */ }
   }
 
-  async function handleAddSubtask(title: string) {
-    if (!task) return;
+  async function handleAddSubtask(parentId: string, title: string) {
     try {
-      await apiClient.post(`/tasks/${task.id}/subtasks`, { title });
-      const updated = await fetchTask(taskId);
-      setTask(updated);
-      onTaskChanged();
+      await apiClient.post(`/tasks/${parentId}/subtasks`, { title });
+      await reloadTask();
     } catch { /* silently fail */ }
   }
 
@@ -331,6 +331,7 @@ export default function TaskDetailPanel({
 
         {/* Subtasks */}
         <SubtaskSection
+          parentId={task.id}
           subtasks={task.subtasks ?? []}
           nestingLevel={task.nestingLevel}
           isCompleted={task.isCompleted}
@@ -406,22 +407,231 @@ export default function TaskDetailPanel({
 }
 
 function SubtaskSection({
+  parentId,
   subtasks,
   nestingLevel,
   isCompleted,
   onToggle,
   onAdd,
 }: {
+  parentId: string;
   subtasks: TaskResponse[];
   nestingLevel: number;
   isCompleted: boolean;
-  onToggle: (subtask: TaskResponse) => void;
-  onAdd: (title: string) => void;
+  onToggle: (subtaskId: string) => void;
+  onAdd: (parentId: string, title: string) => void;
+}) {
+  const canAddMore = nestingLevel < 4;
+  const completedCount = countCompleted(subtasks);
+  const totalCount = countTotal(subtasks);
+
+  return (
+    <div className="mb-4">
+      <div className="mb-1 flex items-center justify-between">
+        <label className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
+          Subtasks
+          {totalCount > 0 && (
+            <span className="ml-1 normal-case">
+              ({completedCount}/{totalCount})
+            </span>
+          )}
+        </label>
+      </div>
+
+      {totalCount > 0 && (
+        <div className="mb-2 flex items-center gap-2">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-200">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%` }}
+            />
+          </div>
+          <span className="text-[10px] font-medium text-stone-500">
+            {totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%
+          </span>
+        </div>
+      )}
+
+      {subtasks.length > 0 && (
+        <SubtaskTree
+          subtasks={subtasks}
+          depth={0}
+          parentIsCompleted={isCompleted}
+          onToggle={onToggle}
+          onAdd={onAdd}
+        />
+      )}
+
+      {subtasks.length === 0 && (
+        <p className="text-xs text-stone-400">
+          {canAddMore && !isCompleted ? 'No subtasks yet.' : 'No subtasks.'}
+        </p>
+      )}
+
+      {canAddMore && !isCompleted && (
+        <AddSubtaskInline parentId={parentId} onAdd={onAdd} depth={0} />
+      )}
+
+      {!canAddMore && !isCompleted && (
+        <p className="mt-1 text-[10px] text-amber-600">
+          Maximum nesting depth reached (4 levels). Cannot add deeper subtasks.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function countCompleted(subtasks: TaskResponse[]): number {
+  let count = 0;
+  for (const s of subtasks) {
+    if (s.isCompleted) count++;
+    if (s.subtasks && s.subtasks.length > 0) count += countCompleted(s.subtasks);
+  }
+  return count;
+}
+
+function countTotal(subtasks: TaskResponse[]): number {
+  let count = subtasks.length;
+  for (const s of subtasks) {
+    if (s.subtasks && s.subtasks.length > 0) count += countTotal(s.subtasks);
+  }
+  return count;
+}
+
+function SubtaskTree({
+  subtasks,
+  depth,
+  parentIsCompleted,
+  onToggle,
+  onAdd,
+}: {
+  subtasks: TaskResponse[];
+  depth: number;
+  parentIsCompleted: boolean;
+  onToggle: (subtaskId: string) => void;
+  onAdd: (parentId: string, title: string) => void;
+}) {
+  return (
+    <ul className={depth > 0 ? 'ml-4 border-l border-stone-100 pl-2' : ''}>
+      {subtasks.map((sub) => (
+        <SubtaskItem
+          key={sub.id}
+          subtask={sub}
+          depth={depth}
+          parentIsCompleted={parentIsCompleted}
+          onToggle={onToggle}
+          onAdd={onAdd}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function SubtaskItem({
+  subtask,
+  depth,
+  parentIsCompleted,
+  onToggle,
+  onAdd,
+}: {
+  subtask: TaskResponse;
+  depth: number;
+  parentIsCompleted: boolean;
+  onToggle: (subtaskId: string) => void;
+  onAdd: (parentId: string, title: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const hasChildren = subtask.subtasks && subtask.subtasks.length > 0;
+  const canNest = subtask.nestingLevel < 4;
+
+  return (
+    <li className="py-0.5">
+      <div className="group flex items-center gap-1.5 rounded px-1 py-0.5">
+        {/* Expand/collapse toggle */}
+        {hasChildren ? (
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+          >
+            <svg
+              className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        ) : (
+          <span className="w-4 shrink-0" />
+        )}
+
+        {/* Checkbox */}
+        <button
+          type="button"
+          onClick={() => { if (!subtask.isCompleted) onToggle(subtask.id); }}
+          disabled={subtask.isCompleted}
+          className={`h-3.5 w-3.5 shrink-0 rounded-sm border transition ${
+            subtask.isCompleted
+              ? 'border-stone-300 bg-stone-200 text-stone-500'
+              : 'border-stone-300 hover:border-stone-500 cursor-pointer'
+          } flex items-center justify-center`}
+        >
+          {subtask.isCompleted && (
+            <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </button>
+
+        {/* Title */}
+        <span className={`flex-1 text-sm ${subtask.isCompleted ? 'text-stone-400 line-through' : 'text-stone-700'}`}>
+          {subtask.title}
+        </span>
+
+        {/* Subtask count badge */}
+        {hasChildren && (
+          <span className="text-[10px] text-stone-400">
+            {subtask.subtasks!.filter((s) => s.isCompleted).length}/{subtask.subtasks!.length}
+          </span>
+        )}
+      </div>
+
+      {/* Nested subtasks */}
+      {hasChildren && expanded && (
+        <SubtaskTree
+          subtasks={subtask.subtasks!}
+          depth={depth + 1}
+          parentIsCompleted={parentIsCompleted || subtask.isCompleted}
+          onToggle={onToggle}
+          onAdd={onAdd}
+        />
+      )}
+
+      {/* Add subtask at this level */}
+      {expanded && canNest && !parentIsCompleted && !subtask.isCompleted && (
+        <div className="ml-4 border-l border-stone-100 pl-2">
+          <AddSubtaskInline parentId={subtask.id} onAdd={onAdd} depth={depth + 1} />
+        </div>
+      )}
+    </li>
+  );
+}
+
+function AddSubtaskInline({
+  parentId,
+  onAdd,
+  depth,
+}: {
+  parentId: string;
+  onAdd: (parentId: string, title: string) => void;
+  depth: number;
 }) {
   const [adding, setAdding] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const canAddMore = nestingLevel < 4;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -429,7 +639,7 @@ function SubtaskSection({
     if (!title) return;
     setSubmitting(true);
     try {
-      onAdd(title);
+      onAdd(parentId, title);
       setNewTitle('');
       setAdding(false);
     } finally {
@@ -437,94 +647,44 @@ function SubtaskSection({
     }
   }
 
+  if (!adding) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAdding(true)}
+        className={`mt-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-stone-400 transition hover:bg-stone-100 hover:text-stone-600 ${depth > 0 ? '' : 'mt-1'}`}
+      >
+        + Add subtask
+      </button>
+    );
+  }
+
   return (
-    <div className="mb-4">
-      <div className="mb-1 flex items-center justify-between">
-        <label className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
-          Subtasks
-          {subtasks.length > 0 && (
-            <span className="ml-1 normal-case">
-              ({subtasks.filter((s) => s.isCompleted).length}/{subtasks.length})
-            </span>
-          )}
-        </label>
-        {canAddMore && !isCompleted && !adding && (
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="rounded px-1.5 py-0.5 text-[11px] font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700"
-          >
-            + Add
-          </button>
-        )}
-      </div>
-
-      {subtasks.length > 0 && (
-        <ul className="space-y-1">
-          {subtasks.map((sub) => (
-            <li key={sub.id} className="flex items-center gap-2 rounded px-1 py-0.5 text-sm">
-              <button
-                type="button"
-                onClick={() => onToggle(sub)}
-                disabled={sub.isCompleted}
-                className={`h-3.5 w-3.5 shrink-0 rounded-sm border transition ${
-                  sub.isCompleted
-                    ? 'border-stone-300 bg-stone-200 text-stone-500'
-                    : 'border-stone-300 hover:border-stone-500 cursor-pointer'
-                } flex items-center justify-center`}
-              >
-                {sub.isCompleted && (
-                  <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </button>
-              <span className={sub.isCompleted ? 'text-stone-400 line-through' : 'text-stone-700'}>
-                {sub.title}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {subtasks.length === 0 && !adding && (
-        <p className="text-xs text-stone-400">
-          {canAddMore && !isCompleted ? 'No subtasks yet. Click + Add to create one.' : 'No subtasks.'}
-        </p>
-      )}
-
-      {adding && (
-        <form onSubmit={handleSubmit} className="mt-2 flex items-center gap-1.5">
-          <input
-            autoFocus
-            type="text"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Escape') { setAdding(false); setNewTitle(''); } }}
-            placeholder="Subtask title..."
-            className="flex-1 rounded border border-stone-200 px-2 py-1 text-sm text-stone-800 outline-none placeholder:text-stone-400 focus:border-stone-400"
-            disabled={submitting}
-          />
-          <button
-            type="submit"
-            disabled={submitting || !newTitle.trim()}
-            className="rounded bg-stone-900 px-2 py-1 text-xs font-medium text-white transition hover:bg-stone-800 disabled:opacity-40"
-          >
-            Add
-          </button>
-          <button
-            type="button"
-            onClick={() => { setAdding(false); setNewTitle(''); }}
-            className="rounded px-2 py-1 text-xs text-stone-500 transition hover:bg-stone-100"
-          >
-            ✕
-          </button>
-        </form>
-      )}
-
-      {!canAddMore && !isCompleted && (
-        <p className="mt-1 text-[10px] text-amber-600">Max nesting depth reached (4 levels).</p>
-      )}
-    </div>
+    <form onSubmit={handleSubmit} className="mt-1 flex items-center gap-1.5">
+      <input
+        autoFocus
+        type="text"
+        value={newTitle}
+        onChange={(e) => setNewTitle(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Escape') { setAdding(false); setNewTitle(''); } }}
+        placeholder="Subtask title..."
+        className="flex-1 rounded border border-stone-200 px-2 py-1 text-xs text-stone-800 outline-none placeholder:text-stone-400 focus:border-stone-400"
+        disabled={submitting}
+      />
+      <button
+        type="submit"
+        disabled={submitting || !newTitle.trim()}
+        className="rounded bg-stone-900 px-2 py-1 text-[10px] font-medium text-white transition hover:bg-stone-800 disabled:opacity-40"
+      >
+        Add
+      </button>
+      <button
+        type="button"
+        onClick={() => { setAdding(false); setNewTitle(''); }}
+        className="rounded px-1.5 py-0.5 text-[10px] text-stone-500 transition hover:bg-stone-100"
+      >
+        ✕
+      </button>
+    </form>
   );
 }

@@ -161,9 +161,9 @@ export default function TaskList({
                       {task.title}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
-                      {task.subtasks && task.subtasks.length > 0 && (
+                      {task.subtaskCount != null && task.subtaskCount > 0 && (
                         <span className="text-xs text-stone-400">
-                          {task.subtasks.filter((s: TaskResponse) => s.isCompleted).length}/{task.subtasks.length} subtasks
+                          {task.completedSubtaskCount ?? 0}/{task.subtaskCount} subtasks
                         </span>
                       )}
                       {task.progress != null && (
