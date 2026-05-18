@@ -429,3 +429,32 @@
   - Reminder не использует soft delete (в отличие от tasks/contexts/categories) — удаление безвозвратное
   - Разблокированы: TASK-018 (scheduler для проверки напоминаний и дедлайнов, зависит от TASK-016 + TASK-017), TASK-025 (экспорт данных, зависит от TASK-014 + TASK-016, оба done)
   - Следующий приоритет: TASK-021 (functional, high) — повторяющиеся задачи (зависит от TASK-012, done), TASK-017 (integration, high) — RabbitMQ setup (зависит от TASK-002, done), TASK-023 (functional, high) — Sync API (зависит от TASK-012, done)
+
+### TASK-021 — Повторяющиеся задачи: создание и логика повторения
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Добавлено поле `recurrenceRule` в `TaskResponse` — клиент видит правило повторения задачи
+  - Добавлено поле `recurrenceRule` в `CreateTaskRequest` — задачу можно создать с правилом повторения
+  - Добавлена поддержка `recurrenceRule` в `UpdateTaskRequest` — с трекингом "был ли предоставлен" (custom setter + `recurrenceRuleProvided` boolean + `@JsonIgnore`)
+  - Обновлён `createTask()` — передаёт recurrenceRule из запроса в Task entity
+  - Обновлён `updateTask()` — обновляет recurrenceRule только если поле было предоставлено; пустая строка "" очищает правило (stop recurrence)
+  - Обновлён `completeTask()` — при наличии recurrenceRule автоматически создаёт следующий экземпляр задачи:
+    - Новый экземпляр наследует: context, title, notes, categoryId, recurrenceRule, nestingLevel, parentTask
+    - GTD-список наследуется как **оригинальный** (до перемещения в DONE), а не DONE
+    - is_completed=false, completedAt=null, новый sortOrder
+    - Все напоминания (reminders) копируются в новый экземпляр (remind_at, offsetType, offsetValue), is_sent сбрасывается в false
+  - Добавлены поля в `TaskResponse`: `nextInstanceId` (UUID нового экземпляра), `isRecurring` (boolean, true если задача повторяющаяся)
+  - `TaskService` теперь инжектит `ReminderRepository` для копирования напоминаний
+  - Написаны unit-тесты TaskServiceTest (+9 тестов: create next instance, no next for non-recurring, preserve GTD list, copy reminders, inherit fields, create with recurrence, update recurrence, stop recurrence, no change when not provided)
+  - Написаны controller-тесты TaskControllerTest (+2 теста: recurrence fields on complete, recurrenceRule in response)
+  - Написаны интеграционные тесты TaskIntegrationTest (+7 тестов: create with recurrence, complete creates next instance, preserve original GTD list, no next for non-recurring, copy reminders, stop recurrence via empty string, inherit context and category)
+  - Все 347 тестов проходят (329 старых + 18 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add recurring tasks with auto-creation of next instance on completion
+- **Заметки:**
+  - recurrenceRule хранится как JSONB строка — формат определяется клиентом (e.g. `{"type":"daily","time":"09:00"}`, `{"type":"weekly","dayOfWeek":"FRIDAY"}`)
+  - Для остановки повторения: PUT /tasks/{id} с `"recurrenceRule": ""` — обнуляет поле в БД
+  - При обновлении через UpdateTaskRequest: если recurrenceRule не предоставлен (null/omit), он не меняется; если предоставлен (включая ""), он обновляется. Реализовано через custom setter + @JsonIgnore boolean
+  - Напоминания копируются с оригинальными remind_at timestamps — TASK-022 (scheduler) будет отвечать за корректировку дат на следующий цикл
+  - Разблокированы: TASK-022 (scheduler для создания экземпляров повторяющихся задач, зависит от TASK-021 + TASK-017)
+  - Следующий приоритет: TASK-017 (integration, high) — RabbitMQ setup (разблокирует TASK-018, TASK-019, TASK-022), TASK-023 (functional, high) — Sync API (зависит от TASK-012, done), TASK-025 (functional, medium) — Export API (зависит от TASK-014 + TASK-016, оба done)

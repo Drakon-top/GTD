@@ -6,6 +6,9 @@ import com.gtd.backend.context.exception.ContextNotFoundException;
 import com.gtd.backend.context.model.Context;
 import com.gtd.backend.context.model.ContextTheme;
 import com.gtd.backend.context.repository.ContextRepository;
+import com.gtd.backend.reminder.model.Reminder;
+import com.gtd.backend.reminder.model.ReminderOffsetType;
+import com.gtd.backend.reminder.repository.ReminderRepository;
 import com.gtd.backend.task.dto.CreateTaskRequest;
 import com.gtd.backend.task.dto.TaskCountsResponse;
 import com.gtd.backend.task.dto.TaskResponse;
@@ -32,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +47,9 @@ class TaskServiceTest {
 
     @Mock
     private ContextRepository contextRepository;
+
+    @Mock
+    private ReminderRepository reminderRepository;
 
     @InjectMocks
     private TaskService taskService;
@@ -811,6 +818,230 @@ class TaskServiceTest {
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
+    }
+
+    @Test
+    void shouldCreateNextInstanceWhenCompletingRecurringTask() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "Daily standup", GtdList.NEXT_ACTIONS);
+        task.setRecurrenceRule("{\"type\":\"daily\",\"time\":\"09:00\"}");
+        task.setCategoryId(UUID.randomUUID());
+
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.countByParentTaskIdAndIsCompletedFalseAndIsDeletedFalse(taskId)).thenReturn(0);
+        when(taskRepository.countByContextIdAndIsDeletedFalse(contextId)).thenReturn(5);
+        when(reminderRepository.findByTaskIdOrderByRemindAtAsc(taskId)).thenReturn(List.of());
+
+        UUID nextId = UUID.randomUUID();
+        when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> {
+            Task t = invocation.getArgument(0);
+            if (t.getId() == null) {
+                t.setId(nextId);
+            }
+            return t;
+        });
+
+        TaskResponse result = taskService.completeTask(taskId, userId);
+
+        assertThat(result.isCompleted()).isTrue();
+        assertThat(result.getGtdList()).isEqualTo(GtdList.DONE);
+        assertThat(result.getNextInstanceId()).isEqualTo(nextId);
+        assertThat(result.getIsRecurring()).isTrue();
+    }
+
+    @Test
+    void shouldNotCreateNextInstanceWhenCompletingNonRecurringTask() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "One-off task", GtdList.INBOX);
+
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(taskRepository.countByParentTaskIdAndIsCompletedFalseAndIsDeletedFalse(taskId)).thenReturn(0);
+
+        TaskResponse result = taskService.completeTask(taskId, userId);
+
+        assertThat(result.isCompleted()).isTrue();
+        assertThat(result.getNextInstanceId()).isNull();
+        assertThat(result.getIsRecurring()).isNull();
+        verify(reminderRepository, never()).findByTaskIdOrderByRemindAtAsc(any());
+    }
+
+    @Test
+    void shouldPreserveOriginalGtdListOnNextInstance() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "Weekly review", GtdList.NEXT_ACTIONS);
+        task.setRecurrenceRule("{\"type\":\"weekly\",\"dayOfWeek\":\"FRIDAY\"}");
+
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.countByParentTaskIdAndIsCompletedFalseAndIsDeletedFalse(taskId)).thenReturn(0);
+        when(taskRepository.countByContextIdAndIsDeletedFalse(contextId)).thenReturn(3);
+        when(reminderRepository.findByTaskIdOrderByRemindAtAsc(taskId)).thenReturn(List.of());
+
+        UUID nextId = UUID.randomUUID();
+        when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> {
+            Task t = invocation.getArgument(0);
+            if (t.getId() == null) {
+                t.setId(nextId);
+                t.setCreatedAt(Instant.now());
+                t.setUpdatedAt(Instant.now());
+            }
+            return t;
+        });
+
+        taskService.completeTask(taskId, userId);
+
+        verify(taskRepository, times(2)).saveAndFlush(any(Task.class));
+    }
+
+    @Test
+    void shouldCopyRemindersToNextRecurringInstance() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "Daily standup", GtdList.NEXT_ACTIONS);
+        task.setRecurrenceRule("{\"type\":\"daily\"}");
+
+        Reminder reminder1 = Reminder.builder()
+                .id(UUID.randomUUID())
+                .task(task)
+                .remindAt(Instant.parse("2026-06-01T08:00:00Z"))
+                .offsetType(ReminderOffsetType.HOURS_BEFORE)
+                .offsetValue(1)
+                .build();
+        Reminder reminder2 = Reminder.builder()
+                .id(UUID.randomUUID())
+                .task(task)
+                .remindAt(Instant.parse("2026-06-01T08:30:00Z"))
+                .build();
+
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.countByParentTaskIdAndIsCompletedFalseAndIsDeletedFalse(taskId)).thenReturn(0);
+        when(taskRepository.countByContextIdAndIsDeletedFalse(contextId)).thenReturn(0);
+        when(reminderRepository.findByTaskIdOrderByRemindAtAsc(taskId)).thenReturn(List.of(reminder1, reminder2));
+        when(reminderRepository.save(any(Reminder.class))).thenAnswer(invocation -> {
+            Reminder r = invocation.getArgument(0);
+            r.setId(UUID.randomUUID());
+            return r;
+        });
+
+        UUID nextId = UUID.randomUUID();
+        when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> {
+            Task t = invocation.getArgument(0);
+            if (t.getId() == null) {
+                t.setId(nextId);
+            }
+            return t;
+        });
+
+        TaskResponse result = taskService.completeTask(taskId, userId);
+
+        assertThat(result.getNextInstanceId()).isEqualTo(nextId);
+        verify(reminderRepository, times(2)).save(any(Reminder.class));
+    }
+
+    @Test
+    void shouldInheritRecurrenceRuleInNextInstance() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "Recurring", GtdList.INBOX);
+        String rule = "{\"type\":\"daily\",\"time\":\"09:00\"}";
+        task.setRecurrenceRule(rule);
+        task.setNotes("Some notes");
+        UUID catId = UUID.randomUUID();
+        task.setCategoryId(catId);
+
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.countByParentTaskIdAndIsCompletedFalseAndIsDeletedFalse(taskId)).thenReturn(0);
+        when(taskRepository.countByContextIdAndIsDeletedFalse(contextId)).thenReturn(0);
+        when(reminderRepository.findByTaskIdOrderByRemindAtAsc(taskId)).thenReturn(List.of());
+
+        UUID nextId = UUID.randomUUID();
+        when(taskRepository.saveAndFlush(any(Task.class))).thenAnswer(invocation -> {
+            Task t = invocation.getArgument(0);
+            if (t.getId() == null) {
+                t.setId(nextId);
+                t.setCreatedAt(Instant.now());
+                t.setUpdatedAt(Instant.now());
+                assertThat(t.getRecurrenceRule()).isEqualTo(rule);
+                assertThat(t.getTitle()).isEqualTo("Recurring");
+                assertThat(t.getNotes()).isEqualTo("Some notes");
+                assertThat(t.getCategoryId()).isEqualTo(catId);
+                assertThat(t.isCompleted()).isFalse();
+                assertThat(t.getGtdList()).isEqualTo(GtdList.INBOX);
+            }
+            return t;
+        });
+
+        taskService.completeTask(taskId, userId);
+    }
+
+    @Test
+    void shouldCreateTaskWithRecurrenceRule() {
+        Context context = buildContext(contextId, userId);
+        when(contextRepository.findByIdAndIsDeletedFalse(contextId)).thenReturn(Optional.of(context));
+        when(taskRepository.countByContextIdAndIsDeletedFalse(contextId)).thenReturn(0);
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task t = invocation.getArgument(0);
+            t.setId(taskId);
+            t.setCreatedAt(Instant.now());
+            t.setUpdatedAt(Instant.now());
+            return t;
+        });
+
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Daily standup")
+                .recurrenceRule("{\"type\":\"daily\",\"time\":\"09:00\"}")
+                .build();
+
+        TaskResponse result = taskService.createTask(contextId, request, userId);
+
+        assertThat(result.getRecurrenceRule()).isEqualTo("{\"type\":\"daily\",\"time\":\"09:00\"}");
+    }
+
+    @Test
+    void shouldUpdateRecurrenceRule() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "My task", GtdList.INBOX);
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTaskRequest request = new UpdateTaskRequest();
+        request.setRecurrenceRule("{\"type\":\"weekly\"}");
+
+        TaskResponse result = taskService.updateTask(taskId, request, userId);
+
+        assertThat(result.getRecurrenceRule()).isEqualTo("{\"type\":\"weekly\"}");
+    }
+
+    @Test
+    void shouldStopRecurrenceWhenSetToEmptyString() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "Recurring task", GtdList.INBOX);
+        task.setRecurrenceRule("{\"type\":\"daily\"}");
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTaskRequest request = new UpdateTaskRequest();
+        request.setRecurrenceRule("");
+
+        TaskResponse result = taskService.updateTask(taskId, request, userId);
+
+        assertThat(result.getRecurrenceRule()).isNull();
+    }
+
+    @Test
+    void shouldNotChangeRecurrenceRuleWhenNotProvided() {
+        Context context = buildContext(contextId, userId);
+        Task task = buildTask(taskId, context, "Recurring task", GtdList.INBOX);
+        task.setRecurrenceRule("{\"type\":\"daily\"}");
+        when(taskRepository.findByIdAndIsDeletedFalse(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateTaskRequest request = UpdateTaskRequest.builder()
+                .title("Updated title")
+                .build();
+
+        TaskResponse result = taskService.updateTask(taskId, request, userId);
+
+        assertThat(result.getRecurrenceRule()).isEqualTo("{\"type\":\"daily\"}");
+        assertThat(result.getTitle()).isEqualTo("Updated title");
     }
 
     private Task buildTask(UUID id, Context context, String title, GtdList gtdList) {

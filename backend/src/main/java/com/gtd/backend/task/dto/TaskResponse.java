@@ -68,6 +68,15 @@ public class TaskResponse {
     @Schema(description = "Project progress percentage (0-100). Only populated for tasks in PROJECTS list that have subtasks.")
     private Integer progress;
 
+    @Schema(description = "Recurrence rule as JSON string (e.g. {\"type\":\"daily\",\"time\":\"09:00\"}). Null if not recurring.")
+    private String recurrenceRule;
+
+    @Schema(description = "ID of the newly created next instance (only present when completing a recurring task)")
+    private UUID nextInstanceId;
+
+    @Schema(description = "Whether the completed instance was part of a recurring task")
+    private Boolean isRecurring;
+
     @Schema(description = "Creation timestamp")
     private Instant createdAt;
 

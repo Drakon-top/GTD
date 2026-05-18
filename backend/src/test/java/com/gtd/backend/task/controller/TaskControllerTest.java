@@ -520,6 +520,34 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$[0].progress").value(75));
     }
 
+    @Test
+    void shouldReturnRecurrenceFieldsOnComplete() throws Exception {
+        UUID nextId = UUID.randomUUID();
+        TaskResponse response = buildResponse("Recurring", GtdList.DONE);
+        response.setCompleted(true);
+        response.setCompletedAt(Instant.now());
+        response.setNextInstanceId(nextId);
+        response.setIsRecurring(true);
+        when(taskService.completeTask(eq(taskId), eq(userId))).thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId).with(withUser()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.isRecurring").value(true))
+                .andExpect(jsonPath("$.nextInstanceId").value(nextId.toString()));
+    }
+
+    @Test
+    void shouldReturnRecurrenceRuleInTaskResponse() throws Exception {
+        TaskResponse response = buildResponse("Daily standup", GtdList.INBOX);
+        response.setRecurrenceRule("{\"type\":\"daily\"}");
+        when(taskService.getTask(taskId, userId)).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", taskId).with(withUser()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recurrenceRule").value("{\"type\":\"daily\"}"));
+    }
+
     private TaskResponse buildResponse(String title, GtdList gtdList) {
         return TaskResponse.builder()
                 .id(taskId)

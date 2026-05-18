@@ -10,6 +10,7 @@ import com.gtd.backend.config.RateLimitingFilter;
 import com.gtd.backend.context.dto.CreateContextRequest;
 import com.gtd.backend.context.model.ContextTheme;
 import com.gtd.backend.context.repository.ContextRepository;
+import com.gtd.backend.reminder.repository.ReminderRepository;
 import com.gtd.backend.task.dto.CreateTaskRequest;
 import com.gtd.backend.task.dto.MoveTaskRequest;
 import com.gtd.backend.task.dto.UpdateTaskRequest;
@@ -62,6 +63,9 @@ class TaskIntegrationTest {
     private CategoryRepository categoryRepository;
 
     @Autowired
+    private ReminderRepository reminderRepository;
+
+    @Autowired
     private RateLimitingFilter rateLimitingFilter;
 
     private String accessToken;
@@ -69,6 +73,7 @@ class TaskIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        reminderRepository.deleteAll();
         taskRepository.deleteAll();
         categoryRepository.deleteAll();
         contextRepository.deleteAll();
@@ -749,5 +754,208 @@ class TaskIntegrationTest {
                 .andReturn();
 
         return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asText();
+    }
+
+    @Test
+    void shouldCreateTaskWithRecurrenceRule() throws Exception {
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Daily standup")
+                .recurrenceRule("{\"type\":\"daily\",\"time\":\"09:00\"}")
+                .build();
+
+        mockMvc.perform(post("/api/v1/contexts/{contextId}/tasks", contextId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("Daily standup"))
+                .andExpect(jsonPath("$.recurrenceRule").value("{\"type\":\"daily\",\"time\":\"09:00\"}"));
+    }
+
+    @Test
+    void shouldCreateNextInstanceWhenCompletingRecurringTask() throws Exception {
+        String recurrenceRule = "{\"type\":\"daily\",\"time\":\"09:00\"}";
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Daily standup")
+                .recurrenceRule(recurrenceRule)
+                .build();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/contexts/{contextId}/tasks", contextId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String taskId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText();
+
+        MvcResult completeResult = mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.gtdList").value("DONE"))
+                .andExpect(jsonPath("$.isRecurring").value(true))
+                .andExpect(jsonPath("$.nextInstanceId").isNotEmpty())
+                .andReturn();
+
+        String nextInstanceId = objectMapper.readTree(completeResult.getResponse().getContentAsString())
+                .get("nextInstanceId").asText();
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", nextInstanceId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Daily standup"))
+                .andExpect(jsonPath("$.recurrenceRule").value(recurrenceRule))
+                .andExpect(jsonPath("$.completed").value(false))
+                .andExpect(jsonPath("$.gtdList").value("INBOX"));
+    }
+
+    @Test
+    void shouldPreserveOriginalGtdListInNextRecurringInstance() throws Exception {
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Weekly review")
+                .gtdList(GtdList.NEXT_ACTIONS)
+                .recurrenceRule("{\"type\":\"weekly\"}")
+                .build();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/contexts/{contextId}/tasks", contextId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String taskId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText();
+
+        MvcResult completeResult = mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String nextInstanceId = objectMapper.readTree(completeResult.getResponse().getContentAsString())
+                .get("nextInstanceId").asText();
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", nextInstanceId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.gtdList").value("NEXT_ACTIONS"));
+    }
+
+    @Test
+    void shouldNotCreateNextInstanceForNonRecurringTask() throws Exception {
+        String taskId = createTask("One-off task", null);
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.nextInstanceId").doesNotExist())
+                .andExpect(jsonPath("$.isRecurring").doesNotExist());
+    }
+
+    @Test
+    void shouldCopyRemindersToNextRecurringInstance() throws Exception {
+        CreateTaskRequest taskRequest = CreateTaskRequest.builder()
+                .title("Daily task with reminders")
+                .recurrenceRule("{\"type\":\"daily\"}")
+                .build();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/contexts/{contextId}/tasks", contextId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(taskRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String taskId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText();
+
+        String reminderJson = "{\"remindAt\":\"2026-06-01T08:00:00Z\",\"offsetType\":\"HOURS_BEFORE\",\"offsetValue\":1}";
+        mockMvc.perform(post("/api/v1/tasks/{taskId}/reminders", taskId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reminderJson))
+                .andExpect(status().isCreated());
+
+        MvcResult completeResult = mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        String nextInstanceId = objectMapper.readTree(completeResult.getResponse().getContentAsString())
+                .get("nextInstanceId").asText();
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}/reminders", nextInstanceId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].offsetType").value("HOURS_BEFORE"))
+                .andExpect(jsonPath("$[0].offsetValue").value(1));
+    }
+
+    @Test
+    void shouldStopRecurrenceBySettingEmptyRule() throws Exception {
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Recurring task")
+                .recurrenceRule("{\"type\":\"daily\"}")
+                .build();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/contexts/{contextId}/tasks", contextId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String taskId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText();
+
+        String updateJson = "{\"recurrenceRule\":\"\"}";
+        mockMvc.perform(put("/api/v1/tasks/{id}", taskId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recurrenceRule").doesNotExist());
+
+        mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.nextInstanceId").doesNotExist())
+                .andExpect(jsonPath("$.isRecurring").doesNotExist());
+    }
+
+    @Test
+    void shouldInheritContextAndCategoryInNextRecurringInstance() throws Exception {
+        String categoryJson = "{\"name\":\"Work\",\"icon\":\"briefcase\",\"color\":\"#FF0000\"}";
+        MvcResult catResult = mockMvc.perform(post("/api/v1/contexts/{contextId}/categories", contextId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(categoryJson))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String categoryId = objectMapper.readTree(catResult.getResponse().getContentAsString()).get("id").asText();
+
+        CreateTaskRequest request = CreateTaskRequest.builder()
+                .title("Weekly review")
+                .recurrenceRule("{\"type\":\"weekly\"}")
+                .categoryId(UUID.fromString(categoryId))
+                .build();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/contexts/{contextId}/tasks", contextId)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String taskId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText();
+
+        MvcResult completeResult = mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        String nextInstanceId = objectMapper.readTree(completeResult.getResponse().getContentAsString())
+                .get("nextInstanceId").asText();
+
+        mockMvc.perform(get("/api/v1/tasks/{id}", nextInstanceId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contextId").value(contextId))
+                .andExpect(jsonPath("$.categoryId").value(categoryId))
+                .andExpect(jsonPath("$.recurrenceRule").value("{\"type\":\"weekly\"}"));
     }
 }

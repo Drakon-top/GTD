@@ -4,6 +4,8 @@ import com.gtd.backend.context.exception.ContextAccessDeniedException;
 import com.gtd.backend.context.exception.ContextNotFoundException;
 import com.gtd.backend.context.model.Context;
 import com.gtd.backend.context.repository.ContextRepository;
+import com.gtd.backend.reminder.model.Reminder;
+import com.gtd.backend.reminder.repository.ReminderRepository;
 import com.gtd.backend.task.dto.CreateTaskRequest;
 import com.gtd.backend.task.dto.TaskCountsResponse;
 import com.gtd.backend.task.dto.TaskResponse;
@@ -30,6 +32,7 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final ContextRepository contextRepository;
+    private final ReminderRepository reminderRepository;
 
     @Transactional(readOnly = true)
     public List<TaskResponse> getTasks(UUID contextId, GtdList gtdList, UUID userId) {
@@ -67,6 +70,7 @@ public class TaskService {
                 .gtdList(request.getGtdList() != null ? request.getGtdList() : GtdList.INBOX)
                 .dueDate(request.getDueDate())
                 .categoryId(request.getCategoryId())
+                .recurrenceRule(request.getRecurrenceRule())
                 .nestingLevel(1)
                 .sortOrder(sortOrder)
                 .build();
@@ -98,6 +102,10 @@ public class TaskService {
         if (request.getSortOrder() != null) {
             task.setSortOrder(request.getSortOrder());
         }
+        if (request.isRecurrenceRuleProvided()) {
+            String rule = request.getRecurrenceRule();
+            task.setRecurrenceRule(rule != null && !rule.isBlank() ? rule : null);
+        }
 
         Task saved = taskRepository.save(task);
         return toResponse(saved);
@@ -118,6 +126,9 @@ public class TaskService {
         Task task = findTaskOrThrow(taskId);
         verifyTaskOwnership(task, userId);
 
+        GtdList originalGtdList = task.getGtdList();
+        String recurrenceRule = task.getRecurrenceRule();
+
         task.setCompleted(true);
         task.setCompletedAt(Instant.now());
         task.setGtdList(GtdList.DONE);
@@ -128,7 +139,45 @@ public class TaskService {
         if (incompleteSubtasks > 0) {
             response.setHasIncompleteSubtasks(true);
         }
+
+        if (recurrenceRule != null && !recurrenceRule.isBlank()) {
+            Task nextInstance = createNextRecurringInstance(task, originalGtdList);
+            response.setNextInstanceId(nextInstance.getId());
+            response.setIsRecurring(true);
+        }
+
         return response;
+    }
+
+    private Task createNextRecurringInstance(Task completedTask, GtdList originalGtdList) {
+        int sortOrder = taskRepository.countByContextIdAndIsDeletedFalse(completedTask.getContext().getId());
+
+        Task nextInstance = Task.builder()
+                .context(completedTask.getContext())
+                .parentTask(completedTask.getParentTask())
+                .title(completedTask.getTitle())
+                .notes(completedTask.getNotes())
+                .gtdList(originalGtdList)
+                .categoryId(completedTask.getCategoryId())
+                .recurrenceRule(completedTask.getRecurrenceRule())
+                .nestingLevel(completedTask.getNestingLevel())
+                .sortOrder(sortOrder)
+                .build();
+
+        Task savedNext = taskRepository.saveAndFlush(nextInstance);
+
+        List<Reminder> reminders = reminderRepository.findByTaskIdOrderByRemindAtAsc(completedTask.getId());
+        for (Reminder original : reminders) {
+            Reminder copy = Reminder.builder()
+                    .task(savedNext)
+                    .remindAt(original.getRemindAt())
+                    .offsetType(original.getOffsetType())
+                    .offsetValue(original.getOffsetValue())
+                    .build();
+            reminderRepository.save(copy);
+        }
+
+        return savedNext;
     }
 
     @Transactional(readOnly = true)
@@ -191,6 +240,7 @@ public class TaskService {
                 .gtdList(request.getGtdList() != null ? request.getGtdList() : GtdList.INBOX)
                 .dueDate(request.getDueDate())
                 .categoryId(request.getCategoryId())
+                .recurrenceRule(request.getRecurrenceRule())
                 .nestingLevel(parentTask.getNestingLevel() + 1)
                 .sortOrder(sortOrder)
                 .build();
@@ -277,6 +327,7 @@ public class TaskService {
                 .title(task.getTitle())
                 .notes(task.getNotes())
                 .dueDate(task.getDueDate())
+                .recurrenceRule(task.getRecurrenceRule())
                 .nestingLevel(task.getNestingLevel())
                 .sortOrder(task.getSortOrder())
                 .completed(task.isCompleted())

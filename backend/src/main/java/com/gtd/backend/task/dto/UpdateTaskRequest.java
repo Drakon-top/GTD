@@ -1,5 +1,6 @@
 package com.gtd.backend.task.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.gtd.backend.task.model.GtdList;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
@@ -38,4 +39,16 @@ public class UpdateTaskRequest {
 
     @Schema(description = "Sort order", example = "1")
     private Integer sortOrder;
+
+    @Schema(description = "Recurrence rule as JSON string. Send empty string \"\" to stop recurrence, null/omit to leave unchanged.")
+    private String recurrenceRule;
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    private boolean recurrenceRuleProvided = false;
+
+    public void setRecurrenceRule(String recurrenceRule) {
+        this.recurrenceRule = recurrenceRule;
+        this.recurrenceRuleProvided = true;
+    }
 }

@@ -37,4 +37,7 @@ public class CreateTaskRequest {
 
     @Schema(description = "Category ID")
     private UUID categoryId;
+
+    @Schema(description = "Recurrence rule as JSON string (e.g. {\"type\":\"daily\",\"time\":\"09:00\"})")
+    private String recurrenceRule;
 }

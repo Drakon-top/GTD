@@ -473,7 +473,7 @@
         "Шаг 5: PATCH /complete — новый экземпляр НЕ создаётся"
       ],
       "dependencies": ["TASK-012"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-022",
