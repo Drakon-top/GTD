@@ -68,6 +68,11 @@ rabbitmq:
     recurrence-routing-key: notification.recurrence
     sync-conflict-routing-key: notification.sync_conflict
 
+scheduler:
+  reminder-check-ms: 60000
+  deadline-check-ms: 3600000
+  recurrence-cron: "0 0 0 * * *"
+
 springdoc:
   api-docs:
     path: /api-docs

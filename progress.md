@@ -543,3 +543,28 @@
   - JOIN FETCH в запросах устраняет N+1 проблему: все связанные сущности (task → context → user) загружаются одним SQL-запросом
   - Разблокированы: никаких прямых зависимостей от TASK-018 в tasks.json. Но scheduler завершает notification pipeline: TASK-016 (reminders) + TASK-017 (queues) + TASK-019 (consumer) + TASK-018 (scheduler) = полный цикл уведомлений
   - Следующий приоритет: TASK-022 (functional, high) — Scheduler для повторяющихся задач (зависит от TASK-021 + TASK-017, оба done), TASK-023 (functional, high) — Sync API (зависит от TASK-012, done), TASK-025 (functional, medium) — Export API (зависит от TASK-014 + TASK-016, оба done)
+
+### TASK-022 — Scheduler для создания экземпляров повторяющихся задач
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан `RecurrenceScheduler` в пакете `com.gtd.backend.notification.scheduler` — один `@Scheduled`-метод:
+    - `processRecurringTasks()` — ежедневно в 00:00 (configurable: `scheduler.recurrence-cron`): находит все активные незавершённые задачи с `recurrence_rule IS NOT NULL` → для каждой создаёт новый экземпляр → помечает старый как завершённый (overdue) → отправляет уведомление в очередь `notification.recurrence`
+  - Новый экземпляр наследует: context, parentTask, title, notes, gtdList, categoryId, dueDate, recurrenceRule, nestingLevel
+  - Напоминания (reminders) копируются в новый экземпляр с оригинальными remindAt/offsetType/offsetValue, is_sent сбрасывается в false
+  - Старый экземпляр помечается: isCompleted=true, completedAt=now(), gtdList=DONE
+  - Обработка ошибок: если создание нового экземпляра упало для конкретной задачи, scheduler продолжает обработку остальных (per-item try/catch)
+  - RecurrenceScheduler помечен `@ConditionalOnBean(ConnectionFactory.class)` — не загружается в тестах без RabbitMQ
+  - Добавлен JPQL-запрос `findActiveRecurringTasks()` в `TaskRepository` — JOIN FETCH context → user для eager loading всей цепочки
+  - Cron-выражение конфигурируется через `scheduler.recurrence-cron` в application.yml (дефолт: `0 0 0 * * *` — каждый день в полночь)
+  - Добавлена секция scheduler в application.yml (reminder-check-ms, deadline-check-ms, recurrence-cron)
+  - Написаны unit-тесты RecurrenceSchedulerTest (10 тестов: create new instance + mark overdue, send notification, no recurring tasks, multiple tasks, continue after failure, copy reminders, inherit all fields, inherit parentTask, new instance not completed, no notification on failure)
+  - Все 405 тестов проходят (395 старых + 10 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add recurrence scheduler for daily creation of recurring task instances
+- **Заметки:**
+  - Scheduler использует cron вместо fixedRate — гарантирует запуск ровно в полночь, а не через N миллисекунд после старта
+  - Если старый экземпляр не выполнен — он принудительно завершается (DONE + isCompleted=true), а новый создаётся со свежим sortOrder
+  - RecurrenceScheduler и NotificationScheduler работают независимо: NotificationScheduler проверяет reminders/deadlines, RecurrenceScheduler создаёт новые экземпляры повторяющихся задач
+  - Текущая реализация находит ВСЕ активные recurring задачи, независимо от recurrence_rule содержимого. Более тонкая логика (парсинг cron/daily/weekly/custom правил и проверка, что задача "due today") может быть добавлена позже — для MVP ежедневный trigger на все recurring задачи достаточен
+  - Разблокированных задач от TASK-022 нет в tasks.json
+  - Следующий приоритет: TASK-023 (functional, high) — Sync API + Sync_Log table (зависит от TASK-012, done), TASK-025 (functional, medium) — Export API (зависит от TASK-014 + TASK-016, оба done), TASK-026 (infrastructure, medium) — React project init (нет dependencies)

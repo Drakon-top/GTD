@@ -51,4 +51,9 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
             "WHERE t.isDeleted = false AND t.isCompleted = false " +
             "AND t.dueDate IS NOT NULL AND t.dueDate > :now AND t.dueDate <= :deadline")
     List<Task> findTasksWithUpcomingDeadlines(@Param("now") Instant now, @Param("deadline") Instant deadline);
+
+    @Query("SELECT t FROM Task t JOIN FETCH t.context c JOIN FETCH c.user " +
+            "WHERE t.isDeleted = false AND t.isCompleted = false " +
+            "AND t.recurrenceRule IS NOT NULL")
+    List<Task> findActiveRecurringTasks();
 }
