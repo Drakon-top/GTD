@@ -1255,3 +1255,42 @@
   - Разблокировано: TASK-045 (Android FCM push) — зависит от TASK-020 (done) + TASK-043 (pending)
   - Оставшиеся pending задачи: TASK-037 (Android init, medium, infrastructure), TASK-038-045 (Android chain), TASK-050 (E2E, low)
   - **Все backend и web задачи завершены.** Оставшиеся задачи — Android-клиент (TASK-037-045) и финальное E2E тестирование (TASK-050)
+
+### TASK-037 — Android: инициализация Kotlin + Jetpack Compose проекта
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан Android-проект в `android/` с Kotlin 2.1.10, Jetpack Compose (BOM 2025.03.00), AGP 8.7.3
+  - Gradle Version Catalog (`gradle/libs.versions.toml`) со всеми зависимостями и их версиями
+  - **Подключены зависимости:** Room 2.6.1, Retrofit 2.11.0 + OkHttp 4.12.0, Hilt 2.55, WorkManager 2.10.0, Firebase (BOM 33.7.0 + FCM), Kotlinx Serialization 1.8.0, Kotlinx Datetime 0.6.1, Coil 2.7.0, EncryptedSharedPreferences, Navigation Compose 2.8.5
+  - **Пакетная структура по Clean Architecture:**
+    - `ui/` — auth (LoginScreen), context (ContextsScreen), task, theme (Material3 + dynamic colors), components, navigation (GtdNavHost с Routes)
+    - `data/local/` — Room Database (GtdDatabase), 6 DAO-интерфейсов (User, Context, Task, Category, Reminder, PendingChange), 6 Room Entity-классов
+    - `data/remote/` — Retrofit API (AuthApi + GtdApi), DTO-классы для всех сущностей (Auth, Context, Task, Category, Reminder), AuthInterceptor для JWT
+    - `domain/model/` — Domain models (User, Context, Task, Category, Reminder), Enums (GtdList, ContextTheme)
+    - `di/` — Hilt модули (DatabaseModule, NetworkModule, StorageModule)
+  - **Room Database** — 6 таблиц: users, contexts, tasks (с self-ref FK parent_task_id), categories, reminders, pending_changes (для offline sync)
+  - **Retrofit API** — полный набор endpoints для auth, contexts CRUD, tasks CRUD, subtasks, categories, reminders, move/complete
+  - **Security** — EncryptedSharedPreferences (MasterKey AES256_GCM) для JWT-токенов, TokenStorage
+  - **FCM** — GtdFirebaseMessagingService зарегистрирован в AndroidManifest
+  - **WorkManager** — on-demand initialization через Configuration.Provider в GtdApplication, Hilt WorkerFactory
+  - **AndroidManifest** — permissions (INTERNET, NETWORK_STATE, BOOT_COMPLETED, EXACT_ALARM, POST_NOTIFICATIONS, FOREGROUND_SERVICE), network_security_config для cleartext в debug (localhost/10.0.2.2), WorkManager initializer removal для on-demand init
+  - **ProGuard/R8** — rules для Retrofit, Kotlinx Serialization, Room
+  - **Theme** — Material3 с light/dark color schemes + dynamic colors (Android 12+), custom typography
+  - **Navigation** — NavHost с 4 routes: Login, Register, Contexts, Workspace
+  - **Build configurations** — debug (http://10.0.2.2:8080) и release (https://api.gtd.example.com) с minifyEnabled и shrinkResources
+  - Написан 1 unit-тест (TokenStorageTest — 5 test cases) и 1 instrumented-тест (GtdDatabaseTest — 2 test cases)
+  - `./gradlew build` — BUILD SUCCESSFUL: компиляция, lint, unit tests — все прошли
+  - Все 503 backend-тестов: BUILD SUCCESS (0 failures)
+  - Frontend: `npm run lint` — без ошибок, `npm run build` — 100 модулей, 396KB JS gzip 120KB
+- **Коммиты:** feat: initialize Android project with Kotlin, Jetpack Compose, Room, Retrofit, Hilt, and WorkManager
+- **Заметки:**
+  - compileSdk=35, minSdk=26, targetSdk=35; Java 17 compatibility
+  - Firebase требует `google-services.json` в `app/` (добавлен в .gitignore); без него FCM не активируется, но приложение собирается
+  - Room exportSchema=false; миграции будут добавлены в TASK-038
+  - `local.properties` с `sdk.dir` добавлен для локальной сборки (в .gitignore)
+  - Все placeholder screens (Login, Contexts) готовы к реализации в TASK-039 и TASK-040
+  - PendingChangeEntity уже подготовлен для offline sync (TASK-043)
+  - Разблокировано: TASK-038 (Room Database — зеркальная структура), TASK-039 (Android auth — зависит от TASK-038 + TASK-005 done)
+  - Оставшиеся pending задачи: TASK-038-045 (Android chain), TASK-050 (E2E)
+  - **Следующий приоритет: TASK-038** (Room Database — миграции и полные DAO) → затем TASK-039 (Android auth)

@@ -11,8 +11,13 @@ Thumbs.db
 
 # Build
 *.class
-*.jar
 *.war
+
+# Android
+android/**/build/
+android/local.properties
+android/.gradle/
+!android/gradle/wrapper/gradle-wrapper.jar
 
 # Logs
 *.log
