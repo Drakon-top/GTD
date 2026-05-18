@@ -431,7 +431,7 @@
         "Шаг 4: После 3 неудач — сообщение в dead letter queue"
       ],
       "dependencies": ["TASK-017"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-020",

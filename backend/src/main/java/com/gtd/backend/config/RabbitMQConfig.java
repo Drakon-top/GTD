@@ -2,18 +2,28 @@ package com.gtd.backend.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.retry.RejectAndDontRequeueRecoverer;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.retry.backoff.ExponentialBackOffPolicy;
+import org.springframework.retry.policy.SimpleRetryPolicy;
+import org.springframework.retry.support.RetryTemplate;
 
 @Configuration
 @ConditionalOnBean(ConnectionFactory.class)
 @RequiredArgsConstructor
 public class RabbitMQConfig {
+
+    static final int MAX_RETRY_ATTEMPTS = 3;
+    static final long INITIAL_BACKOFF_MS = 1000;
+    static final double BACKOFF_MULTIPLIER = 2.0;
+    static final long MAX_BACKOFF_MS = 10000;
 
     private final RabbitMQProperties properties;
 
@@ -27,6 +37,40 @@ public class RabbitMQConfig {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jackson2JsonMessageConverter());
         return template;
+    }
+
+    @Bean
+    public RetryTemplate retryTemplate() {
+        RetryTemplate retryTemplate = new RetryTemplate();
+
+        SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
+        retryPolicy.setMaxAttempts(MAX_RETRY_ATTEMPTS);
+
+        ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
+        backOffPolicy.setInitialInterval(INITIAL_BACKOFF_MS);
+        backOffPolicy.setMultiplier(BACKOFF_MULTIPLIER);
+        backOffPolicy.setMaxInterval(MAX_BACKOFF_MS);
+
+        retryTemplate.setRetryPolicy(retryPolicy);
+        retryTemplate.setBackOffPolicy(backOffPolicy);
+        return retryTemplate;
+    }
+
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(jackson2JsonMessageConverter());
+        factory.setDefaultRequeueRejected(false);
+        factory.setAdviceChain(
+                org.springframework.amqp.rabbit.config.RetryInterceptorBuilder
+                        .stateless()
+                        .retryOperations(retryTemplate())
+                        .recoverer(new RejectAndDontRequeueRecoverer())
+                        .build()
+        );
+        return factory;
     }
 
     // --- Main exchange ---

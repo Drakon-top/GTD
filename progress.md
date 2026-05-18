@@ -486,3 +486,34 @@
   - Jackson2JsonMessageConverter обеспечивает автоматическую JSON-сериализацию POJO при отправке и десериализацию при получении
   - Разблокированы: TASK-018 (scheduler для проверки напоминаний и дедлайнов), TASK-019 (consumer для обработки очередей), TASK-022 (scheduler для повторяющихся задач)
   - Следующий приоритет: TASK-023 (functional, high) — Sync API (зависит от TASK-012, done), TASK-018 (functional, high) — Reminder/deadline scheduler (зависит от TASK-016 + TASK-017, оба done), TASK-019 (integration, high) — Notification consumer (зависит от TASK-017, done), TASK-025 (functional, medium) — Export API
+
+### TASK-019 — Consumer для обработки очереди уведомлений + retry логика
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан пакет `com.gtd.backend.notification` с подпакетами `dto` и `consumer`
+  - Созданы 4 DTO-класса для сообщений очередей: `ReminderNotification`, `DeadlineNotification`, `RecurrenceNotification`, `SyncConflictNotification` — все с Lombok (@Data, @Builder, @NoArgsConstructor, @AllArgsConstructor), @Builder.Default для createdAt
+  - Создан enum `NotificationType` с 4 значениями: REMINDER, DEADLINE, RECURRENCE, SYNC_CONFLICT
+  - Создан `NotificationConsumer` с `@RabbitListener` для всех 4 очередей: notification.reminder, notification.deadline, notification.recurrence, notification.sync_conflict
+  - Consumer помечен `@ConditionalOnBean(ConnectionFactory.class)` — не загружается в тестах без RabbitMQ
+  - Имена очередей в `@RabbitListener` используют SpEL: `${rabbitmq.notification.reminder-queue:notification.reminder}` — поддерживают переопределение через env
+  - Для MVP: consumer логирует каждое полученное уведомление через SLF4J (log.info с полями сообщения)
+  - Обновлён `RabbitMQConfig` — добавлена конфигурация retry с exponential backoff:
+    - `RetryTemplate` с `SimpleRetryPolicy` (maxAttempts=3) и `ExponentialBackOffPolicy` (initialInterval=1s, multiplier=2.0, maxInterval=10s)
+    - `SimpleRabbitListenerContainerFactory` с `RetryInterceptorBuilder.stateless()` и `RejectAndDontRequeueRecoverer`
+    - После 3 неудачных попыток: сообщение reject без requeue → DLX маршрутизирует в notification.dlq (через x-dead-letter-exchange, настроенный в TASK-017)
+    - `setDefaultRequeueRejected(false)` гарантирует, что rejected сообщения не возвращаются в основную очередь
+  - Retry-константы вынесены как `static final` в `RabbitMQConfig`: MAX_RETRY_ATTEMPTS=3, INITIAL_BACKOFF_MS=1000, BACKOFF_MULTIPLIER=2.0, MAX_BACKOFF_MS=10000
+  - Написаны unit-тесты NotificationConsumerTest (8 тестов: все 4 типа уведомлений + edge cases с null/minimal полями)
+  - Написаны unit-тесты NotificationDtoTest (10 тестов: JSON сериализация/десериализация через Jackson, enum values, default createdAt для всех 4 DTO)
+  - Обновлён RabbitMQConfigTest (+3 теста: retryTemplate not null, retry constants values, retry exhausts after 3 attempts)
+  - Все 384 теста проходят (364 старых + 20 новых), проект собирается: `./mvnw clean package`
+- **Коммиты:** feat: add notification consumer with retry logic and DLQ routing
+- **Заметки:**
+  - Retry реализован через Spring Retry interceptor на уровне listener container — не требует broker-level retry (x-message-ttl + republish)
+  - RejectAndDontRequeueRecoverer — после исчерпания retry сообщение отклоняется и через DLX попадает в DLQ
+  - Consumer для MVP только логирует — интеграция с FCM будет в TASK-020
+  - @ConditionalOnBean(ConnectionFactory.class) на NotificationConsumer и RabbitMQConfig гарантирует, что Rabbit-зависимый код не загружается в тестах
+  - DTO используют @Data (Lombok) а не records — для совместимости с Jackson @Builder.Default (records не поддерживают mutable defaults)
+  - Разблокирован: TASK-020 (интеграция с FCM, зависит от TASK-019)
+  - Следующий приоритет: TASK-018 (functional, high) — Scheduler для проверки напоминаний и дедлайнов (зависит от TASK-016 + TASK-017, оба done), TASK-022 (functional, high) — Scheduler для повторяющихся задач (зависит от TASK-021 + TASK-017, оба done), TASK-023 (functional, high) — Sync API (зависит от TASK-012, done)

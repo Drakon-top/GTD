@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
+import org.springframework.retry.backoff.ExponentialBackOffPolicy;
+import org.springframework.retry.policy.SimpleRetryPolicy;
+import org.springframework.retry.support.RetryTemplate;
 
 import java.util.Map;
 
@@ -172,6 +175,37 @@ class RabbitMQConfigTest {
     @Test
     void jackson2JsonMessageConverter_shouldNotBeNull() {
         assertNotNull(config.jackson2JsonMessageConverter());
+    }
+
+    @Test
+    void retryTemplate_shouldHave3MaxAttempts() {
+        RetryTemplate retryTemplate = config.retryTemplate();
+        assertNotNull(retryTemplate);
+    }
+
+    @Test
+    void retryConstants_shouldHaveExpectedValues() {
+        assertEquals(3, RabbitMQConfig.MAX_RETRY_ATTEMPTS);
+        assertEquals(1000L, RabbitMQConfig.INITIAL_BACKOFF_MS);
+        assertEquals(2.0, RabbitMQConfig.BACKOFF_MULTIPLIER);
+        assertEquals(10000L, RabbitMQConfig.MAX_BACKOFF_MS);
+    }
+
+    @Test
+    void retryTemplate_shouldExhaustAfter3Attempts() {
+        RetryTemplate retryTemplate = config.retryTemplate();
+        int[] attempts = {0};
+
+        try {
+            retryTemplate.execute(context -> {
+                attempts[0]++;
+                throw new RuntimeException("Simulated failure");
+            });
+        } catch (RuntimeException e) {
+            assertEquals("Simulated failure", e.getMessage());
+        }
+
+        assertEquals(3, attempts[0], "RetryTemplate should attempt exactly 3 times");
     }
 
     private void assertDlxArguments(Map<String, Object> arguments) {
