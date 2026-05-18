@@ -757,7 +757,7 @@
         "Шаг 5: Отключить повторение"
       ],
       "dependencies": ["TASK-030", "TASK-016", "TASK-021"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-035",

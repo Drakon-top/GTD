@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import apiClient from '../api/client';
-import type { CategoryResponse, GtdList, TaskResponse } from '../types';
+import type { CategoryResponse, GtdList, ReminderResponse, TaskResponse } from '../types';
 import { gtdListLabel } from '../utils/gtdLabels';
 
 interface TaskDetailPanelProps {
@@ -311,6 +311,21 @@ export default function TaskDetailPanel({
           {savingNotes && <p className="mt-0.5 text-[10px] text-stone-400">Saving...</p>}
         </div>
 
+        {/* Reminders */}
+        <ReminderSection
+          taskId={task.id}
+          isCompleted={task.isCompleted}
+        />
+
+        {/* Recurrence */}
+        <RecurrenceSection
+          task={task}
+          onRecurrenceChanged={(rule) => {
+            setTask((prev) => prev ? { ...prev, recurrenceRule: rule, isRecurring: !!rule } : prev);
+            onTaskChanged();
+          }}
+        />
+
         {/* Progress */}
         {task.progress != null && (
           <div className="mb-4">
@@ -338,16 +353,6 @@ export default function TaskDetailPanel({
           onToggle={handleSubtaskToggle}
           onAdd={handleAddSubtask}
         />
-
-        {/* Recurring */}
-        {task.isRecurring && (
-          <div className="mb-4">
-            <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
-              Recurring
-            </label>
-            <p className="text-sm text-stone-600">🔁 This task repeats</p>
-          </div>
-        )}
 
         {/* Metadata */}
         <div className="mb-2 text-[10px] text-stone-400">
@@ -687,4 +692,378 @@ function AddSubtaskInline({
       </button>
     </form>
   );
+}
+
+// --- Reminder Section ---
+
+type OffsetPreset = { label: string; offsetType: string; offsetValue: number };
+const OFFSET_PRESETS: OffsetPreset[] = [
+  { label: '15 min before', offsetType: 'MINUTES_BEFORE', offsetValue: 15 },
+  { label: '1 hour before', offsetType: 'HOURS_BEFORE', offsetValue: 1 },
+  { label: '1 day before', offsetType: 'DAYS_BEFORE', offsetValue: 1 },
+  { label: '3 days before', offsetType: 'DAYS_BEFORE', offsetValue: 3 },
+];
+
+function ReminderSection({ taskId, isCompleted }: { taskId: string; isCompleted: boolean }) {
+  const [reminders, setReminders] = useState<ReminderResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addMode, setAddMode] = useState<'exact' | 'offset'>('exact');
+  const [remindAt, setRemindAt] = useState('');
+  const [selectedPreset, setSelectedPreset] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [loadedTaskId, setLoadedTaskId] = useState<string | null>(null);
+
+  if (taskId !== loadedTaskId) {
+    setLoadedTaskId(taskId);
+    setLoading(true);
+    setShowAdd(false);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.get<ReminderResponse[]>(`/tasks/${taskId}/reminders`)
+      .then(({ data }) => { if (!cancelled) setReminders(data); })
+      .catch(() => { if (!cancelled) setReminders([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [taskId]);
+
+  async function handleAddExact() {
+    if (!remindAt) return;
+    setSubmitting(true);
+    try {
+      const { data } = await apiClient.post<ReminderResponse>(`/tasks/${taskId}/reminders`, {
+        remindAt: new Date(remindAt).toISOString(),
+      });
+      setReminders((prev) => [...prev, data].sort((a, b) => a.remindAt.localeCompare(b.remindAt)));
+      setShowAdd(false);
+      setRemindAt('');
+    } catch { /* silently fail */ }
+    finally { setSubmitting(false); }
+  }
+
+  async function handleAddOffset() {
+    const preset = OFFSET_PRESETS[selectedPreset];
+    const now = new Date();
+    let remindDate: Date;
+    if (preset.offsetType === 'MINUTES_BEFORE') {
+      remindDate = new Date(now.getTime() + preset.offsetValue * 60 * 1000);
+    } else if (preset.offsetType === 'HOURS_BEFORE') {
+      remindDate = new Date(now.getTime() + preset.offsetValue * 3600 * 1000);
+    } else {
+      remindDate = new Date(now.getTime() + preset.offsetValue * 86400 * 1000);
+    }
+    setSubmitting(true);
+    try {
+      const { data } = await apiClient.post<ReminderResponse>(`/tasks/${taskId}/reminders`, {
+        remindAt: remindDate.toISOString(),
+        offsetType: preset.offsetType,
+        offsetValue: preset.offsetValue,
+      });
+      setReminders((prev) => [...prev, data].sort((a, b) => a.remindAt.localeCompare(b.remindAt)));
+      setShowAdd(false);
+    } catch { /* silently fail */ }
+    finally { setSubmitting(false); }
+  }
+
+  async function handleDelete(reminderId: string) {
+    try {
+      await apiClient.delete(`/reminders/${reminderId}`);
+      setReminders((prev) => prev.filter((r) => r.id !== reminderId));
+    } catch { /* silently fail */ }
+  }
+
+  if (loading) {
+    return (
+      <div className="mb-4">
+        <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
+          Reminders
+        </label>
+        <p className="text-xs text-stone-400">Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4">
+      <div className="mb-1 flex items-center justify-between">
+        <label className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
+          Reminders
+          {reminders.length > 0 && (
+            <span className="ml-1 normal-case">({reminders.length})</span>
+          )}
+        </label>
+        {!isCompleted && !showAdd && (
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="rounded px-1.5 py-0.5 text-[11px] font-medium text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
+          >
+            + Add
+          </button>
+        )}
+      </div>
+
+      {/* Existing reminders */}
+      {reminders.length > 0 && (
+        <ul className="space-y-1">
+          {reminders.map((r) => (
+            <li key={r.id} className="group flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-stone-50">
+              <span className="text-xs">🔔</span>
+              <span className={`flex-1 text-xs ${r.isSent ? 'text-stone-400 line-through' : 'text-stone-600'}`}>
+                {formatReminderDate(r.remindAt)}
+                {r.offsetType && (
+                  <span className="ml-1 text-stone-400">
+                    ({formatOffset(r.offsetType, r.offsetValue)})
+                  </span>
+                )}
+              </span>
+              {r.isSent && <span className="text-[10px] text-stone-400">sent</span>}
+              {!isCompleted && (
+                <button
+                  type="button"
+                  onClick={() => handleDelete(r.id)}
+                  className="hidden rounded p-0.5 text-stone-400 transition hover:bg-stone-200 hover:text-stone-600 group-hover:block"
+                  title="Delete reminder"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {reminders.length === 0 && !showAdd && (
+        <p className="text-xs text-stone-400">No reminders set.</p>
+      )}
+
+      {/* Add reminder form */}
+      {showAdd && (
+        <div className="mt-2 rounded-md border border-stone-200 bg-stone-50 p-2">
+          <div className="mb-2 flex gap-1">
+            <button
+              type="button"
+              onClick={() => setAddMode('exact')}
+              className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${
+                addMode === 'exact' ? 'bg-stone-900 text-white' : 'text-stone-500 hover:bg-stone-200'
+              }`}
+            >
+              Exact time
+            </button>
+            <button
+              type="button"
+              onClick={() => setAddMode('offset')}
+              className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${
+                addMode === 'offset' ? 'bg-stone-900 text-white' : 'text-stone-500 hover:bg-stone-200'
+              }`}
+            >
+              Offset
+            </button>
+          </div>
+
+          {addMode === 'exact' ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="datetime-local"
+                value={remindAt}
+                onChange={(e) => setRemindAt(e.target.value)}
+                className="flex-1 rounded border border-stone-200 bg-white px-2 py-1 text-xs text-stone-700 outline-none focus:border-stone-400"
+              />
+              <button
+                type="button"
+                onClick={handleAddExact}
+                disabled={submitting || !remindAt}
+                className="rounded bg-stone-900 px-2 py-1 text-[10px] font-medium text-white transition hover:bg-stone-800 disabled:opacity-40"
+              >
+                Save
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <select
+                value={selectedPreset}
+                onChange={(e) => setSelectedPreset(Number(e.target.value))}
+                className="flex-1 rounded border border-stone-200 bg-white px-2 py-1 text-xs text-stone-700 outline-none focus:border-stone-400"
+              >
+                {OFFSET_PRESETS.map((p, i) => (
+                  <option key={i} value={i}>{p.label}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleAddOffset}
+                disabled={submitting}
+                className="rounded bg-stone-900 px-2 py-1 text-[10px] font-medium text-white transition hover:bg-stone-800 disabled:opacity-40"
+              >
+                Save
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => { setShowAdd(false); setRemindAt(''); }}
+            className="mt-1.5 rounded px-1.5 py-0.5 text-[10px] text-stone-500 transition hover:bg-stone-200"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatReminderDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString('en-US', {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+}
+
+function formatOffset(offsetType: string, offsetValue: number | null): string {
+  if (!offsetValue) return '';
+  switch (offsetType) {
+    case 'MINUTES_BEFORE': return `${offsetValue}m before`;
+    case 'HOURS_BEFORE': return `${offsetValue}h before`;
+    case 'DAYS_BEFORE': return `${offsetValue}d before`;
+    default: return '';
+  }
+}
+
+// --- Recurrence Section ---
+
+type RecurrencePattern = { type: string; interval?: number; dayOfWeek?: string; time?: string };
+
+const RECURRENCE_PRESETS: { label: string; rule: RecurrencePattern }[] = [
+  { label: 'Daily', rule: { type: 'daily' } },
+  { label: 'Weekly (Mon)', rule: { type: 'weekly', dayOfWeek: 'MONDAY' } },
+  { label: 'Weekly (Fri)', rule: { type: 'weekly', dayOfWeek: 'FRIDAY' } },
+  { label: 'Every 2 days', rule: { type: 'interval', interval: 2 } },
+  { label: 'Every 7 days', rule: { type: 'interval', interval: 7 } },
+  { label: 'Every 14 days', rule: { type: 'interval', interval: 14 } },
+  { label: 'Every 30 days', rule: { type: 'interval', interval: 30 } },
+];
+
+function RecurrenceSection({
+  task,
+  onRecurrenceChanged,
+}: {
+  task: TaskResponse;
+  onRecurrenceChanged: (rule: unknown) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  const currentRule = task.recurrenceRule as RecurrencePattern | null | undefined;
+  const isRecurring = !!currentRule && typeof currentRule === 'object' && 'type' in currentRule;
+
+  async function handleSetRecurrence() {
+    const rule = RECURRENCE_PRESETS[selectedPreset].rule;
+    setSaving(true);
+    try {
+      await apiClient.put(`/tasks/${task.id}`, { recurrenceRule: JSON.stringify(rule) });
+      onRecurrenceChanged(rule);
+      setEditing(false);
+    } catch { /* silently fail */ }
+    finally { setSaving(false); }
+  }
+
+  async function handleStopRecurrence() {
+    setSaving(true);
+    try {
+      await apiClient.put(`/tasks/${task.id}`, { recurrenceRule: '' });
+      onRecurrenceChanged(null);
+      setEditing(false);
+    } catch { /* silently fail */ }
+    finally { setSaving(false); }
+  }
+
+  function describeRecurrence(rule: RecurrencePattern): string {
+    switch (rule.type) {
+      case 'daily': return 'Repeats daily';
+      case 'weekly': return `Repeats weekly (${rule.dayOfWeek ? capitalize(rule.dayOfWeek) : 'every week'})`;
+      case 'interval': return `Repeats every ${rule.interval} day${rule.interval !== 1 ? 's' : ''}`;
+      default: return 'Repeats (custom)';
+    }
+  }
+
+  return (
+    <div className="mb-4">
+      <div className="mb-1 flex items-center justify-between">
+        <label className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
+          Recurrence
+        </label>
+        {!task.isCompleted && !editing && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="rounded px-1.5 py-0.5 text-[11px] font-medium text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
+          >
+            {isRecurring ? 'Edit' : '+ Set'}
+          </button>
+        )}
+      </div>
+
+      {!editing && isRecurring && (
+        <div className="flex items-center gap-1.5 rounded px-1.5 py-1 text-xs text-stone-600">
+          <span>🔁</span>
+          <span>{describeRecurrence(currentRule)}</span>
+        </div>
+      )}
+
+      {!editing && !isRecurring && (
+        <p className="text-xs text-stone-400">Not recurring.</p>
+      )}
+
+      {editing && (
+        <div className="mt-1 rounded-md border border-stone-200 bg-stone-50 p-2">
+          <select
+            value={selectedPreset}
+            onChange={(e) => setSelectedPreset(Number(e.target.value))}
+            className="mb-2 w-full rounded border border-stone-200 bg-white px-2 py-1 text-xs text-stone-700 outline-none focus:border-stone-400"
+          >
+            {RECURRENCE_PRESETS.map((p, i) => (
+              <option key={i} value={i}>{p.label}</option>
+            ))}
+          </select>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleSetRecurrence}
+              disabled={saving}
+              className="rounded bg-stone-900 px-2 py-1 text-[10px] font-medium text-white transition hover:bg-stone-800 disabled:opacity-40"
+            >
+              {isRecurring ? 'Update' : 'Enable'}
+            </button>
+            {isRecurring && (
+              <button
+                type="button"
+                onClick={handleStopRecurrence}
+                disabled={saving}
+                className="rounded border border-red-200 px-2 py-1 text-[10px] font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-40"
+              >
+                Stop
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="rounded px-1.5 py-0.5 text-[10px] text-stone-500 transition hover:bg-stone-200"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }

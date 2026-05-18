@@ -941,3 +941,38 @@
   - Бэкенд не требовал изменений — все API endpoints (GET/POST/PUT/DELETE для categories) уже реализованы в TASK-014
   - Разблокированы: никаких прямых зависимостей от TASK-033 в tasks.json
   - Следующий приоритет: TASK-034 (ui, medium) — напоминания и повторяющиеся задачи UI (зависит от TASK-030 + TASK-016 + TASK-021, все done), TASK-035 (ui, medium) — 5 тем оформления (зависит от TASK-029, done), TASK-036 (ui, medium) — экспорт из настроек (зависит от TASK-029 + TASK-025, оба done)
+
+### TASK-034 — Web: настройка напоминаний и повторяющихся задач в UI
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Создан компонент `ReminderSection` в TaskDetailPanel — полнофункциональная секция управления напоминаниями:
+    - Отображает список существующих напоминаний с датой/временем, offset-информацией, статусом (sent/pending)
+    - Кнопка "+ Add" открывает inline-форму добавления с двумя режимами: "Exact time" (datetime-local picker) и "Offset" (preset: 15min/1h/1day/3days before)
+    - Каждое напоминание можно удалить кнопкой ✕ (появляется при hover)
+    - Отправленные напоминания (isSent) отображаются с пометкой "sent" и зачёркнутым текстом
+    - Напоминания сортируются по remindAt (хронологически)
+    - Счётчик напоминаний в заголовке секции
+  - Создан компонент `RecurrenceSection` в TaskDetailPanel — управление повторением задач:
+    - Отображает текущее правило повторения с human-readable описанием (Repeats daily / Repeats weekly (Monday) / Repeats every N days)
+    - Кнопка "+ Set" (или "Edit" если уже настроено) открывает форму:
+      - 7 пресетов: Daily, Weekly (Mon), Weekly (Fri), Every 2/7/14/30 days
+      - Кнопка "Enable"/"Update" — сохраняет recurrenceRule через PUT /tasks/{id}
+      - Кнопка "Stop" (красная) — обнуляет recurrenceRule (отправляет пустую строку)
+      - Кнопка "Cancel" — закрывает форму без сохранения
+    - Если задача не повторяется: "Not recurring." с кнопкой "+ Set"
+    - Все элементы disabled для завершённых задач (isCompleted)
+  - Обе секции добавлены между Notes и Progress в TaskDetailPanel (логичный порядок UX)
+  - Helper-функции: `formatReminderDate()` (locale-aware форматирование), `formatOffset()` (offset → human text), `describeRecurrence()` (rule JSON → description), `capitalize()`
+  - Reminders загружаются отдельным запросом GET /tasks/{taskId}/reminders (не входят в TaskResponse) — lazy loading при открытии detail panel
+  - `npm run lint` — ESLint без ошибок
+  - `npm run build` — TypeScript + Vite build без ошибок (98 модулей, 383KB JS gzip 118KB)
+  - Backend: все 480 тестов проходят (не изменялся)
+- **Коммиты:** feat: add reminder management and recurrence settings UI in task detail panel
+- **Заметки:**
+  - Offset presets используют "from now" семантику для MVP — при наличии dueDate стоит рассмотреть "before due date" вариант
+  - RecurrenceRule сохраняется как JSON-строка через PUT /tasks/{id} — бэкенд принимает произвольный формат
+  - ReminderSection использует отдельный useState для loadedTaskId (аналогично TaskDetailPanel) — сбрасывает состояние при смене задачи
+  - Sent-напоминания визуально отличаются (зачёркнутые + badge "sent") но не удаляются автоматически — пользователь может удалить вручную
+  - Разблокированы: никаких прямых зависимостей от TASK-034 в tasks.json
+  - Следующий приоритет: TASK-035 (ui, medium) — 5 тем оформления (зависит от TASK-029, done), TASK-036 (ui, medium) — экспорт из настроек (зависит от TASK-029 + TASK-025, оба done), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done)
