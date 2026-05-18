@@ -1,26 +1,95 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAuthStore } from '../store/authStore';
-import type { ContextResponse } from '../types';
+import CreateContextModal from '../components/CreateContextModal';
+import type { ContextResponse, ContextTheme, TaskCountsResponse } from '../types';
+
+const MAX_CONTEXTS = 5;
+
+const THEME_STYLES: Record<ContextTheme, { card: string; badge: string; accent: string }> = {
+  MINIMALIST: {
+    card: 'bg-white border-stone-200 hover:border-stone-300',
+    badge: 'bg-stone-100 text-stone-600',
+    accent: 'text-stone-500',
+  },
+  DESIGN: {
+    card: 'bg-violet-50/50 border-violet-200 hover:border-violet-300',
+    badge: 'bg-violet-100 text-violet-600',
+    accent: 'text-violet-500',
+  },
+  FORMAL: {
+    card: 'bg-slate-50/50 border-slate-200 hover:border-slate-300',
+    badge: 'bg-slate-100 text-slate-600',
+    accent: 'text-slate-500',
+  },
+  NATURE: {
+    card: 'bg-emerald-50/50 border-emerald-200 hover:border-emerald-300',
+    badge: 'bg-emerald-100 text-emerald-600',
+    accent: 'text-emerald-500',
+  },
+  DARK: {
+    card: 'bg-zinc-900 border-zinc-700 hover:border-zinc-500',
+    badge: 'bg-zinc-700 text-zinc-200',
+    accent: 'text-zinc-400',
+  },
+};
+
+async function loadContexts(): Promise<{ contexts: ContextResponse[]; inboxCounts: Record<string, number> }> {
+  const { data } = await apiClient.get<ContextResponse[]>('/contexts');
+
+  const counts: Record<string, number> = {};
+  await Promise.all(
+    data.map(async (ctx) => {
+      try {
+        const { data: countsData } = await apiClient.get<TaskCountsResponse>(
+          `/contexts/${ctx.id}/tasks/counts`,
+        );
+        counts[ctx.id] = countsData.byGtdList['INBOX'] ?? 0;
+      } catch {
+        counts[ctx.id] = 0;
+      }
+    }),
+  );
+
+  return { contexts: data, inboxCounts: counts };
+}
 
 export default function ContextsPage() {
   const [contexts, setContexts] = useState<ContextResponse[]>([]);
+  const [inboxCounts, setInboxCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [refreshKey, refresh] = useReducer((x: number) => x + 1, 0);
   const navigate = useNavigate();
 
   useEffect(() => {
-    apiClient
-      .get<ContextResponse[]>('/contexts')
-      .then(({ data }) => setContexts(data))
+    let cancelled = false;
+    loadContexts()
+      .then(({ contexts: ctxs, inboxCounts: counts }) => {
+        if (cancelled) return;
+        setContexts(ctxs);
+        setInboxCounts(counts);
+      })
       .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [refreshKey]);
 
   function handleLogout() {
     apiClient.post('/auth/logout').catch(() => {});
     useAuthStore.getState().logout();
     navigate('/login', { replace: true });
+  }
+
+  async function handleCreateContext(data: { name: string; theme: ContextTheme; icon: string }) {
+    await apiClient.post('/contexts', data);
+  }
+
+  function handleContextClick(contextId: string) {
+    navigate(`/contexts/${contextId}`);
   }
 
   if (loading) {
@@ -34,6 +103,8 @@ export default function ContextsPage() {
     );
   }
 
+  const canCreateMore = contexts.length < MAX_CONTEXTS;
+
   return (
     <div className="min-h-screen bg-stone-50">
       <header className="border-b border-stone-200 bg-white">
@@ -42,9 +113,7 @@ export default function ContextsPage() {
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-stone-900 text-xs font-bold text-white">
               G
             </div>
-            <h1 className="text-lg font-semibold tracking-tight text-stone-900">
-              GTD
-            </h1>
+            <h1 className="text-lg font-semibold tracking-tight text-stone-900">GTD</h1>
           </div>
           <button
             type="button"
@@ -57,33 +126,88 @@ export default function ContextsPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <h2 className="mb-6 text-xl font-semibold text-stone-900">
-          Your Contexts
-        </h2>
+        <div className="mb-8 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-stone-900">Your Contexts</h2>
+          {canCreateMore && (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-800"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              New Context
+            </button>
+          )}
+        </div>
 
         {contexts.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-stone-300 bg-white p-10 text-center">
-            <p className="text-stone-500">
-              No contexts yet. Create your first one to get started.
+          <div className="rounded-xl border border-dashed border-stone-300 bg-white p-12 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
+              <svg className="h-7 w-7 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <h3 className="mb-1 text-base font-medium text-stone-900">No contexts yet</h3>
+            <p className="mb-5 text-sm text-stone-500">
+              Contexts are separate workspaces for different areas of your life.
             </p>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="rounded-lg bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800"
+            >
+              Create your first context
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {contexts.map((ctx) => (
-              <div
-                key={ctx.id}
-                className="cursor-pointer rounded-xl border border-stone-200 bg-white p-5 shadow-sm transition hover:border-stone-300 hover:shadow-md"
-              >
-                <div className="mb-2 text-2xl">{ctx.icon || '📋'}</div>
-                <h3 className="font-medium text-stone-900">{ctx.name}</h3>
-                <p className="mt-1 text-xs text-stone-400">
-                  {ctx.theme.charAt(0) + ctx.theme.slice(1).toLowerCase()}
-                </p>
-              </div>
-            ))}
+            {contexts.map((ctx) => {
+              const style = THEME_STYLES[ctx.theme];
+              const inboxCount = inboxCounts[ctx.id] ?? 0;
+              const isDark = ctx.theme === 'DARK';
+
+              return (
+                <button
+                  key={ctx.id}
+                  type="button"
+                  onClick={() => handleContextClick(ctx.id)}
+                  className={`group cursor-pointer rounded-xl border p-5 text-left shadow-sm transition hover:shadow-md ${style.card}`}
+                >
+                  <div className="mb-3 text-3xl">{ctx.icon || '📋'}</div>
+                  <h3 className={`text-base font-medium ${isDark ? 'text-white' : 'text-stone-900'}`}>
+                    {ctx.name}
+                  </h3>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className={`text-xs ${style.accent}`}>
+                      {ctx.theme.charAt(0) + ctx.theme.slice(1).toLowerCase()}
+                    </span>
+                    {inboxCount > 0 && (
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${style.badge}`}>
+                        {inboxCount} in Inbox
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
+
+        {!canCreateMore && contexts.length > 0 && (
+          <p className="mt-4 text-center text-xs text-stone-400">
+            Maximum of {MAX_CONTEXTS} contexts reached
+          </p>
+        )}
       </main>
+
+      <CreateContextModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreated={refresh}
+        onSubmit={handleCreateContext}
+      />
     </div>
   );
 }

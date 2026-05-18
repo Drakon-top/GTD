@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import GuestRoute from './components/GuestRoute';
 import ContextsPage from './pages/ContextsPage';
+import ContextWorkspacePage from './pages/ContextWorkspacePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -51,6 +52,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ContextsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/contexts/:contextId"
+          element={
+            <ProtectedRoute>
+              <ContextWorkspacePage />
             </ProtectedRoute>
           }
         />

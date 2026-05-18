@@ -732,3 +732,33 @@
   - isAxiosError type guard используется вместо ручной проверки err.response — типобезопасность
   - Разблокирован: TASK-028 (Web: экран выбора контекста, зависит от TASK-027 + TASK-009, оба done)
   - Следующий приоритет: TASK-028 (ui, high) — Web: экран выбора контекста (карточки), TASK-020 (integration, medium) — FCM push, TASK-046 (infrastructure, medium) — Dockerfile + Yandex Cloud
+
+### TASK-028 — Web: экран выбора контекста (карточки)
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Полностью переработан `ContextsPage` — экран выбора контекста с карточками, стилизованными по теме
+  - Каждая карточка отображает: иконку (emoji), название, тему (текст), и количество задач в Inbox (badge)
+  - 5 тем оформления карточек (MINIMALIST, DESIGN, FORMAL, NATURE, DARK) с индивидуальными цветовыми палитрами: stone, violet, slate, emerald, zinc соответственно
+  - Тема DARK использует тёмный фон (zinc-900) с белым текстом — визуально выделяется
+  - Inbox-счётчик загружается из `GET /contexts/{id}/tasks/counts` для каждого контекста параллельно (Promise.all)
+  - Кнопка "New Context" отображается только если контекстов < 5 (MAX_CONTEXTS)
+  - При 5 контекстах кнопка скрывается и отображается надпись "Maximum of 5 contexts reached"
+  - Empty state: если контекстов нет — иконка, текст "No contexts yet", описание, и кнопка "Create your first context"
+  - Клик на карточку — навигация на `/contexts/{contextId}` (placeholder workspace page)
+  - Создан `CreateContextModal` компонент: форма с выбором name, icon (12 emoji), theme (5 вариантов с визуальным превью цветов)
+  - Modal: backdrop blur, error handling (отображает backend error messages), disabled состояние при submit
+  - Создан placeholder `ContextWorkspacePage` — загружает данные контекста, отображает header с навигацией назад, имя и иконку. Body — placeholder для TASK-029
+  - Обновлён `App.tsx` — добавлен маршрут `/contexts/:contextId` для workspace page
+  - Рефакторинг data fetching: использован `useReducer` для refresh key + async функция вне компонента для загрузки данных — соответствует react-hooks/set-state-in-effect ESLint правилу
+  - `npm run build` — TypeScript компиляция без ошибок (89 модулей, 295KB JS gzip 94KB)
+  - `npm run lint` — ESLint без ошибок
+  - Backend: все 480 тестов проходят, `./mvnw clean package` — успешно
+- **Коммиты:** feat: add context selection screen with themed cards and create modal
+- **Заметки:**
+  - Inbox count загружается отдельным запросом для каждого контекста — при 5 контекстах это 6 HTTP-запросов (1 list + 5 counts). При необходимости можно добавить агрегированный backend endpoint
+  - useReducer(x => x + 1, 0) pattern используется для trigger re-fetch без setState в effect (ESLint react-hooks/set-state-in-effect)
+  - ContextWorkspacePage — минимальный placeholder, загружает context данные и отображает header. Полная реализация в TASK-029
+  - При 404/403 на workspace page — redirect на /contexts
+  - Разблокирован: TASK-029 (Web: основной рабочий экран — боковое меню + список задач, зависит от TASK-028 + TASK-011, оба done)
+  - Следующий приоритет: TASK-029 (ui, high) — Web: основной рабочий экран (зависит от TASK-028 + TASK-011, оба done), TASK-020 (integration, medium) — FCM push (зависит от TASK-019, done), TASK-046 (infrastructure, medium) — Dockerfile (зависит от TASK-002, done)
