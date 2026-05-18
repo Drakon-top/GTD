@@ -54,6 +54,8 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
+      FCM_ENABLED: ${FCM_ENABLED:-false}
+      FCM_CREDENTIALS_FILE: /app/config/firebase-service-account.json
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,6 +63,7 @@ services:
         condition: service_healthy
     volumes:
       - app_logs:/app/logs
+      - ${FCM_CREDENTIALS_DIR:-./config}:/app/config:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 30s

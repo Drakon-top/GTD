@@ -1198,3 +1198,60 @@
   - Разблокировано: нет задач, напрямую зависящих от TASK-047
   - Оставшиеся pending задачи: TASK-020 (FCM push, medium — требует Firebase), TASK-037 (Android init, medium — требует Android SDK), TASK-038-045 (Android chain), TASK-050 (E2E, low — зависит от Android задач)
   - Следующий приоритет: TASK-020 (FCM push, medium, integration) или TASK-037 (Android init, medium, infrastructure). Все оставшиеся web/backend задачи завершены
+
+### TASK-020 — Интеграция с Firebase Cloud Messaging для push-уведомлений
+- **Дата:** 2026-05-18
+- **Статус:** done
+- **Что сделано:**
+  - Добавлена зависимость `firebase-admin:9.8.0` в pom.xml — Firebase Admin SDK для серверной отправки push-уведомлений
+  - Создан `FcmProperties` — конфигурация FCM через `fcm.enabled` и `fcm.credentials-file` (env: `FCM_ENABLED`, `FCM_CREDENTIALS_FILE`)
+  - Создан `FcmConfig` — условная инициализация `FirebaseApp` и `FirebaseMessaging` бинов (`@ConditionalOnProperty(fcm.enabled=true)`)
+  - Создана Flyway-миграция `V8__create_device_tokens_table.sql`:
+    - Таблица `device_tokens`: id (UUID PK), user_id (FK → users ON DELETE CASCADE), token (500, UNIQUE), device_type (VARCHAR 20), device_name (100), is_active (default true), created_at, updated_at
+    - Индексы: по user_id, по (user_id, is_active) partial WHERE is_active=TRUE
+  - Создана JPA-сущность `DeviceToken` + enum `DeviceType` (ANDROID, WEB) + `DeviceTokenRepository`
+  - Создан `DeviceTokenService` — регистрация/деактивация/листинг FCM-токенов устройств:
+    - `registerToken` — создаёт новый или реактивирует существующий токен (upsert по token)
+    - `unregisterToken` — деактивирует токен (проверяет ownership по userId)
+    - `getUserTokens` — возвращает активные токены пользователя
+  - Создан `FcmService` — отправка push через Firebase Admin SDK:
+    - `sendToUser` — находит все активные токены пользователя, отправляет multicast через `FirebaseMessaging.sendEachForMulticast`
+    - Автоматическая деактивация невалидных токенов (UNREGISTERED, INVALID_ARGUMENT) при ошибке отправки
+    - Graceful skip если у пользователя нет зарегистрированных устройств
+  - Реализован паттерн Strategy для push-уведомлений через интерфейс `PushNotificationService`:
+    - `FcmPushNotificationService` — production-реализация через FCM (`@ConditionalOnProperty(fcm.enabled=true)`, `@Primary`)
+    - `LoggingPushNotificationService` — fallback для dev/test (`@ConditionalOnMissingBean`) — логирует уведомления без отправки
+  - Создан `DeviceTokenController` — REST API для управления FCM-токенами:
+    - `POST /api/v1/devices/token` — регистрация FCM-токена (token, deviceType, deviceName)
+    - `DELETE /api/v1/devices/token?token=...` — деактивация токена
+    - `GET /api/v1/devices/tokens` — список активных токенов пользователя
+    - Swagger/OpenAPI аннотации для всех эндпоинтов
+  - Обновлён `NotificationConsumer` — все 4 обработчика теперь отправляют push через `PushNotificationService`:
+    - Reminder: title="Reminder", body=taskTitle, data={type, taskId}
+    - Deadline: title=taskTitle, body="Due in N hours" / "Due in less than 1 hour!", data={type, taskId}
+    - Recurrence: title="Recurring Task", body="taskTitle — new instance created", data={type, taskId}
+    - Sync Conflict: title="Sync Conflict Resolved", body="Field 'X' in Y was auto-resolved", data={type, entityId, entityType}
+  - Обновлён `docker-compose.prod.yml`: добавлены env vars `FCM_ENABLED`, `FCM_CREDENTIALS_FILE`, volume для Firebase credentials (`${FCM_CREDENTIALS_DIR:-./config}:/app/config:ro`)
+  - Обновлён `.env.example`: добавлены `FCM_ENABLED`, `FCM_CREDENTIALS_FILE`
+  - Обновлён `.gitignore`: исключены `**/firebase-service-account*.json`, `**/firebase-adminsdk*.json`
+  - Обновлён `application.yml`: добавлена секция `fcm:` с env-driven конфигурацией
+  - Обновлён test `application.yml`: добавлена секция `fcm:` (disabled по умолчанию)
+  - Написано 18 новых тестов:
+    - `DeviceTokenServiceTest` (6 тестов): register, reactivate, user not found, unregister, ownership check, list tokens
+    - `FcmServiceTest` (4 теста): skip without tokens, multicast send, deactivate unregistered tokens, exception propagation
+    - `LoggingPushNotificationServiceTest` (2 теста): log without exception, empty data
+    - `NotificationConsumerTest` (8 тестов, обновлены): все 4 типа уведомлений + edge cases (null title, null newTaskId, minimal fields, <=1 hour deadline)
+    - `DeviceTokenControllerTest` (5 тестов): register, validation errors (blank token, null deviceType), unregister, list tokens, empty list
+  - Все 503 backend-тестов проходят: `./mvnw test` — BUILD SUCCESS (0 failures, 0 errors)
+  - Frontend: `npm run lint` — без ошибок, `npm run build` — 100 модулей, 396KB JS gzip 120KB
+- **Коммиты:** feat: add FCM push notifications with device token management and fallback logging
+- **Заметки:**
+  - FCM включается через env: `FCM_ENABLED=true` + `FCM_CREDENTIALS_FILE=/path/to/firebase-service-account.json`
+  - Без Firebase credentials приложение работает в режиме LoggingPushNotificationService — уведомления логируются, не отправляются
+  - Strategy pattern (`PushNotificationService` interface) позволяет подключать другие push-провайдеры (APNs, Web Push) без изменения consumer'ов
+  - DeviceToken хранит `is_active` flag — при ошибке FCM (UNREGISTERED) токен автоматически деактивируется, не удаляется
+  - Multicast отправка — один вызов FCM API для всех устройств пользователя (эффективнее отдельных send)
+  - Для production: создать Firebase проект → скачать service account JSON → смонтировать в контейнер → установить `FCM_ENABLED=true`
+  - Разблокировано: TASK-045 (Android FCM push) — зависит от TASK-020 (done) + TASK-043 (pending)
+  - Оставшиеся pending задачи: TASK-037 (Android init, medium, infrastructure), TASK-038-045 (Android chain), TASK-050 (E2E, low)
+  - **Все backend и web задачи завершены.** Оставшиеся задачи — Android-клиент (TASK-037-045) и финальное E2E тестирование (TASK-050)

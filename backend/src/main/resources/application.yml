@@ -68,6 +68,10 @@ rabbitmq:
     recurrence-routing-key: notification.recurrence
     sync-conflict-routing-key: notification.sync_conflict
 
+fcm:
+  enabled: ${FCM_ENABLED:false}
+  credentials-file: ${FCM_CREDENTIALS_FILE:}
+
 scheduler:
   reminder-check-ms: 60000
   deadline-check-ms: 3600000

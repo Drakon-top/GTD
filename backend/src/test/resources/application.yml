@@ -30,6 +30,10 @@ rate-limit:
   max-requests: 100
   window-ms: 60000
 
+fcm:
+  enabled: false
+  credentials-file: ""
+
 cors:
   allowed-origins:
     - http://localhost:3000
