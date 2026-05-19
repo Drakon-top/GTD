@@ -6,6 +6,7 @@ import com.gtd.android.data.local.entity.UserEntity
 import com.gtd.android.data.remote.api.AuthApi
 import com.gtd.android.data.remote.dto.LoginRequest
 import com.gtd.android.data.remote.dto.RegisterRequest
+import com.gtd.android.notification.DeviceTokenManager
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -23,6 +24,7 @@ class AuthRepository @Inject constructor(
     private val tokenStorage: TokenStorage,
     private val userDao: UserDao,
     private val json: Json,
+    private val deviceTokenManager: DeviceTokenManager,
 ) {
     suspend fun login(email: String, password: String): AuthResult<Unit> {
         return try {
@@ -39,6 +41,7 @@ class AuthRepository @Inject constructor(
                         passwordHash = "",
                     )
                 )
+                try { deviceTokenManager.registerTokenIfNeeded() } catch (_: Exception) {}
                 AuthResult.Success(Unit)
             } else {
                 val errorMsg = parseErrorMessage(response.errorBody()?.string())
@@ -69,6 +72,7 @@ class AuthRepository @Inject constructor(
             if (response.isSuccessful) {
                 val body = response.body() ?: return AuthResult.Error("Empty response")
                 tokenStorage.saveAccessToken(body.accessToken)
+                try { deviceTokenManager.registerTokenIfNeeded() } catch (_: Exception) {}
                 AuthResult.Success(Unit)
             } else {
                 AuthResult.Error("Token refresh failed", response.code())
@@ -80,6 +84,7 @@ class AuthRepository @Inject constructor(
 
     suspend fun logout(): AuthResult<Unit> {
         return try {
+            try { deviceTokenManager.unregisterToken() } catch (_: Exception) {}
             authApi.logout()
             tokenStorage.clear()
             userDao.deleteAll()

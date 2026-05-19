@@ -31,6 +31,9 @@ interface ReminderDao {
     @Query("SELECT * FROM reminders WHERE remind_at <= :now AND is_sent = 0")
     suspend fun getDueReminders(now: Long): List<ReminderEntity>
 
+    @Query("SELECT * FROM reminders WHERE is_sent = 0 AND remind_at > :after")
+    suspend fun getUnsent(after: Long = 0): List<ReminderEntity>
+
     @Query("DELETE FROM reminders WHERE id = :id")
     suspend fun delete(id: String)
 

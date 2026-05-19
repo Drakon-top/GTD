@@ -2,6 +2,7 @@ package com.gtd.android.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -12,12 +13,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.gtd.android.NotificationNavigation
 import com.gtd.android.ui.auth.AuthViewModel
 import com.gtd.android.ui.auth.LoginScreen
 import com.gtd.android.ui.auth.RegisterScreen
 import com.gtd.android.ui.context.ContextsScreen
 import com.gtd.android.ui.task.TaskDetailScreen
 import com.gtd.android.ui.workspace.WorkspaceScreen
+import kotlinx.coroutines.flow.StateFlow
 
 object Routes {
     const val LOGIN = "login"
@@ -31,7 +34,7 @@ object Routes {
 }
 
 @Composable
-fun GtdNavHost() {
+fun GtdNavHost(pendingNavigation: StateFlow<NotificationNavigation?>? = null) {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = hiltViewModel()
 
@@ -48,6 +51,17 @@ fun GtdNavHost() {
                     popUpTo(Routes.LOGIN) { inclusive = true }
                 }
             }
+        }
+    }
+
+    val navigation = pendingNavigation?.collectAsState()?.value
+    LaunchedEffect(navigation) {
+        if (navigation != null && startChecked && startRoute == Routes.CONTEXTS) {
+            navController.navigate(Routes.taskDetail(navigation.contextId, navigation.taskId)) {
+                popUpTo(Routes.CONTEXTS)
+            }
+            val activity = navController.context as? com.gtd.android.MainActivity
+            activity?.consumeNavigation()
         }
     }
 

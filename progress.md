@@ -1779,3 +1779,74 @@
   - Recurrence UI использует предустановленные правила в JSON формате, совместимом с backend ({"type":"daily"}, {"type":"weekly"}, {"type":"custom","intervalDays":N})
   - Категории уже отображались в drawer sidebar (из предыдущих задач), теперь добавлено управление (create/edit/delete)
   - **Следующий приоритет: TASK-045** (Android Push-уведомления через FCM + локальные — medium, deps met) или **TASK-050** (E2E тестирование — low, но теперь все deps met)
+
+---
+
+## TASK-045: Android Push-уведомления через FCM + локальные уведомления (DONE)
+
+- **Дата:** 2026-05-19
+- **Статус:** DONE
+- **Что сделано:**
+  - **Google Services Gradle plugin** — добавлен `com.google.gms.google-services` (v4.4.2) в project/app build.gradle.kts + libs.versions.toml
+  - **google-services.json** — placeholder для dev-сборки (убран из .gitignore, т.к. содержит только placeholder значения)
+  - **NotificationHelper.kt** (NEW) — singleton для управления уведомлениями:
+    - 4 NotificationChannel: reminders (HIGH), deadlines (HIGH), sync (LOW), general (DEFAULT)
+    - Методы: `showReminderNotification()`, `showDeadlineNotification()`, `showSyncConflictNotification()`
+    - Каждое уведомление создаёт PendingIntent с deep link на задачу
+  - **ReminderScheduler.kt** (NEW) — планирование локальных напоминаний через AlarmManager:
+    - `scheduleReminder()` — `setExactAndAllowWhileIdle()` для пробуждения даже в Doze
+    - `cancelReminder()` — отмена запланированного alarm
+    - `rescheduleAllPendingReminders()` — перепланирование всех unsent reminders (после boot/app restart)
+    - Поддержка Android 12+ (`canScheduleExactAlarms()` check)
+  - **ReminderAlarmReceiver.kt** (NEW) — BroadcastReceiver для срабатывания alarm:
+    - Показывает уведомление через NotificationHelper
+    - Помечает reminder как `is_sent = true` в Room
+    - Использует `goAsync()` для корутин
+  - **BootReceiver.kt** (NEW) — BroadcastReceiver для ACTION_BOOT_COMPLETED:
+    - Перепланирует все pending reminders после перезагрузки устройства
+  - **ReminderCheckWorker.kt** (NEW) — PeriodicWorkRequest (15 мин):
+    - Проверяет due reminders в Room и показывает уведомления (fallback для offline)
+    - Enqueued в GtdApplication.onCreate()
+  - **DeviceTokenManager.kt** (NEW) — управление FCM-токеном:
+    - `registerTokenIfNeeded()` — получает FCM token и регистрирует на бэкенде через POST /devices/token
+    - `onNewToken()` — обработка обновления токена
+    - `unregisterToken()` — удаление токена при logout через DELETE /devices/token
+    - Использует TokenStorage для кэширования FCM token и флага регистрации
+  - **GtdFirebaseMessagingService.kt** — полная переработка:
+    - `@AndroidEntryPoint` для DI
+    - `onNewToken()` — делегирует в DeviceTokenManager
+    - `onMessageReceived()` — парсит data payload (type, taskId, contextId, title, body) и показывает соответствующее уведомление
+  - **DeviceDtos.kt** (NEW) — `RegisterDeviceTokenRequest`, `DeviceTokenResponse`
+  - **GtdApi.kt** — добавлены endpoints: `registerDeviceToken()`, `unregisterDeviceToken()`
+  - **TokenStorage.kt** — расширен: `saveFcmToken()`, `getFcmToken()`, `setFcmTokenRegistered()`, `isFcmTokenRegistered()`
+  - **NotificationModule.kt** (NEW) — Hilt module, provides `FirebaseMessaging.getInstance()`
+  - **ReminderDao.kt** — добавлен `getUnsent(after)` query для перепланирования
+  - **MainActivity.kt** — полная переработка:
+    - Runtime permission request для POST_NOTIFICATIONS (Android 13+)
+    - Deep link handling: `handleNotificationIntent()` парсит extras (task_id, context_id) из Intent
+    - `pendingNavigation: StateFlow` для передачи навигации в Compose
+    - `onNewIntent()` для обработки нажатия на уведомление при открытом приложении
+  - **GtdNavHost.kt** — навигация по deep link из уведомления:
+    - `LaunchedEffect(navigation)` — при наличии pending navigation, переходит к task detail
+    - Consume navigation после обработки
+  - **GtdApp.kt** — принимает `pendingNavigation: StateFlow` parameter
+  - **GtdApplication.kt** — создаёт notification channels и запускает ReminderCheckWorker в `onCreate()`
+  - **AndroidManifest.xml** — зарегистрированы `ReminderAlarmReceiver` и `BootReceiver`
+  - **ic_notification.xml** (NEW) — vector drawable для иконки уведомлений
+  - **AuthRepository.kt** — интеграция DeviceTokenManager:
+    - После login: `deviceTokenManager.registerTokenIfNeeded()`
+    - После refreshToken: `deviceTokenManager.registerTokenIfNeeded()`
+    - При logout: `deviceTokenManager.unregisterToken()`
+- **Сборка:**
+  - `./gradlew compileDebugKotlin --no-daemon` — BUILD SUCCESSFUL
+  - `npx tsc --noEmit` — без ошибок (frontend не затронут)
+  - `npm run build` — без ошибок (427KB JS, 75KB CSS)
+  - `./mvnw clean compile -DskipTests` — без ошибок (backend не затронут)
+- **Заметки:**
+  - FCM push работает при наличии сети: бэкенд отправляет push через `NotificationConsumer` → Firebase → Android
+  - Локальные уведомления работают офлайн через AlarmManager (exact alarms) + fallback через PeriodicWorkRequest (15 мин)
+  - Deep link из уведомления: tap → MainActivity intent с extras → `pendingNavigation` StateFlow → NavHost navigates to task detail
+  - Boot receiver восстанавливает все alarm'ы после перезагрузки устройства
+  - google-services.json — placeholder для dev; в production нужен реальный файл из Firebase Console
+  - Hilt injection в BroadcastReceivers через `@AndroidEntryPoint` (поддерживается Hilt 2.40+)
+  - **Следующий приоритет: TASK-050** (E2E тестирование — low, единственная оставшаяся задача со status pending)

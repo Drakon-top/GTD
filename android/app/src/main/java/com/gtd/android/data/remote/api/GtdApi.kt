@@ -6,7 +6,9 @@ import com.gtd.android.data.remote.dto.CreateCategoryRequest
 import com.gtd.android.data.remote.dto.CreateContextRequest
 import com.gtd.android.data.remote.dto.CreateReminderRequest
 import com.gtd.android.data.remote.dto.CreateTaskRequest
+import com.gtd.android.data.remote.dto.DeviceTokenResponse
 import com.gtd.android.data.remote.dto.MoveTaskRequest
+import com.gtd.android.data.remote.dto.RegisterDeviceTokenRequest
 import com.gtd.android.data.remote.dto.ReminderDto
 import com.gtd.android.data.remote.dto.SyncPullResponse
 import com.gtd.android.data.remote.dto.SyncPushRequest
@@ -127,4 +129,11 @@ interface GtdApi {
 
     @GET("sync/pull")
     suspend fun syncPull(@Query("since") since: String): Response<SyncPullResponse>
+
+    // Device Tokens
+    @POST("devices/token")
+    suspend fun registerDeviceToken(@Body request: RegisterDeviceTokenRequest): Response<DeviceTokenResponse>
+
+    @DELETE("devices/token")
+    suspend fun unregisterDeviceToken(@Query("token") token: String): Response<Unit>
 }
