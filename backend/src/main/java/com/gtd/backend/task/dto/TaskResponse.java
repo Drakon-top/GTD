@@ -1,5 +1,6 @@
 package com.gtd.backend.task.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.gtd.backend.task.model.GtdList;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -51,6 +52,7 @@ public class TaskResponse {
     private int sortOrder;
 
     @Schema(description = "Whether task is completed")
+    @JsonProperty("isCompleted")
     private boolean completed;
 
     @Schema(description = "Completion timestamp")

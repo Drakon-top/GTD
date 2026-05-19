@@ -96,6 +96,9 @@ export default function Sidebar({ counts, categories, activeSection, onSectionCh
       {theme.breathingBg && (
         <div className="theme-nature-breathing pointer-events-none absolute inset-0 bg-gradient-to-b from-emerald-200 to-transparent" />
       )}
+      {theme.dragonsBreathingBg && (
+        <div className="theme-dragons-breathing pointer-events-none absolute inset-0 bg-gradient-to-t from-amber-700 to-transparent" />
+      )}
       <nav className="relative flex-1 overflow-y-auto px-2 py-3">
         <div className={`mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider ${theme.sidebarLabel} ${theme.labelStyle} ${theme.sidebarSectionUnderline}`}>
           GTD Lists

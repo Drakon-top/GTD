@@ -217,20 +217,23 @@
     100% { --gradient-angle: 360deg; }
   }
 
-  /* DRAGONS: scale pattern background */
+  /* DRAGONS: scale pattern background — overlapping circles like dragon scales */
   .theme-bg-scales {
     background-image:
-      radial-gradient(ellipse at 50% 0%, rgba(217, 119, 6, 0.06), transparent 50%),
-      radial-gradient(circle at 25% 75%, rgba(245, 158, 11, 0.04) 0%, transparent 30%),
-      radial-gradient(circle at 75% 25%, rgba(234, 88, 12, 0.04) 0%, transparent 30%);
+      radial-gradient(ellipse at 50% 0%, rgba(217, 119, 6, 0.12), transparent 45%),
+      radial-gradient(circle at 25% 75%, rgba(245, 158, 11, 0.08) 0%, transparent 35%),
+      radial-gradient(circle at 75% 25%, rgba(234, 88, 12, 0.08) 0%, transparent 35%),
+      radial-gradient(circle 12px at 20px 20px, rgba(217, 119, 6, 0.04) 40%, transparent 60%),
+      radial-gradient(circle 12px at 32px 8px, rgba(217, 119, 6, 0.04) 40%, transparent 60%);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 40px 28px, 40px 28px;
   }
 
   /* DRAGONS: fire glow on active sidebar item */
   .theme-dragons-fire-glow {
-    box-shadow: 0 0 6px rgba(217, 119, 6, 0.35), inset 0 0 4px rgba(245, 158, 11, 0.1);
+    box-shadow: 0 0 8px rgba(217, 119, 6, 0.45), inset 0 0 6px rgba(245, 158, 11, 0.15);
   }
 
-  /* DRAGONS: ember glow on hover */
+  /* DRAGONS: ember glow on hover — subtle warm glow at the bottom edge */
   .theme-dragons-ember-hover {
     position: relative;
   }
@@ -240,35 +243,42 @@
     left: 0;
     right: 0;
     bottom: 0;
-    height: 0;
-    background: linear-gradient(to top, rgba(217, 119, 6, 0.08), transparent);
-    transition: height 150ms ease-out;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 5%, rgba(245, 158, 11, 0.4), rgba(234, 88, 12, 0.3), transparent 95%);
+    opacity: 0;
+    transition: opacity 200ms ease-out;
     pointer-events: none;
-    border-radius: inherit;
   }
   .theme-dragons-ember-hover:hover::after {
-    height: 100%;
+    opacity: 1;
   }
 
-  /* DRAGONS: claw marks divider */
+  /* DRAGONS: claw marks divider — 3 diagonal slashes */
   .theme-dragons-claw-marks {
-    height: 8px;
-    background: repeating-linear-gradient(
-      30deg,
-      transparent,
-      transparent 4px,
-      rgba(217, 119, 6, 0.15) 4px,
-      rgba(217, 119, 6, 0.15) 5px,
-      transparent 5px,
-      transparent 9px
-    );
+    height: 12px;
+    background:
+      repeating-linear-gradient(
+        25deg,
+        transparent,
+        transparent 5px,
+        rgba(217, 119, 6, 0.3) 5px,
+        rgba(217, 119, 6, 0.3) 6.5px,
+        transparent 6.5px,
+        transparent 11px
+      );
     border: none;
-    opacity: 0.7;
   }
 
   /* DRAGONS: molten fire text glow */
   .theme-dragons-molten-text {
-    text-shadow: 0 0 8px rgba(245, 158, 11, 0.4), 0 0 16px rgba(234, 88, 12, 0.2);
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.5), 0 0 20px rgba(234, 88, 12, 0.3), 0 0 40px rgba(220, 38, 38, 0.1);
+  }
+
+  /* DRAGONS: fire progress bar — animated fire shimmer */
+  .theme-dragons-fire-progress {
+    background: linear-gradient(90deg, #b45309, #d97706, #f59e0b, #ea580c, #b45309) !important;
+    background-size: 200% 100% !important;
+    animation: fire-progress-shimmer 2s ease-in-out infinite !important;
   }
 
   /* DRAGONS: gold gradient underline for selected task */
@@ -286,33 +296,95 @@
     border-radius: 1px;
   }
 
-  /* DRAGONS: fire animated gradient border */
+  /* DRAGONS: fire animated gradient border on detail panel */
   .theme-dragons-fire-border {
     position: relative;
-    z-index: 0;
+    overflow: visible;
   }
   .theme-dragons-fire-border::before {
     content: '';
     position: absolute;
-    inset: -1px;
+    inset: -2px;
     border-radius: inherit;
-    padding: 1px;
     background: linear-gradient(
-      var(--gradient-angle, 0deg),
-      rgba(245, 158, 11, 0.4),
-      rgba(234, 88, 12, 0.3),
-      rgba(220, 38, 38, 0.2),
-      rgba(245, 158, 11, 0.4)
+      var(--fire-angle, 0deg),
+      rgba(245, 158, 11, 0.6),
+      rgba(234, 88, 12, 0.5),
+      rgba(220, 38, 38, 0.3),
+      rgba(245, 158, 11, 0.6)
     );
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
     mask-composite: exclude;
+    padding: 2px;
     animation: dragons-fire-shift 3s linear infinite;
     pointer-events: none;
-    z-index: -1;
+    z-index: 10;
   }
+
+  /* DRAGONS: ember dot indicator for incomplete tasks (like neon dot but fire) */
+  .theme-dragons-ember-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #f59e0b;
+    box-shadow: 0 0 4px #f59e0b, 0 0 8px rgba(234, 88, 12, 0.5);
+    animation: ember-dot-flicker 1.5s ease-in-out infinite;
+  }
+  @keyframes ember-dot-flicker {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px #f59e0b, 0 0 8px rgba(234, 88, 12, 0.5); }
+    30% { opacity: 0.7; box-shadow: 0 0 2px #f59e0b, 0 0 4px rgba(234, 88, 12, 0.3); }
+    60% { opacity: 1; box-shadow: 0 0 6px #f59e0b, 0 0 12px rgba(234, 88, 12, 0.6); }
+  }
+
+  /* DRAGONS: fire-breathing sidebar — warm ambient glow */
+  .theme-dragons-breathing {
+    animation: dragons-breathe 5s ease-in-out infinite;
+  }
+  @keyframes dragons-breathe {
+    0%, 100% { opacity: 0.04; }
+    50% { opacity: 0.09; }
+  }
+
+  /* DRAGONS: flame lick on header — flickering bottom border glow */
+  .theme-dragons-flame-header {
+    box-shadow: 0 2px 12px rgba(217, 119, 6, 0.2), 0 1px 4px rgba(234, 88, 12, 0.15);
+    animation: flame-header-pulse 3s ease-in-out infinite;
+  }
+  @keyframes flame-header-pulse {
+    0%, 100% { box-shadow: 0 2px 12px rgba(217, 119, 6, 0.2), 0 1px 4px rgba(234, 88, 12, 0.15); }
+    50% { box-shadow: 0 2px 16px rgba(217, 119, 6, 0.35), 0 1px 6px rgba(234, 88, 12, 0.25); }
+  }
+
+  /* DRAGONS: forge-stamped completed tasks */
+  .theme-dragons-forge-stamp {
+    position: relative;
+  }
+  .theme-dragons-forge-stamp::after {
+    content: 'SLAIN';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%) rotate(-8deg);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    font-family: serif;
+    color: rgba(217, 119, 6, 0.2);
+    border: 2px solid rgba(217, 119, 6, 0.15);
+    padding: 1px 8px;
+    pointer-events: none;
+    border-radius: 2px;
+  }
+
   @keyframes dragons-fire-shift {
-    0% { --gradient-angle: 0deg; }
-    100% { --gradient-angle: 360deg; }
+    0% { --fire-angle: 0deg; }
+    100% { --fire-angle: 360deg; }
   }
 
   /* DARK: neon dot indicator */
@@ -334,4 +406,16 @@
   syntax: '<angle>';
   initial-value: 0deg;
   inherits: false;
+}
+
+@property --fire-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes fire-progress-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }

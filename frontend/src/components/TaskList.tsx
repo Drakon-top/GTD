@@ -66,7 +66,7 @@ function DraggableTaskItem({
 
   const hoverIndicatorClass = theme.taskHoverIndicator || '';
   const floatClass = theme.floatingShadow || '';
-  const stampClass = task.isCompleted && theme.taskCompletedStamp ? 'theme-formal-stamp' : '';
+  const stampClass = task.isCompleted && theme.taskCompletedStamp ? 'theme-formal-stamp' : task.isCompleted && theme.dragonsForgeStamp ? 'theme-dragons-forge-stamp' : '';
   const underlineClass = isSelected && theme.taskActiveUnderline ? theme.taskActiveUnderline : '';
 
   return (
@@ -85,6 +85,9 @@ function DraggableTaskItem({
       >
         {theme.neonDotIndicator && !task.isCompleted && (
           <span className="theme-dark-neon-dot mt-1.5 shrink-0" />
+        )}
+        {theme.emberDotIndicator && !task.isCompleted && (
+          <span className="theme-dragons-ember-dot mt-1.5 shrink-0" />
         )}
         {theme.taskNumbering && (
           <span className="mt-0.5 w-6 shrink-0 text-right text-[10px] font-light text-slate-300 font-mono">

@@ -93,6 +93,9 @@ export interface ThemeColors {
   emberHover: boolean;
   clawMarks: boolean;
   moltenText: string;
+  emberDotIndicator: boolean;
+  dragonsBreathingBg: boolean;
+  dragonsForgeStamp: boolean;
 }
 
 const MINIMALIST: ThemeColors = {
@@ -186,6 +189,9 @@ const MINIMALIST: ThemeColors = {
   emberHover: false,
   clawMarks: false,
   moltenText: '',
+  emberDotIndicator: false,
+  dragonsBreathingBg: false,
+  dragonsForgeStamp: false,
 };
 
 const DESIGN: ThemeColors = {
@@ -279,6 +285,9 @@ const DESIGN: ThemeColors = {
   emberHover: false,
   clawMarks: false,
   moltenText: '',
+  emberDotIndicator: false,
+  dragonsBreathingBg: false,
+  dragonsForgeStamp: false,
 };
 
 const FORMAL: ThemeColors = {
@@ -372,6 +381,9 @@ const FORMAL: ThemeColors = {
   emberHover: false,
   clawMarks: false,
   moltenText: '',
+  emberDotIndicator: false,
+  dragonsBreathingBg: false,
+  dragonsForgeStamp: false,
 };
 
 const NATURE: ThemeColors = {
@@ -465,6 +477,9 @@ const NATURE: ThemeColors = {
   emberHover: false,
   clawMarks: false,
   moltenText: '',
+  emberDotIndicator: false,
+  dragonsBreathingBg: false,
+  dragonsForgeStamp: false,
 };
 
 const DARK: ThemeColors = {
@@ -558,6 +573,9 @@ const DARK: ThemeColors = {
   emberHover: false,
   clawMarks: false,
   moltenText: '',
+  emberDotIndicator: false,
+  dragonsBreathingBg: false,
+  dragonsForgeStamp: false,
 };
 
 const DRAGONS: ThemeColors = {
@@ -581,15 +599,15 @@ const DRAGONS: ThemeColors = {
   listHeaderText: 'text-amber-100',
   listCountBadge: 'bg-amber-950/50 text-amber-300',
   taskText: 'text-amber-100',
-  taskCompletedText: 'text-amber-700/50',
+  taskCompletedText: 'text-amber-600/40',
   taskSubtext: 'text-amber-500/60',
   taskHover: 'hover:bg-amber-950/30',
   taskSelected: 'bg-amber-950/40',
   taskDivider: 'divide-amber-900/20',
   checkbox: 'border-amber-600/50 hover:border-amber-400',
-  checkboxChecked: 'border-amber-600 bg-amber-700 text-amber-200',
-  progressBg: 'bg-amber-950/50',
-  progressFill: 'bg-gradient-to-r from-amber-600 to-orange-500',
+  checkboxChecked: 'border-amber-500 bg-amber-600 text-stone-950',
+  progressBg: 'bg-stone-800',
+  progressFill: 'theme-dragons-fire-progress',
   inputBorder: 'border-amber-800/40',
   inputFocus: 'focus:border-amber-500 focus:ring-amber-500/20',
   inputBg: 'bg-stone-900',
@@ -622,12 +640,12 @@ const DRAGONS: ThemeColors = {
   progressRadius: 'rounded-lg',
   progressHeight: 'h-2',
   progressHeightSm: 'h-1.5',
-  progressExtra: '',
-  headerStyle: 'shadow-[0_1px_8px_rgba(217,119,6,0.15)]',
+  progressExtra: 'shadow-[0_0_6px_rgba(217,119,6,0.3)]',
+  headerStyle: 'theme-dragons-flame-header',
   headerTitleSize: 'text-base',
   transitionSpeed: 'duration-150 ease-out',
   sidebarSectionUnderline: '',
-  badgeFont: '',
+  badgeFont: 'font-serif',
   taskHoverIndicator: 'theme-dragons-ember-hover',
   sidebarDividerStyle: 'theme-dragons-claw-marks',
   addBtnExtra: '',
@@ -651,6 +669,9 @@ const DRAGONS: ThemeColors = {
   emberHover: true,
   clawMarks: true,
   moltenText: 'theme-dragons-molten-text',
+  emberDotIndicator: true,
+  dragonsBreathingBg: true,
+  dragonsForgeStamp: true,
 };
 
 const THEME_MAP: Record<ContextTheme, ThemeColors> = {
