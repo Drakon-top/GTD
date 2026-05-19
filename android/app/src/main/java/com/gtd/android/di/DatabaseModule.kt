@@ -25,6 +25,7 @@ object DatabaseModule {
     fun provideDatabase(@ApplicationContext context: Context): GtdDatabase =
         Room.databaseBuilder(context, GtdDatabase::class.java, "gtd_database")
             .fallbackToDestructiveMigration()
+            .addMigrations(*GtdDatabase.MIGRATIONS)
             .build()
 
     @Provides

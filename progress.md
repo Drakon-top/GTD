@@ -1388,3 +1388,39 @@
   - DRAGONS — тёмная тема, поэтому `isDark` в ContextsPage расширен: `ctx.theme === 'DARK' || ctx.theme === 'DRAGONS'`
   - Все 4 новых boolean-поля (`fireAnimatedBorder`, `emberHover`, `clawMarks`, `moltenText`) добавлены с дефолтом `false`/`''` во все существующие темы
   - **Следующий приоритет: TASK-038** (Room Database — миграции и полные DAO для Android)
+
+---
+
+## TASK-038 — Android: Room Database — зеркальная структура серверной БД
+
+- **Дата:** 2026-05-19
+- **Статус:** done
+- **Что сделано:**
+  - **Room entities** (6 штук) уже были созданы в TASK-037: `UserEntity`, `ContextEntity`, `TaskEntity`, `CategoryEntity`, `ReminderEntity`, `PendingChangeEntity`
+  - **DAO interfaces** (6 штук) с полными CRUD-операциями: `UserDao`, `ContextDao`, `TaskDao`, `CategoryDao`, `ReminderDao`, `PendingChangeDao`
+  - **PendingChange** таблица для отслеживания локальных изменений (offline sync): `entity_type`, `entity_id`, `field_name`, `old_value`, `new_value`, `change_type`, `is_synced`
+  - **Room миграции для будущих обновлений:**
+    - Включён `exportSchema = true` в `@Database` аннотации
+    - Добавлена KSP-конфигурация `room.schemaLocation` в `build.gradle.kts` — схемы экспортируются в `app/schemas/`
+    - Сгенерирована схема v1 (`1.json`) — полная структура всех 6 таблиц с FK, индексами
+    - Добавлен `GtdDatabase.MIGRATIONS` companion object — массив миграций для `DatabaseModule`
+    - `DatabaseModule` обновлён: `.addMigrations(*GtdDatabase.MIGRATIONS)` + `fallbackToDestructiveMigration()` как safety net
+  - **Расширены тесты** (`GtdDatabaseTest.kt`): с 2 до 23 тестов
+    - UserDao: insert, getByEmail, observeCurrentUser, missing user
+    - ContextDao: insert + observe, softDelete, count, update
+    - TaskDao: insert + observe, filter by GTD list, subtasks, softDelete + cascade, countByGtdList, countByCategory, exclude subtasks from top-level, getChangedSince
+    - CategoryDao: insert + observe, softDelete, update
+    - ReminderDao: insert + observe, getDueReminders, delete
+    - PendingChangeDao: track unsynced, markSynced, deleteSyncedChanges
+    - FK cascade: task deletion cascades to reminders
+    - Upsert via REPLACE conflict strategy
+  - `./gradlew compileDebugKotlin --offline` — BUILD SUCCESSFUL
+  - `npx tsc --noEmit` — без ошибок (frontend не затронут)
+  - `npm run build` — без ошибок (427KB JS, 75KB CSS)
+  - `./mvnw clean compile -DskipTests` — без ошибок (backend не затронут)
+- **Заметки:**
+  - Основные entities и DAOs были созданы в TASK-037 (инициализация Android-проекта); TASK-038 финализирует миграционную инфраструктуру и тесты
+  - Schema v1 содержит все FK constraints: users→contexts (RESTRICT), contexts→tasks (RESTRICT), tasks→tasks self-ref (RESTRICT), categories→tasks (SET NULL), tasks→reminders (CASCADE)
+  - `fallbackToDestructiveMigration()` оставлен как safety net для dev-сборок; при реальном обновлении схемы нужно добавить `Migration(1, 2)` в `GtdDatabase.MIGRATIONS`
+  - Instrumented тесты (23 шт.) покрывают все DAOs и ключевые сценарии; для запуска нужен эмулятор/устройство
+  - **Следующий приоритет: TASK-039** (Android авторизация с Retrofit — зависит от TASK-038 done + TASK-005 done)

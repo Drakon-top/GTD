@@ -912,7 +912,7 @@
         "Шаг 4: Перезапустить приложение — данные на месте"
       ],
       "dependencies": ["TASK-037"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-039",

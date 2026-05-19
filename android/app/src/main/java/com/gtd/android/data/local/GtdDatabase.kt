@@ -2,6 +2,7 @@ package com.gtd.android.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import com.gtd.android.data.local.dao.CategoryDao
 import com.gtd.android.data.local.dao.ContextDao
 import com.gtd.android.data.local.dao.PendingChangeDao
@@ -25,7 +26,7 @@ import com.gtd.android.data.local.entity.UserEntity
         PendingChangeEntity::class,
     ],
     version = 1,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class GtdDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
@@ -34,4 +35,8 @@ abstract class GtdDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun reminderDao(): ReminderDao
     abstract fun pendingChangeDao(): PendingChangeDao
+
+    companion object {
+        val MIGRATIONS: Array<Migration> = arrayOf()
+    }
 }
