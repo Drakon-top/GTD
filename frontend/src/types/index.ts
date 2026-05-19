@@ -13,7 +13,8 @@ export type ContextTheme =
   | 'DESIGN'
   | 'FORMAL'
   | 'NATURE'
-  | 'DARK';
+  | 'DARK'
+  | 'DRAGONS';
 
 export interface AuthResponse {
   accessToken: string;

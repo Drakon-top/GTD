@@ -15,6 +15,7 @@ const THEMES: { value: ContextTheme; label: string; colors: string }[] = [
   { value: 'FORMAL', label: 'Formal', colors: 'bg-slate-100 border-slate-300 text-slate-700' },
   { value: 'NATURE', label: 'Nature', colors: 'bg-emerald-50 border-emerald-300 text-emerald-700' },
   { value: 'DARK', label: 'Dark', colors: 'bg-zinc-800 border-zinc-600 text-zinc-100' },
+  { value: 'DRAGONS', label: 'Dragons', colors: 'bg-stone-900 border-amber-700 text-amber-100' },
 ];
 
 export default function CreateContextModal({ open, onClose, onCreated, onSubmit }: CreateContextModalProps) {

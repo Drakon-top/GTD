@@ -10,4 +10,5 @@ enum class ContextTheme {
     @SerialName("FORMAL") FORMAL,
     @SerialName("NATURE") NATURE,
     @SerialName("DARK") DARK,
+    @SerialName("DRAGONS") DRAGONS,
 }

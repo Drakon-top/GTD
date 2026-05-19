@@ -1342,3 +1342,49 @@
   - Декоративные элементы subtle и не мешают UX — они дополняют уникальность каждой темы
   - Blob badge для NATURE использует нестандартный border-radius; на мобильных может выглядеть чуть иначе
   - **Следующий приоритет: TASK-038** (Room Database — миграции и полные DAO для Android)
+
+---
+
+## TASK-054 — Новая тема DRAGONS — средневековое фэнтези с огненными акцентами
+
+- **Дата:** 2026-05-19
+- **Статус:** done
+- **Что сделано:**
+  - **Backend:** Flyway-миграция `V9__add_dragons_theme.sql` — `ALTER TYPE context_theme ADD VALUE 'DRAGONS'`
+  - **Backend:** Java enum `ContextTheme.java` — добавлено значение `DRAGONS`
+  - **Android:** Kotlin enum `ContextTheme.kt` — добавлено `@SerialName("DRAGONS") DRAGONS`
+  - **Frontend типы:** `ContextTheme` union type в `types/index.ts` расширен `| 'DRAGONS'`
+  - **Frontend ThemeColors:** интерфейс расширен 4 новыми полями: `fireAnimatedBorder`, `emberHover`, `clawMarks`, `moltenText`
+  - **Frontend тема DRAGONS (utils/themes.ts):** полный объект ThemeColors со следующей концепцией:
+    - Цветовая палитра: тёмные фоны (`stone-900`/`stone-950`), огненные акценты (`amber-500`, `orange-500`), золотые элементы
+    - Типографика: `font-serif` для заголовков — средневековый feel
+    - Формы: `rounded-lg` углы, тени с огненным оттенком (`shadow-amber-950/40`)
+    - Прогресс-бар: gradient `from-amber-600 to-orange-500`
+  - **5 уникальных декоративных CSS-элементов (index.css @layer utilities):**
+    1. `theme-bg-scales` — чешуйчатый фоновый паттерн (radial-gradient overlapping spots, subtle amber/dark tones)
+    2. `theme-dragons-fire-glow` — огненный glow на активном пункте sidebar (box-shadow amber/amber)
+    3. `theme-dragons-ember-hover` — ember glow при hover на задачах (gradient overlay снизу вверх через `::after`)
+    4. `theme-dragons-claw-marks` — диагональные «царапины» на разделителях секций sidebar (repeating-linear-gradient 30°)
+    5. `theme-dragons-molten-text` — fire text-shadow для заголовков (amber + orange glow)
+    6. `theme-dragons-gold-underline` — золотой gradient underline для выбранной задачи
+    7. `theme-dragons-fire-border` — анимированный огненный gradient border на TaskDetailPanel (@keyframes dragons-fire-shift)
+  - **Интеграция в компоненты:**
+    - `ContextsPage.tsx` — `THEME_STYLES.DRAGONS` (card: stone-900, amber border; badge: amber-950; accent: amber-500); `isDark` расширен на DRAGONS
+    - `CreateContextModal.tsx` — кнопка Dragons (bg-stone-900, border-amber-700, text-amber-100)
+    - `ContextWorkspacePage.tsx` — color swatch `bg-amber-500` в theme picker; `moltenText` на заголовке
+    - `TaskDetailPanel.tsx` — `fireAnimatedBorder` → `theme-dragons-fire-border` (аналог animatedBorder для DARK)
+    - `Sidebar.tsx` — `theme-dragons-claw-marks` divider для DRAGONS
+    - `TaskList.tsx` — автоматическая интеграция через `taskHoverIndicator`, `taskActiveUnderline`, `floatingShadow` string-поля
+  - `npx tsc --noEmit` — без ошибок
+  - `npm run lint` — без ошибок
+  - `npm run build` — без ошибок (422KB JS, 62KB CSS)
+  - `./mvnw clean package -DskipTests` — без ошибок (integration tests требуют Docker/PostgreSQL — pre-existing)
+- **Коммиты:** feat: add DRAGONS medieval fantasy theme with fire accents and decorative elements (TASK-054)
+- **Заметки:**
+  - Все CSS-анимации используют GPU-accelerated свойства (transform, opacity) — без лагов
+  - `@keyframes dragons-fire-shift` переиспользует `@property --gradient-angle` из Dark theme
+  - Ember hover эффект через CSS `::after` pseudo-element с `height` transition — чистый CSS, без JS
+  - Claw marks divider использует `repeating-linear-gradient` под углом 30° — 3 тонкие линии создают эффект царапин
+  - DRAGONS — тёмная тема, поэтому `isDark` в ContextsPage расширен: `ctx.theme === 'DARK' || ctx.theme === 'DRAGONS'`
+  - Все 4 новых boolean-поля (`fireAnimatedBorder`, `emberHover`, `clawMarks`, `moltenText`) добавлены с дефолтом `false`/`''` во все существующие темы
+  - **Следующий приоритет: TASK-038** (Room Database — миграции и полные DAO для Android)

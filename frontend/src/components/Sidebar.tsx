@@ -116,6 +116,8 @@ export default function Sidebar({ counts, categories, activeSection, onSectionCh
 
         {theme.sidebarDividerStyle === 'theme-design-gradient-divider' ? (
           <div className="my-2 theme-design-gradient-divider" />
+        ) : theme.sidebarDividerStyle === 'theme-dragons-claw-marks' ? (
+          <div className="my-2 theme-dragons-claw-marks" />
         ) : theme.sidebarDividerStyle === 'gap' ? (
           <div className="my-3" />
         ) : (

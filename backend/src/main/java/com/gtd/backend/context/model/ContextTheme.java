@@ -5,5 +5,6 @@ public enum ContextTheme {
     DESIGN,
     FORMAL,
     NATURE,
-    DARK
+    DARK,
+    DRAGONS
 }

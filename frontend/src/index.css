@@ -217,6 +217,104 @@
     100% { --gradient-angle: 360deg; }
   }
 
+  /* DRAGONS: scale pattern background */
+  .theme-bg-scales {
+    background-image:
+      radial-gradient(ellipse at 50% 0%, rgba(217, 119, 6, 0.06), transparent 50%),
+      radial-gradient(circle at 25% 75%, rgba(245, 158, 11, 0.04) 0%, transparent 30%),
+      radial-gradient(circle at 75% 25%, rgba(234, 88, 12, 0.04) 0%, transparent 30%);
+  }
+
+  /* DRAGONS: fire glow on active sidebar item */
+  .theme-dragons-fire-glow {
+    box-shadow: 0 0 6px rgba(217, 119, 6, 0.35), inset 0 0 4px rgba(245, 158, 11, 0.1);
+  }
+
+  /* DRAGONS: ember glow on hover */
+  .theme-dragons-ember-hover {
+    position: relative;
+  }
+  .theme-dragons-ember-hover::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 0;
+    background: linear-gradient(to top, rgba(217, 119, 6, 0.08), transparent);
+    transition: height 150ms ease-out;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  .theme-dragons-ember-hover:hover::after {
+    height: 100%;
+  }
+
+  /* DRAGONS: claw marks divider */
+  .theme-dragons-claw-marks {
+    height: 8px;
+    background: repeating-linear-gradient(
+      30deg,
+      transparent,
+      transparent 4px,
+      rgba(217, 119, 6, 0.15) 4px,
+      rgba(217, 119, 6, 0.15) 5px,
+      transparent 5px,
+      transparent 9px
+    );
+    border: none;
+    opacity: 0.7;
+  }
+
+  /* DRAGONS: molten fire text glow */
+  .theme-dragons-molten-text {
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.4), 0 0 16px rgba(234, 88, 12, 0.2);
+  }
+
+  /* DRAGONS: gold gradient underline for selected task */
+  .theme-dragons-gold-underline {
+    position: relative;
+  }
+  .theme-dragons-gold-underline::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #d97706, #f59e0b, transparent);
+    border-radius: 1px;
+  }
+
+  /* DRAGONS: fire animated gradient border */
+  .theme-dragons-fire-border {
+    position: relative;
+    z-index: 0;
+  }
+  .theme-dragons-fire-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      var(--gradient-angle, 0deg),
+      rgba(245, 158, 11, 0.4),
+      rgba(234, 88, 12, 0.3),
+      rgba(220, 38, 38, 0.2),
+      rgba(245, 158, 11, 0.4)
+    );
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    animation: dragons-fire-shift 3s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+  }
+  @keyframes dragons-fire-shift {
+    0% { --gradient-angle: 0deg; }
+    100% { --gradient-angle: 360deg; }
+  }
+
   /* DARK: neon dot indicator */
   .theme-dark-neon-dot {
     width: 6px;

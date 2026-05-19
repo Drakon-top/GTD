@@ -88,6 +88,11 @@ export interface ThemeColors {
   floatingShadow: string;
   pulseAddBtn: boolean;
   dropCapProject: boolean;
+  // TASK-054: DRAGONS theme unique elements
+  fireAnimatedBorder: boolean;
+  emberHover: boolean;
+  clawMarks: boolean;
+  moltenText: string;
 }
 
 const MINIMALIST: ThemeColors = {
@@ -177,6 +182,10 @@ const MINIMALIST: ThemeColors = {
   floatingShadow: '',
   pulseAddBtn: false,
   dropCapProject: false,
+  fireAnimatedBorder: false,
+  emberHover: false,
+  clawMarks: false,
+  moltenText: '',
 };
 
 const DESIGN: ThemeColors = {
@@ -266,6 +275,10 @@ const DESIGN: ThemeColors = {
   floatingShadow: 'theme-design-float',
   pulseAddBtn: true,
   dropCapProject: false,
+  fireAnimatedBorder: false,
+  emberHover: false,
+  clawMarks: false,
+  moltenText: '',
 };
 
 const FORMAL: ThemeColors = {
@@ -355,6 +368,10 @@ const FORMAL: ThemeColors = {
   floatingShadow: '',
   pulseAddBtn: false,
   dropCapProject: true,
+  fireAnimatedBorder: false,
+  emberHover: false,
+  clawMarks: false,
+  moltenText: '',
 };
 
 const NATURE: ThemeColors = {
@@ -444,6 +461,10 @@ const NATURE: ThemeColors = {
   floatingShadow: '',
   pulseAddBtn: false,
   dropCapProject: false,
+  fireAnimatedBorder: false,
+  emberHover: false,
+  clawMarks: false,
+  moltenText: '',
 };
 
 const DARK: ThemeColors = {
@@ -533,6 +554,103 @@ const DARK: ThemeColors = {
   floatingShadow: '',
   pulseAddBtn: false,
   dropCapProject: false,
+  fireAnimatedBorder: false,
+  emberHover: false,
+  clawMarks: false,
+  moltenText: '',
+};
+
+const DRAGONS: ThemeColors = {
+  bg: 'bg-stone-900',
+  headerBg: 'bg-stone-900',
+  headerBorder: 'border-amber-900/50',
+  headerText: 'text-amber-100',
+  headerSubtext: 'text-amber-500/70',
+  sidebarBg: 'bg-stone-900',
+  sidebarBorder: 'border-amber-900/40',
+  sidebarLabel: 'text-amber-600/60',
+  sidebarItemText: 'text-amber-300/70',
+  sidebarItemHover: 'hover:bg-amber-950/50 hover:text-amber-200',
+  sidebarItemActive: 'bg-amber-950/60',
+  sidebarItemActiveText: 'font-medium text-amber-100',
+  sidebarBadge: 'bg-amber-950/50 text-amber-400/70',
+  sidebarBadgeActive: 'bg-amber-900/50 text-amber-200',
+  sidebarDivider: 'border-amber-900/30',
+  mainBg: 'bg-stone-950',
+  listHeaderBorder: 'border-amber-900/40',
+  listHeaderText: 'text-amber-100',
+  listCountBadge: 'bg-amber-950/50 text-amber-300',
+  taskText: 'text-amber-100',
+  taskCompletedText: 'text-amber-700/50',
+  taskSubtext: 'text-amber-500/60',
+  taskHover: 'hover:bg-amber-950/30',
+  taskSelected: 'bg-amber-950/40',
+  taskDivider: 'divide-amber-900/20',
+  checkbox: 'border-amber-600/50 hover:border-amber-400',
+  checkboxChecked: 'border-amber-600 bg-amber-700 text-amber-200',
+  progressBg: 'bg-amber-950/50',
+  progressFill: 'bg-gradient-to-r from-amber-600 to-orange-500',
+  inputBorder: 'border-amber-800/40',
+  inputFocus: 'focus:border-amber-500 focus:ring-amber-500/20',
+  inputBg: 'bg-stone-900',
+  inputText: 'text-amber-100',
+  inputPlaceholder: 'placeholder:text-amber-700/50',
+  btnPrimary: 'bg-amber-600',
+  btnPrimaryHover: 'hover:bg-amber-500',
+  btnPrimaryText: 'text-stone-950',
+  labelText: 'text-amber-600/60',
+  panelBg: 'bg-stone-900',
+  panelBorder: 'border-amber-900/40',
+  emptyIcon: 'opacity-20',
+  emptyText: 'text-amber-700/50',
+  dropTargetBg: 'bg-amber-950/40',
+  dropTargetRing: 'ring-1 ring-amber-600/40',
+  borderRadius: 'rounded-lg',
+  borderRadiusLg: 'rounded-xl',
+  shadow: 'shadow-lg shadow-amber-950/40',
+  shadowLg: 'shadow-xl shadow-amber-950/50',
+  fontFamily: 'font-sans',
+  headerFont: 'font-serif',
+  spacing: 'px-4 py-3',
+  labelStyle: '',
+  decorativeBorder: 'border',
+  cardStyle: 'border border-amber-900/40 bg-stone-900/90',
+  bgPattern: 'theme-bg-scales',
+  checkboxRadius: 'rounded',
+  checkboxSize: 'h-[18px] w-[18px]',
+  checkboxExtra: 'hover:shadow-sm hover:shadow-amber-600/20',
+  progressRadius: 'rounded-lg',
+  progressHeight: 'h-2',
+  progressHeightSm: 'h-1.5',
+  progressExtra: '',
+  headerStyle: 'shadow-[0_1px_8px_rgba(217,119,6,0.15)]',
+  headerTitleSize: 'text-base',
+  transitionSpeed: 'duration-150 ease-out',
+  sidebarSectionUnderline: '',
+  badgeFont: '',
+  taskHoverIndicator: 'theme-dragons-ember-hover',
+  sidebarDividerStyle: 'theme-dragons-claw-marks',
+  addBtnExtra: '',
+  sidebarActiveStyle: 'theme-dragons-fire-glow',
+  taskNumbering: false,
+  taskCompletedStamp: false,
+  headerAccent: '',
+  taskActiveUnderline: 'theme-dragons-gold-underline',
+  sidebarTopBorder: '',
+  neonDotIndicator: false,
+  scanlineOverlay: false,
+  glowText: '',
+  animatedBorder: false,
+  breathingBg: false,
+  leafIcon: false,
+  blobBadge: false,
+  floatingShadow: '',
+  pulseAddBtn: false,
+  dropCapProject: false,
+  fireAnimatedBorder: true,
+  emberHover: true,
+  clawMarks: true,
+  moltenText: 'theme-dragons-molten-text',
 };
 
 const THEME_MAP: Record<ContextTheme, ThemeColors> = {
@@ -541,6 +659,7 @@ const THEME_MAP: Record<ContextTheme, ThemeColors> = {
   FORMAL,
   NATURE,
   DARK,
+  DRAGONS,
 };
 
 export function getTheme(theme: ContextTheme): ThemeColors {
@@ -553,4 +672,5 @@ export const THEME_NAMES: Record<ContextTheme, string> = {
   FORMAL: 'Formal',
   NATURE: 'Nature',
   DARK: 'Dark',
+  DRAGONS: 'Dragons',
 };

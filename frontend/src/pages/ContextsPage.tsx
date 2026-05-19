@@ -36,6 +36,11 @@ const THEME_STYLES: Record<ContextTheme, { card: string; badge: string; accent: 
     badge: 'bg-zinc-700 text-zinc-200',
     accent: 'text-zinc-400',
   },
+  DRAGONS: {
+    card: 'bg-stone-900 border-amber-800/40 hover:border-amber-600/60',
+    badge: 'bg-amber-950/50 text-amber-300',
+    accent: 'text-amber-500',
+  },
 };
 
 async function loadContexts(): Promise<{ contexts: ContextResponse[]; inboxCounts: Record<string, number> }> {
@@ -165,7 +170,7 @@ export default function ContextsPage() {
             {contexts.map((ctx) => {
               const style = THEME_STYLES[ctx.theme];
               const inboxCount = inboxCounts[ctx.id] ?? 0;
-              const isDark = ctx.theme === 'DARK';
+              const isDark = ctx.theme === 'DARK' || ctx.theme === 'DRAGONS';
               return (
                 <button
                   key={ctx.id}

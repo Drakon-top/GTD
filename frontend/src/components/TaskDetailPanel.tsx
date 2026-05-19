@@ -182,7 +182,7 @@ export default function TaskDetailPanel({
     ? categories.find((c) => c.id === task.categoryId)?.name ?? null
     : null;
 
-  const animatedBorderClass = theme.animatedBorder ? 'theme-dark-animated-border' : '';
+  const animatedBorderClass = theme.animatedBorder ? 'theme-dark-animated-border' : theme.fireAnimatedBorder ? 'theme-dragons-fire-border' : '';
 
   return (
     <div className={`flex h-full w-80 shrink-0 flex-col border-l ${theme.panelBorder} ${theme.panelBg} ${animatedBorderClass}`}>
