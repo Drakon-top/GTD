@@ -4,6 +4,7 @@ import apiClient from '../api/client';
 import type { CategoryResponse } from '../types';
 import { createElement } from 'react';
 import { PRESET_CATEGORY_ICONS, getCategoryIcon } from '../utils/icons';
+import type { ThemeColors } from '../utils/themes';
 
 const PRESET_COLORS = [
   '#EF4444', '#F97316', '#F59E0B', '#22C55E',
@@ -15,6 +16,7 @@ interface CategoryManagerProps {
   categories: CategoryResponse[];
   onCategoriesChanged: () => void;
   onClose: () => void;
+  theme: ThemeColors;
 }
 
 export default function CategoryManager({
@@ -22,6 +24,7 @@ export default function CategoryManager({
   categories,
   onCategoriesChanged,
   onClose,
+  theme,
 }: CategoryManagerProps) {
   const [mode, setMode] = useState<'list' | 'create' | 'edit'>('list');
   const [editingCategory, setEditingCategory] = useState<CategoryResponse | null>(null);
@@ -139,28 +142,28 @@ export default function CategoryManager({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-xl border border-stone-200 bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-stone-200 px-5 py-3.5">
-          <h2 className="text-sm font-semibold text-stone-900">
+      <div className={`w-full max-w-md ${theme.borderRadiusLg} ${theme.cardStyle} ${theme.inputBorder} ${theme.panelBg} ${theme.shadowLg}`}>
+        <div className={`flex items-center justify-between border-b ${theme.panelBorder} px-5 py-3.5`}>
+          <h2 className={`text-sm font-semibold ${theme.headerFont} ${theme.headerText}`}>
             {mode === 'create' ? 'New Category' : mode === 'edit' ? 'Edit Category' : 'Manage Categories'}
           </h2>
           <button
             type="button"
             onClick={mode === 'list' ? onClose : resetToList}
-            className="rounded-md p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
+            className={`${theme.borderRadius} p-1 ${theme.labelText} transition ${theme.transitionSpeed} ${theme.taskHover}`}
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+        <div className={`max-h-[60vh] overflow-y-auto px-5 py-4`}>
           {mode === 'list' && (
             <>
               {categories.length === 0 && (
                 <div className="py-6 text-center">
-                  <Tag className="mx-auto h-8 w-8 text-stone-300" />
-                  <p className="mt-2 text-sm text-stone-400">No categories yet</p>
-                  <p className="mt-1 text-xs text-stone-300">Create one to organize your tasks</p>
+                  <Tag className={`mx-auto h-8 w-8 ${theme.emptyIcon}`} />
+                  <p className={`mt-2 text-sm ${theme.emptyText}`}>No categories yet</p>
+                  <p className={`mt-1 text-xs ${theme.emptyText} opacity-70`}>Create one to organize your tasks</p>
                 </div>
               )}
 
@@ -176,6 +179,7 @@ export default function CategoryManager({
                     onDelete={() => handleDelete(cat)}
                     onMoveUp={() => handleMoveUp(cat, i)}
                     onMoveDown={() => handleMoveDown(cat, i)}
+                    theme={theme}
                   />
                 ))}
               </ul>
@@ -183,7 +187,7 @@ export default function CategoryManager({
               <button
                 type="button"
                 onClick={openCreate}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 py-2.5 text-sm font-medium text-stone-500 transition hover:border-stone-400 hover:bg-stone-50 hover:text-stone-700"
+                className={`mt-3 flex w-full items-center justify-center gap-1.5 ${theme.borderRadius} ${theme.decorativeBorder} border-dashed ${theme.inputBorder} py-2.5 text-sm font-medium ${theme.sidebarItemText} transition ${theme.transitionSpeed} ${theme.taskHover}`}
               >
                 <span>+</span> New Category
               </button>
@@ -193,7 +197,7 @@ export default function CategoryManager({
           {(mode === 'create' || mode === 'edit') && (
             <form onSubmit={mode === 'create' ? handleCreate : handleUpdate}>
               <div className="mb-4">
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
+                <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
                   Name *
                 </label>
                 <input
@@ -203,12 +207,12 @@ export default function CategoryManager({
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Category name"
                   maxLength={100}
-                  className="w-full rounded-md border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none placeholder:text-stone-400 focus:border-stone-400 focus:ring-1 focus:ring-stone-400/30"
+                  className={`w-full ${theme.borderRadius} border ${theme.inputBorder} px-3 py-2 text-sm ${theme.inputText} ${theme.inputBg} outline-none ${theme.inputPlaceholder} ${theme.inputFocus}`}
                 />
               </div>
 
               <div className="mb-4">
-                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
+                <label className={`mb-1.5 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
                   Icon
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -218,10 +222,10 @@ export default function CategoryManager({
                       type="button"
                       onClick={() => setIcon(icon === key ? '' : key)}
                       title={label}
-                      className={`flex h-8 w-8 items-center justify-center rounded-md border transition ${
+                      className={`flex h-8 w-8 items-center justify-center ${theme.borderRadius} border transition ${theme.transitionSpeed} ${
                         icon === key
-                          ? 'border-stone-500 bg-stone-100'
-                          : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'
+                          ? `${theme.inputBorder} ${theme.sidebarItemActive}`
+                          : `${theme.inputBorder} ${theme.taskHover}`
                       }`}
                     >
                       <Icon className="h-4 w-4" />
@@ -232,7 +236,7 @@ export default function CategoryManager({
                   <button
                     type="button"
                     onClick={() => setIcon('')}
-                    className="mt-1 text-[10px] text-stone-400 hover:text-stone-600"
+                    className={`mt-1 text-[10px] ${theme.labelText} hover:opacity-80`}
                   >
                     Clear icon
                   </button>
@@ -240,7 +244,7 @@ export default function CategoryManager({
               </div>
 
               <div className="mb-4">
-                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
+                <label className={`mb-1.5 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
                   Color
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -249,8 +253,8 @@ export default function CategoryManager({
                       key={c}
                       type="button"
                       onClick={() => setColor(c)}
-                      className={`h-7 w-7 rounded-full border-2 transition ${
-                        color === c ? 'border-stone-700 scale-110' : 'border-transparent hover:scale-105'
+                      className={`h-7 w-7 rounded-full border-2 transition ${theme.transitionSpeed} ${
+                        color === c ? `${theme.inputBorder} scale-110` : 'border-transparent hover:scale-105'
                       }`}
                       style={{ backgroundColor: c }}
                     />
@@ -258,7 +262,7 @@ export default function CategoryManager({
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <span
-                    className="h-5 w-5 rounded-full border border-stone-200"
+                    className={`h-5 w-5 rounded-full border ${theme.inputBorder}`}
                     style={{ backgroundColor: color }}
                   />
                   <input
@@ -267,27 +271,27 @@ export default function CategoryManager({
                     onChange={(e) => setColor(e.target.value.toUpperCase())}
                     placeholder="#RRGGBB"
                     maxLength={7}
-                    className="w-24 rounded-md border border-stone-200 px-2 py-1 text-xs text-stone-700 outline-none focus:border-stone-400"
+                    className={`w-24 ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
                   />
                 </div>
               </div>
 
               {error && (
-                <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
+                <p className={`mb-3 ${theme.borderRadius} bg-red-50 px-3 py-2 text-xs text-red-600`}>{error}</p>
               )}
 
               <div className="flex gap-2">
                 <button
                   type="submit"
                   disabled={saving || !name.trim()}
-                  className="flex-1 rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-800 disabled:opacity-40"
+                  className={`flex-1 ${theme.borderRadius} ${theme.btnPrimary} px-4 py-2 text-sm font-medium ${theme.btnPrimaryText} transition ${theme.transitionSpeed} ${theme.btnPrimaryHover} disabled:opacity-40`}
                 >
                   {saving ? 'Saving...' : mode === 'create' ? 'Create' : 'Save Changes'}
                 </button>
                 <button
                   type="button"
                   onClick={resetToList}
-                  className="rounded-md border border-stone-200 px-4 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50"
+                  className={`${theme.borderRadius} border ${theme.inputBorder} px-4 py-2 text-sm font-medium ${theme.taskText} transition ${theme.transitionSpeed} ${theme.taskHover}`}
                 >
                   Cancel
                 </button>
@@ -309,6 +313,7 @@ function CategoryListItem({
   onDelete,
   onMoveUp,
   onMoveDown,
+  theme,
 }: {
   category: CategoryResponse;
   index: number;
@@ -318,36 +323,37 @@ function CategoryListItem({
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  theme: ThemeColors;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <li className="group rounded-lg border border-stone-100 px-3 py-2.5 transition hover:border-stone-200">
+    <li className={`group ${theme.borderRadius} border ${theme.sidebarDivider} px-3 py-2.5 transition ${theme.transitionSpeed}`}>
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-stone-50">
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center ${theme.borderRadius} ${theme.sidebarItemActive}`}>
           {category.color ? (
             <span
               className="h-4 w-4 rounded-full"
               style={{ backgroundColor: category.color }}
             />
           ) : (
-            createElement(getCategoryIcon(category.icon), { className: 'h-4 w-4 text-stone-500' })
+            createElement(getCategoryIcon(category.icon), { className: `h-4 w-4 ${theme.sidebarItemText}` })
           )}
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-stone-800">{category.name}</p>
-          <p className="text-[10px] text-stone-400">
+          <p className={`truncate text-sm font-medium ${theme.taskText}`}>{category.name}</p>
+          <p className={`text-[10px] ${theme.labelText}`}>
             {category.taskCount} task{category.taskCount !== 1 ? 's' : ''}
           </p>
         </div>
 
-        <div className="flex shrink-0 flex-col gap-0.5 opacity-0 transition group-hover:opacity-100">
+        <div className={`flex shrink-0 flex-col gap-0.5 opacity-0 transition ${theme.transitionSpeed} group-hover:opacity-100`}>
           <button
             type="button"
             onClick={onMoveUp}
             disabled={index === 0 || reordering}
-            className="rounded p-0.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600 disabled:opacity-30"
+            className={`rounded p-0.5 ${theme.labelText} transition ${theme.transitionSpeed} ${theme.taskHover} disabled:opacity-30`}
             title="Move up"
           >
             <ChevronUp className="h-3 w-3" />
@@ -356,7 +362,7 @@ function CategoryListItem({
             type="button"
             onClick={onMoveDown}
             disabled={index === total - 1 || reordering}
-            className="rounded p-0.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600 disabled:opacity-30"
+            className={`rounded p-0.5 ${theme.labelText} transition ${theme.transitionSpeed} ${theme.taskHover} disabled:opacity-30`}
             title="Move down"
           >
             <ChevronDown className="h-3 w-3" />
@@ -366,7 +372,7 @@ function CategoryListItem({
         <button
           type="button"
           onClick={onEdit}
-          className="shrink-0 rounded-md p-1.5 text-stone-400 opacity-0 transition hover:bg-stone-100 hover:text-stone-600 group-hover:opacity-100"
+          className={`shrink-0 ${theme.borderRadius} p-1.5 ${theme.labelText} opacity-0 transition ${theme.transitionSpeed} ${theme.taskHover} group-hover:opacity-100`}
           title="Edit"
         >
           <Pencil className="h-3.5 w-3.5" />
@@ -377,14 +383,14 @@ function CategoryListItem({
             <button
               type="button"
               onClick={() => { onDelete(); setConfirmDelete(false); }}
-              className="rounded-md bg-red-600 px-2 py-1 text-[10px] font-medium text-white transition hover:bg-red-700"
+              className={`${theme.borderRadius} bg-red-600 px-2 py-1 text-[10px] font-medium text-white transition ${theme.transitionSpeed} hover:bg-red-700`}
             >
               Delete
             </button>
             <button
               type="button"
               onClick={() => setConfirmDelete(false)}
-              className="rounded-md px-1.5 py-1 text-[10px] text-stone-500 transition hover:bg-stone-100"
+              className={`${theme.borderRadius} px-1.5 py-1 text-[10px] ${theme.labelText} transition ${theme.transitionSpeed} ${theme.taskHover}`}
             >
               Cancel
             </button>
@@ -393,7 +399,7 @@ function CategoryListItem({
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
-            className="shrink-0 rounded-md p-1.5 text-stone-400 opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+            className={`shrink-0 ${theme.borderRadius} p-1.5 ${theme.labelText} opacity-0 transition ${theme.transitionSpeed} hover:bg-red-50 hover:text-red-500 group-hover:opacity-100`}
             title="Delete"
           >
             <Trash2 className="h-3.5 w-3.5" />

@@ -1,7 +1,7 @@
 import { useDroppable } from '@dnd-kit/core';
 import {
   Inbox, Zap, FolderOpen, Clock, Lightbulb, BookOpen, Calendar,
-  CheckCircle, Settings, Tag,
+  CheckCircle, Settings, Tag, Leaf,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import type { CategoryResponse, GtdList, TaskCountsResponse } from '../types';
@@ -53,12 +53,15 @@ function DroppableGtdItem({
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: `gtd:${gtdKey}` });
 
+  const activeExtraClass = isActive && theme.sidebarActiveStyle ? theme.sidebarActiveStyle : '';
+  const badgeBlobClass = theme.blobBadge ? 'theme-nature-blob' : 'rounded-full';
+
   return (
     <button
       ref={setNodeRef}
       type="button"
       onClick={onClick}
-      className={`group flex w-full items-center gap-2 ${theme.borderRadius} px-2 py-1.5 text-left text-sm transition ${
+      className={`group flex w-full items-center gap-2 ${theme.borderRadius} px-2 py-1.5 text-left text-sm transition ${theme.transitionSpeed} ${activeExtraClass} ${
         isOver
           ? `${theme.dropTargetBg} ${theme.dropTargetRing}`
           : isActive
@@ -68,10 +71,11 @@ function DroppableGtdItem({
               : `${theme.sidebarItemText} ${theme.sidebarItemHover}`
       }`}
     >
+      {isActive && theme.leafIcon && <Leaf className="h-3 w-3 shrink-0 text-emerald-500" />}
       <Icon className="h-4 w-4 shrink-0" />
       <span className="flex-1 truncate">{label}</span>
       {count > 0 && (
-        <span className={`min-w-[20px] rounded-full px-1.5 text-center text-xs ${
+        <span className={`min-w-[20px] ${badgeBlobClass} px-1.5 text-center text-xs ${theme.badgeFont} ${
           isActive ? theme.sidebarBadgeActive : theme.sidebarBadge
         }`}>
           {count}
@@ -86,9 +90,12 @@ export default function Sidebar({ counts, categories, activeSection, onSectionCh
   const catCount = (id: string) => counts?.byCategory[id] ?? 0;
 
   return (
-    <aside className={`flex h-full w-56 shrink-0 flex-col border-r ${theme.sidebarBorder} ${theme.sidebarBg}`}>
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
-        <div className={`mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider ${theme.sidebarLabel} ${theme.labelStyle}`}>
+    <aside className={`flex h-full w-56 shrink-0 flex-col border-r ${theme.sidebarBorder} ${theme.sidebarBg} ${theme.sidebarTopBorder}`}>
+      {theme.breathingBg && (
+        <div className="theme-nature-breathing pointer-events-none absolute inset-0 bg-gradient-to-b from-emerald-200 to-transparent" />
+      )}
+      <nav className="relative flex-1 overflow-y-auto px-2 py-3">
+        <div className={`mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider ${theme.sidebarLabel} ${theme.labelStyle} ${theme.sidebarSectionUnderline}`}>
           GTD Lists
         </div>
 
@@ -105,7 +112,13 @@ export default function Sidebar({ counts, categories, activeSection, onSectionCh
           />
         ))}
 
-        <div className={`my-2 border-t ${theme.sidebarDivider}`} />
+        {theme.sidebarDividerStyle === 'theme-design-gradient-divider' ? (
+          <div className="my-2 theme-design-gradient-divider" />
+        ) : theme.sidebarDividerStyle === 'gap' ? (
+          <div className="my-3" />
+        ) : (
+          <div className={`my-2 border-t ${theme.sidebarDivider}`} />
+        )}
 
         <DroppableGtdItem
           gtdKey={DONE_LIST.key}
@@ -118,7 +131,7 @@ export default function Sidebar({ counts, categories, activeSection, onSectionCh
           theme={theme}
         />
 
-        <div className="mb-1 mt-4 flex items-center justify-between px-2">
+        <div className={`mb-1 mt-4 flex items-center justify-between px-2 ${theme.sidebarSectionUnderline}`}>
           <span className={`text-[10px] font-semibold uppercase tracking-wider ${theme.sidebarLabel} ${theme.labelStyle}`}>
             Categories
           </span>
@@ -136,21 +149,23 @@ export default function Sidebar({ counts, categories, activeSection, onSectionCh
           <button
             type="button"
             onClick={onManageCategories}
-            className={`mx-2 ${theme.borderRadius} border border-dashed ${theme.inputBorder} px-2 py-2 text-[11px] ${theme.sidebarLabel} transition hover:opacity-80`}
+            className={`mx-2 ${theme.borderRadius} ${theme.decorativeBorder} border-dashed ${theme.inputBorder} px-2 py-2 text-[11px] ${theme.sidebarLabel} transition ${theme.transitionSpeed} hover:opacity-80`}
           >
             + Add a category
           </button>
         )}
 
         {categories.map((cat) => {
-          const isActive = activeSection === `cat:${cat.id}`;
+          const isCatActive = activeSection === `cat:${cat.id}`;
+          const catActiveExtra = isCatActive && theme.sidebarActiveStyle ? theme.sidebarActiveStyle : '';
+          const catBadgeBlobClass = theme.blobBadge ? 'theme-nature-blob' : 'rounded-full';
           return (
             <button
               key={cat.id}
               type="button"
               onClick={() => onSectionChange(`cat:${cat.id}`)}
-              className={`group flex w-full items-center gap-2 ${theme.borderRadius} px-2 py-1.5 text-left text-sm transition ${
-                isActive
+              className={`group flex w-full items-center gap-2 ${theme.borderRadius} px-2 py-1.5 text-left text-sm transition ${theme.transitionSpeed} ${catActiveExtra} ${
+                isCatActive
                   ? `${theme.sidebarItemActive} ${theme.sidebarItemActiveText}`
                   : `${theme.sidebarItemText} ${theme.sidebarItemHover}`
               }`}
@@ -165,8 +180,8 @@ export default function Sidebar({ counts, categories, activeSection, onSectionCh
               )}
               <span className="flex-1 truncate">{cat.name}</span>
               {catCount(cat.id) > 0 && (
-                <span className={`min-w-[20px] rounded-full px-1.5 text-center text-xs ${
-                  isActive ? theme.sidebarBadgeActive : theme.sidebarBadge
+                <span className={`min-w-[20px] ${catBadgeBlobClass} px-1.5 text-center text-xs ${theme.badgeFont} ${
+                  isCatActive ? theme.sidebarBadgeActive : theme.sidebarBadge
                 }`}>
                   {catCount(cat.id)}
                 </span>

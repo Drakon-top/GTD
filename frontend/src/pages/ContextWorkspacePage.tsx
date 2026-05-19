@@ -170,8 +170,8 @@ export default function ContextWorkspacePage() {
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className={`flex h-screen flex-col ${theme.bg} ${theme.fontFamily}`}>
-        <header className={`shrink-0 border-b ${theme.headerBorder} ${theme.headerBg} ${theme.shadow}`}>
-          <div className="flex items-center gap-4 px-4 py-2.5">
+        <header className={`shrink-0 border-b ${theme.headerBorder} ${theme.headerBg} ${theme.shadow} ${theme.headerStyle}`}>
+          <div className={`flex items-center gap-4 ${theme.spacing}`}>
             <button
               type="button"
               onClick={() => navigate('/contexts')}
@@ -181,7 +181,7 @@ export default function ContextWorkspacePage() {
             </button>
             <div className="flex items-center gap-2">
               {createElement(getContextIcon(context.icon), { className: `h-5 w-5 ${theme.headerText}` })}
-              <h1 className={`text-base font-semibold ${theme.headerFont} ${theme.headerText}`}>{context.name}</h1>
+              <h1 className={`${theme.headerTitleSize} font-semibold ${theme.headerFont} ${theme.headerText} ${theme.glowText}`}>{context.name}</h1>
             </div>
             <div className="ml-auto flex items-center gap-3">
               {counts && (
@@ -207,14 +207,14 @@ export default function ContextWorkspacePage() {
                   <Paintbrush className="h-4 w-4" />
                 </button>
                 {showThemePicker && (
-                  <div className={`absolute right-0 top-full z-50 mt-1 w-40 ${theme.borderRadiusLg} border border-stone-200 bg-white py-1 shadow-lg`}>
+                  <div className={`absolute right-0 top-full z-50 mt-1 w-40 ${theme.borderRadiusLg} ${theme.decorativeBorder} ${theme.inputBorder} ${theme.panelBg} py-1 ${theme.shadowLg}`}>
                     {(Object.keys(THEME_NAMES) as ContextTheme[]).map((t) => (
                       <button
                         key={t}
                         type="button"
                         onClick={() => handleThemeChange(t)}
-                        className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition hover:bg-stone-50 ${
-                          context.theme === t ? 'font-medium text-stone-900' : 'text-stone-600'
+                        className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition ${theme.transitionSpeed} ${theme.taskHover} ${
+                          context.theme === t ? `font-medium ${theme.taskText}` : theme.taskSubtext
                         }`}
                       >
                         <span className={`h-3 w-3 rounded-full ${
@@ -245,7 +245,7 @@ export default function ContextWorkspacePage() {
             theme={theme}
           />
 
-          <main className={`min-w-0 flex-1 ${theme.mainBg}`}>
+          <main className={`min-w-0 flex-1 ${theme.mainBg} ${theme.bgPattern} ${theme.scanlineOverlay ? 'theme-dark-scanlines' : ''}`}>
             <TaskList
               tasks={tasks}
               sectionLabel={sectionLabel()}
@@ -271,7 +271,7 @@ export default function ContextWorkspacePage() {
       </div>
 
       <DragOverlay>
-        {draggedTask && <DragOverlayCard task={draggedTask} />}
+        {draggedTask && <DragOverlayCard task={draggedTask} theme={theme} />}
       </DragOverlay>
 
       {showCategoryManager && (
@@ -280,6 +280,7 @@ export default function ContextWorkspacePage() {
           categories={categories}
           onCategoriesChanged={() => { refresh(); }}
           onClose={() => setShowCategoryManager(false)}
+          theme={theme}
         />
       )}
 
@@ -288,6 +289,7 @@ export default function ContextWorkspacePage() {
           contextId={contextId}
           contextName={context.name}
           onClose={() => setShowExportModal(false)}
+          theme={theme}
         />
       )}
     </DndContext>

@@ -1,1 +1,239 @@
 @import "tailwindcss";
+
+@layer utilities {
+  .theme-bg-dots {
+    background-image: radial-gradient(circle, rgba(139, 92, 246, 0.07) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .theme-bg-lines {
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      rgba(100, 116, 139, 0.06) 39px,
+      rgba(100, 116, 139, 0.06) 40px
+    );
+  }
+
+  .theme-bg-gradient {
+    background-image: radial-gradient(
+      ellipse at 20% 50%,
+      rgba(16, 185, 129, 0.05) 0%,
+      transparent 70%
+    );
+  }
+
+  .theme-bg-glow {
+    background-image: radial-gradient(
+        ellipse at 10% 20%,
+        rgba(139, 92, 246, 0.08),
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse at 90% 80%,
+        rgba(59, 130, 246, 0.06),
+        transparent 50%
+      );
+  }
+
+  /* MINIMALIST: left border indicator on hover */
+  .theme-minimalist-hover-indicator {
+    position: relative;
+  }
+  .theme-minimalist-hover-indicator::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background-color: #78716c;
+    opacity: 0;
+    transition: opacity 75ms;
+  }
+  .theme-minimalist-hover-indicator:hover::before {
+    opacity: 1;
+  }
+
+  /* DESIGN: gradient divider */
+  .theme-design-gradient-divider {
+    height: 2px;
+    background: linear-gradient(90deg, #8b5cf6, #ec4899, #8b5cf6);
+    border: none;
+    opacity: 0.5;
+  }
+
+  /* DESIGN: pill gradient badge */
+  .theme-design-pill-badge {
+    background: linear-gradient(135deg, #8b5cf6, #ec4899);
+    color: white;
+    font-weight: 500;
+  }
+
+  /* DESIGN: floating shadow on hover */
+  .theme-design-float:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 92, 246, 0.15);
+  }
+
+  /* DESIGN: pulse animation for add button */
+  .theme-design-pulse {
+    animation: design-pulse 2s ease-in-out infinite;
+  }
+  @keyframes design-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.3); }
+    50% { box-shadow: 0 0 0 4px rgba(139, 92, 246, 0); }
+  }
+
+  /* DESIGN: notch clip-path for active sidebar item */
+  .theme-design-notch {
+    clip-path: polygon(4px 0, 100% 0, 100% 100%, 4px 100%, 0 85%, 0 15%);
+  }
+
+  /* FORMAL: decorative rule line after heading */
+  .theme-formal-rule-line::after {
+    content: '';
+    display: block;
+    height: 1px;
+    margin-top: 4px;
+    background: linear-gradient(90deg, rgba(100, 116, 139, 0.4), transparent 80%);
+  }
+
+  /* FORMAL: DONE stamp on completed tasks */
+  .theme-formal-stamp {
+    position: relative;
+  }
+  .theme-formal-stamp::after {
+    content: 'DONE';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%) rotate(-12deg);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: rgba(100, 116, 139, 0.2);
+    border: 1px solid rgba(100, 116, 139, 0.15);
+    padding: 1px 6px;
+    pointer-events: none;
+  }
+
+  /* NATURE: wavy top border */
+  .theme-nature-wavy-top {
+    clip-path: polygon(
+      0 8px, 5% 4px, 10% 6px, 15% 2px, 20% 5px, 25% 3px,
+      30% 7px, 35% 4px, 40% 6px, 45% 2px, 50% 5px, 55% 3px,
+      60% 7px, 65% 4px, 70% 6px, 75% 2px, 80% 5px, 85% 3px,
+      90% 7px, 95% 4px, 100% 6px, 100% 100%, 0 100%
+    );
+    padding-top: 10px;
+  }
+
+  /* NATURE: gradient underline for selected task */
+  .theme-nature-underline {
+    position: relative;
+  }
+  .theme-nature-underline::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #10b981, #6ee7b7, transparent);
+    border-radius: 1px;
+  }
+
+  /* NATURE: breathing background animation */
+  .theme-nature-breathing {
+    animation: nature-breathe 6s ease-in-out infinite;
+  }
+  @keyframes nature-breathe {
+    0%, 100% { opacity: 0.03; }
+    50% { opacity: 0.06; }
+  }
+
+  /* NATURE: organic blob shape for badges */
+  .theme-nature-blob {
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  }
+
+  /* DARK: neon glow on active sidebar item */
+  .theme-dark-neon-glow {
+    box-shadow: 0 0 6px rgba(139, 92, 246, 0.4), inset 0 0 4px rgba(139, 92, 246, 0.1);
+  }
+
+  /* DARK: scanline overlay */
+  .theme-dark-scanlines {
+    position: relative;
+  }
+  .theme-dark-scanlines::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.015) 2px,
+      rgba(255, 255, 255, 0.015) 3px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* DARK: glow text effect */
+  .theme-dark-glow-text {
+    text-shadow: 0 0 8px rgba(139, 92, 246, 0.5), 0 0 16px rgba(139, 92, 246, 0.2);
+  }
+
+  /* DARK: animated gradient border */
+  .theme-dark-animated-border {
+    position: relative;
+    z-index: 0;
+  }
+  .theme-dark-animated-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      var(--gradient-angle, 0deg),
+      rgba(139, 92, 246, 0.4),
+      rgba(59, 130, 246, 0.3),
+      rgba(139, 92, 246, 0.1),
+      rgba(59, 130, 246, 0.4)
+    );
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    animation: dark-gradient-shift 4s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+  }
+  @keyframes dark-gradient-shift {
+    0% { --gradient-angle: 0deg; }
+    100% { --gradient-angle: 360deg; }
+  }
+
+  /* DARK: neon dot indicator */
+  .theme-dark-neon-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #8b5cf6;
+    box-shadow: 0 0 4px #8b5cf6, 0 0 8px rgba(139, 92, 246, 0.4);
+    animation: neon-dot-pulse 2s ease-in-out infinite;
+  }
+  @keyframes neon-dot-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+}
+
+@property --gradient-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}

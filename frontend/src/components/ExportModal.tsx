@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { X, FileText, Archive } from 'lucide-react';
 import apiClient from '../api/client';
+import type { ThemeColors } from '../utils/themes';
 
 interface ExportModalProps {
   contextId: string;
   contextName: string;
   onClose: () => void;
+  theme: ThemeColors;
 }
 
 function triggerDownload(data: unknown, filename: string) {
@@ -25,7 +27,7 @@ function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9а-яА-ЯёЁ_-]/g, '_').replace(/_+/g, '_');
 }
 
-export default function ExportModal({ contextId, contextName, onClose }: ExportModalProps) {
+export default function ExportModal({ contextId, contextName, onClose, theme }: ExportModalProps) {
   const [exporting, setExporting] = useState<'context' | 'all' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,21 +56,21 @@ export default function ExportModal({ contextId, contextName, onClose }: ExportM
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div
-        className="w-full max-w-sm rounded-xl border border-stone-200 bg-white p-6 shadow-xl"
+        className={`w-full max-w-sm ${theme.borderRadiusLg} ${theme.cardStyle} ${theme.inputBorder} ${theme.panelBg} p-6 ${theme.shadowLg}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-stone-900">Export Data</h2>
+          <h2 className={`text-base font-semibold ${theme.headerFont} ${theme.headerText}`}>Export Data</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
+            className={`${theme.borderRadius} p-1 ${theme.labelText} transition ${theme.transitionSpeed} ${theme.taskHover}`}
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <p className="mb-4 text-sm text-stone-500">
+        <p className={`mb-4 text-sm ${theme.taskSubtext}`}>
           Download your data as a JSON file. Deleted items are excluded.
         </p>
 
@@ -77,16 +79,16 @@ export default function ExportModal({ contextId, contextName, onClose }: ExportM
             type="button"
             onClick={() => handleExport('context')}
             disabled={exporting !== null}
-            className="flex items-center gap-3 rounded-lg border border-stone-200 px-4 py-3 text-left transition hover:border-stone-300 hover:bg-stone-50 disabled:opacity-50"
+            className={`flex items-center gap-3 ${theme.borderRadius} border ${theme.inputBorder} px-4 py-3 text-left transition ${theme.transitionSpeed} ${theme.taskHover} disabled:opacity-50`}
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-600">
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center ${theme.borderRadius} ${theme.sidebarItemActive} ${theme.sidebarItemText}`}>
               <FileText className="h-4.5 w-4.5" />
             </div>
             <div>
-              <div className="text-sm font-medium text-stone-900">
+              <div className={`text-sm font-medium ${theme.taskText}`}>
                 {exporting === 'context' ? 'Exporting...' : 'This context'}
               </div>
-              <div className="text-xs text-stone-500">
+              <div className={`text-xs ${theme.taskSubtext}`}>
                 Export &ldquo;{contextName}&rdquo; with all tasks and categories
               </div>
             </div>
@@ -96,16 +98,16 @@ export default function ExportModal({ contextId, contextName, onClose }: ExportM
             type="button"
             onClick={() => handleExport('all')}
             disabled={exporting !== null}
-            className="flex items-center gap-3 rounded-lg border border-stone-200 px-4 py-3 text-left transition hover:border-stone-300 hover:bg-stone-50 disabled:opacity-50"
+            className={`flex items-center gap-3 ${theme.borderRadius} border ${theme.inputBorder} px-4 py-3 text-left transition ${theme.transitionSpeed} ${theme.taskHover} disabled:opacity-50`}
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-600">
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center ${theme.borderRadius} ${theme.sidebarItemActive} ${theme.sidebarItemText}`}>
               <Archive className="h-4.5 w-4.5" />
             </div>
             <div>
-              <div className="text-sm font-medium text-stone-900">
+              <div className={`text-sm font-medium ${theme.taskText}`}>
                 {exporting === 'all' ? 'Exporting...' : 'All contexts'}
               </div>
-              <div className="text-xs text-stone-500">
+              <div className={`text-xs ${theme.taskSubtext}`}>
                 Export everything — all contexts, tasks, and categories
               </div>
             </div>
@@ -113,7 +115,7 @@ export default function ExportModal({ contextId, contextName, onClose }: ExportM
         </div>
 
         {error && (
-          <div className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
+          <div className={`mt-3 ${theme.borderRadius} bg-red-50 px-3 py-2 text-xs text-red-700`}>{error}</div>
         )}
       </div>
     </div>

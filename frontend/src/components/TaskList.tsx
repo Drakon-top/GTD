@@ -41,6 +41,7 @@ function DraggableTaskItem({
   formatDueDate,
   dueDateColor,
   theme,
+  index,
 }: {
   task: TaskResponse;
   isSelected: boolean;
@@ -50,6 +51,7 @@ function DraggableTaskItem({
   formatDueDate: (iso: string | null) => string | null;
   dueDateColor: (iso: string | null) => string;
   theme: ThemeColors;
+  index: number;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `task:${task.id}`,
@@ -62,13 +64,18 @@ function DraggableTaskItem({
 
   const due = formatDueDate(task.dueDate);
 
+  const hoverIndicatorClass = theme.taskHoverIndicator || '';
+  const floatClass = theme.floatingShadow || '';
+  const stampClass = task.isCompleted && theme.taskCompletedStamp ? 'theme-formal-stamp' : '';
+  const underlineClass = isSelected && theme.taskActiveUnderline ? theme.taskActiveUnderline : '';
+
   return (
     <li ref={setNodeRef} style={style} {...listeners} {...attributes}>
       <button
         type="button"
         onClick={onTaskClick}
         onContextMenu={onContextMenu}
-        className={`flex w-full items-start gap-3 px-5 py-3 text-left transition ${
+        className={`flex w-full items-start gap-3 ${theme.spacing} text-left transition ${theme.transitionSpeed} ${hoverIndicatorClass} ${floatClass} ${stampClass} ${underlineClass} ${
           isDragging
             ? `${theme.dropTargetBg} ${theme.shadow} ${theme.dropTargetRing}`
             : isSelected
@@ -76,6 +83,14 @@ function DraggableTaskItem({
               : theme.taskHover
         }`}
       >
+        {theme.neonDotIndicator && !task.isCompleted && (
+          <span className="theme-dark-neon-dot mt-1.5 shrink-0" />
+        )}
+        {theme.taskNumbering && (
+          <span className="mt-0.5 w-6 shrink-0 text-right text-[10px] font-light text-slate-300 font-mono">
+            {String(index + 1).padStart(2, '0')}.
+          </span>
+        )}
         <span
           role="checkbox"
           aria-checked={task.isCompleted}
@@ -88,7 +103,7 @@ function DraggableTaskItem({
             }
           }}
           onPointerDown={(e) => e.stopPropagation()}
-          className={`mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center ${theme.borderRadius} border transition ${
+          className={`mt-0.5 flex ${theme.checkboxSize} shrink-0 items-center justify-center ${theme.checkboxRadius} border transition ${theme.transitionSpeed} ${theme.checkboxExtra} ${
             task.isCompleted ? theme.checkboxChecked : theme.checkbox
           }`}
         >
@@ -99,7 +114,9 @@ function DraggableTaskItem({
           <p className={`text-sm leading-snug ${theme.fontFamily} ${
             task.isCompleted ? `${theme.taskCompletedText} line-through` : theme.taskText
           }`}>
-            {task.title}
+            {theme.dropCapProject && task.subtaskCount != null && task.subtaskCount > 0 && !task.isCompleted ? (
+              <><span className="font-serif text-lg font-semibold leading-none">{task.title.charAt(0)}</span>{task.title.slice(1)}</>
+            ) : task.title}
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             {task.subtaskCount != null && task.subtaskCount > 0 && (
@@ -109,9 +126,9 @@ function DraggableTaskItem({
             )}
             {task.progress != null && (
               <div className="flex items-center gap-1">
-                <div className={`h-1 w-12 overflow-hidden rounded-full ${theme.progressBg}`}>
+                <div className={`${theme.progressHeightSm} w-12 overflow-hidden ${theme.progressRadius} ${theme.progressBg}`}>
                   <div
-                    className={`h-full rounded-full ${theme.progressFill} transition-all`}
+                    className={`h-full ${theme.progressRadius} ${theme.progressFill} ${theme.progressExtra} transition-all ${theme.transitionSpeed}`}
                     style={{ width: `${task.progress}%` }}
                   />
                 </div>
@@ -139,7 +156,7 @@ function DraggableTaskItem({
             if (e.key === 'Enter') onContextMenu(e as unknown as React.MouseEvent);
           }}
           onPointerDown={(e) => e.stopPropagation()}
-          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${theme.taskSubtext} opacity-0 transition hover:opacity-100 [li:hover_&]:opacity-100`}
+          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center ${theme.borderRadius} ${theme.taskSubtext} opacity-0 transition ${theme.transitionSpeed} hover:opacity-100 [li:hover_&]:opacity-100`}
         >
           <MoreVertical className="h-4 w-4" />
         </span>
@@ -248,16 +265,16 @@ export default function TaskList({
       className="relative flex h-full flex-col"
       onClick={() => { setContextMenu(null); setMoveSubmenuOpen(false); }}
     >
-      <div className={`flex items-center justify-between border-b ${theme.listHeaderBorder} px-5 py-3`}>
-        <h2 className={`text-base font-semibold ${theme.headerFont} ${theme.listHeaderText}`}>{sectionLabel}</h2>
-        <span className={`${theme.borderRadius} px-2 py-0.5 text-xs font-medium ${theme.listCountBadge}`}>
+      <div className={`flex items-center justify-between border-b ${theme.listHeaderBorder} ${theme.spacing}`}>
+        <h2 className={`text-base font-semibold ${theme.headerFont} ${theme.listHeaderText} ${theme.headerAccent}`}>{sectionLabel}</h2>
+        <span className={`${theme.borderRadius} px-2 py-0.5 text-xs font-medium ${theme.listCountBadge} ${theme.badgeFont} ${theme.blobBadge ? 'theme-nature-blob' : ''}`}>
           {tasks.length}
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {tasks.length === 0 && (
-          <div className="flex flex-col items-center justify-center px-5 py-16 text-center">
+          <div className={`flex flex-col items-center justify-center ${theme.spacing} py-16 text-center`}>
             <ClipboardList className={`mb-2 h-8 w-8 ${theme.emptyIcon}`} />
             <p className={`text-sm ${theme.emptyText}`}>No tasks here yet</p>
             <p className={`mt-1 text-xs ${theme.emptyText} opacity-70`}>Add one below or drag tasks here</p>
@@ -265,7 +282,7 @@ export default function TaskList({
         )}
 
         <ul className={`divide-y ${theme.taskDivider}`}>
-          {tasks.map((task) => (
+          {tasks.map((task, idx) => (
             <DraggableTaskItem
               key={task.id}
               task={task}
@@ -276,6 +293,7 @@ export default function TaskList({
               formatDueDate={formatDueDate}
               dueDateColor={dueDateColor}
               theme={theme}
+              index={idx}
             />
           ))}
         </ul>
@@ -283,7 +301,7 @@ export default function TaskList({
 
       {contextMenu && contextTask && (
         <div
-          className={`absolute z-50 w-44 ${theme.borderRadiusLg} border border-stone-200 bg-white py-1 ${theme.shadow}`}
+          className={`absolute z-50 w-44 ${theme.borderRadiusLg} ${theme.decorativeBorder} ${theme.inputBorder} ${theme.panelBg} py-1 ${theme.shadowLg}`}
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -293,7 +311,7 @@ export default function TaskList({
               onTaskClick(contextTask);
               setContextMenu(null);
             }}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+            className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${theme.taskText} transition ${theme.transitionSpeed} ${theme.taskHover}`}
           >
             <Pencil className="h-3.5 w-3.5" /> Edit
           </button>
@@ -304,7 +322,7 @@ export default function TaskList({
                 apiClient.patch(`/tasks/${contextMenu.taskId}/complete`).then(onTasksChanged).catch(() => {});
                 setContextMenu(null);
               }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${theme.taskText} transition ${theme.transitionSpeed} ${theme.taskHover}`}
             >
               <CheckCircle className="h-3.5 w-3.5" /> Complete
             </button>
@@ -315,15 +333,15 @@ export default function TaskList({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setMoveSubmenuOpen(!moveSubmenuOpen); }}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${theme.taskText} transition ${theme.transitionSpeed} ${theme.taskHover}`}
               >
                 <ArrowRight className="h-3.5 w-3.5" />
                 <span className="flex-1">Move to...</span>
-                <ChevronRight className="h-3 w-3 text-stone-400" />
+                <ChevronRight className={`h-3 w-3 ${theme.taskSubtext}`} />
               </button>
 
               {moveSubmenuOpen && (
-                <div className={`absolute left-full top-0 ml-1 w-44 ${theme.borderRadiusLg} border border-stone-200 bg-white py-1 ${theme.shadow}`}>
+                <div className={`absolute left-full top-0 ml-1 w-44 ${theme.borderRadiusLg} ${theme.decorativeBorder} ${theme.inputBorder} ${theme.panelBg} py-1 ${theme.shadowLg}`}>
                   {GTD_MOVE_TARGETS
                     .filter(({ key }) => key !== contextTask.gtdList)
                     .map(({ key, label, Icon }) => (
@@ -331,7 +349,7 @@ export default function TaskList({
                         key={key}
                         type="button"
                         onClick={() => handleMoveTask(contextMenu.taskId, key)}
-                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+                        className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${theme.taskText} transition ${theme.transitionSpeed} ${theme.taskHover}`}
                       >
                         <Icon className="h-3.5 w-3.5" /> {label}
                       </button>
@@ -341,11 +359,11 @@ export default function TaskList({
             </div>
           )}
 
-          <div className="my-1 border-t border-stone-100" />
+          <div className={`my-1 border-t ${theme.sidebarDivider}`} />
           <button
             type="button"
             onClick={() => handleDeleteTask(contextMenu.taskId)}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+            className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-red-600 transition ${theme.transitionSpeed} hover:bg-red-50`}
           >
             <Trash2 className="h-3.5 w-3.5" /> Delete
           </button>
@@ -354,7 +372,7 @@ export default function TaskList({
 
       <form
         onSubmit={handleAddTask}
-        className={`border-t ${theme.listHeaderBorder} px-5 py-3`}
+        className={`border-t ${theme.listHeaderBorder} ${theme.spacing}`}
       >
         <div className="flex items-center gap-2">
           <input
@@ -368,7 +386,7 @@ export default function TaskList({
           <button
             type="submit"
             disabled={creating || !newTitle.trim()}
-            className={`${theme.borderRadius} ${theme.btnPrimary} px-3 py-1.5 text-sm font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
+            className={`${theme.borderRadius} ${theme.btnPrimary} px-3 py-1.5 text-sm font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40 ${theme.addBtnExtra}`}
           >
             {creating ? '...' : 'Add'}
           </button>

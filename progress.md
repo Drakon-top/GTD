@@ -1294,3 +1294,51 @@
   - Разблокировано: TASK-038 (Room Database — зеркальная структура), TASK-039 (Android auth — зависит от TASK-038 + TASK-005 done)
   - Оставшиеся pending задачи: TASK-038-045 (Android chain), TASK-050 (E2E)
   - **Следующий приоритет: TASK-038** (Room Database — миграции и полные DAO) → затем TASK-039 (Android auth)
+
+---
+
+## TASK-053 — Web: уникальные декоративные элементы для каждой темы
+
+- **Дата:** 2026-05-19
+- **Статус:** done
+- **Что сделано:**
+  - Расширен интерфейс `ThemeColors` на 21 новое поле для уникальных декоративных элементов
+  - **MINIMALIST** — «Швейцарский стиль»:
+    - Тонкая горизонтальная линия-акцент под заголовками секций sidebar (`sidebarSectionUnderline`)
+    - Monospace шрифт для бейджей/счётчиков (`badgeFont: font-mono`)
+    - Left border indicator при hover на задаче (CSS `::before` pseudo-element)
+    - Gap-dividers вместо линий между секциями sidebar
+  - **DESIGN** — «Playful / Dribbble-стиль»:
+    - Gradient dividers (violet→pink) между секциями sidebar
+    - Floating shadow с translateY(-2px) при hover на задачах
+    - Pill-shaped gradient бейджи (violet→pink) для активных счётчиков
+    - Pulse-анимация на кнопке "Add" (`@keyframes design-pulse`)
+    - Notch clip-path на активном пункте sidebar
+  - **FORMAL** — «Документ / Деловой стиль»:
+    - Drop cap стиль: первая буква крупнее и serif для задач-проектов с подзадачами
+    - Decorative rule line (gradient underline) после заголовка GTD-списка
+    - Нумерация задач: тонкий серый порядковый номер (01. 02. 03.) слева
+    - 'DONE' stamp watermark на выполненных задачах (наклонный текст с opacity)
+  - **NATURE** — «Organic / Natural»:
+    - Wavy (волнистый) clip-path сверху sidebar
+    - Leaf-like Lucide-иконка рядом с активным GTD-списком
+    - Breathing animation: фоновый gradient пульсирует (opacity 0.03→0.06)
+    - Organic blob shapes для бейджей (`border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%`)
+    - Зелёный gradient underline под выбранной задачей
+  - **DARK** — «Cyberpunk / Neon-glow»:
+    - Neon glow box-shadow на активном пункте sidebar
+    - Scanline overlay (тонкие горизонтальные полоски через CSS `repeating-linear-gradient`)
+    - Glow text effect (text-shadow с violet) на заголовке рабочей области
+    - Animated gradient border на панели деталей (`@keyframes dark-gradient-shift` + `@property --gradient-angle`)
+    - Neon dot индикатор с glow-пульсацией рядом с незавершёнными задачами
+  - Все CSS-классы вынесены в `index.css` `@layer utilities`
+  - `npm run build` — без ошибок (411KB JS, 52KB CSS)
+  - `npm run lint` — без ошибок
+  - `npx tsc --noEmit` — без ошибок
+- **Коммиты:** feat: add unique decorative elements for each theme (TASK-053)
+- **Заметки:**
+  - Все декоративные элементы реализованы через CSS-only (без JS-анимаций)
+  - `@property --gradient-angle` используется для анимации градиентного бордера (Dark theme); поддержка в Chrome 85+, Firefox 128+
+  - Декоративные элементы subtle и не мешают UX — они дополняют уникальность каждой темы
+  - Blob badge для NATURE использует нестандартный border-radius; на мобильных может выглядеть чуть иначе
+  - **Следующий приоритет: TASK-038** (Room Database — миграции и полные DAO для Android)

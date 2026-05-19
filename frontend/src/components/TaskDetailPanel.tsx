@@ -182,9 +182,11 @@ export default function TaskDetailPanel({
     ? categories.find((c) => c.id === task.categoryId)?.name ?? null
     : null;
 
+  const animatedBorderClass = theme.animatedBorder ? 'theme-dark-animated-border' : '';
+
   return (
-    <div className={`flex h-full w-80 shrink-0 flex-col border-l ${theme.panelBorder} ${theme.panelBg}`}>
-      <div className={`flex items-center justify-between border-b ${theme.panelBorder} px-4 py-3`}>
+    <div className={`flex h-full w-80 shrink-0 flex-col border-l ${theme.panelBorder} ${theme.panelBg} ${animatedBorderClass}`}>
+      <div className={`flex items-center justify-between border-b ${theme.panelBorder} ${theme.spacing}`}>
         <span className={`text-xs font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>Details</span>
         <button
           type="button"
@@ -196,7 +198,7 @@ export default function TaskDetailPanel({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className={`flex-1 overflow-y-auto ${theme.spacing}`}>
         {editingTitle ? (
           <input
             autoFocus
@@ -325,9 +327,9 @@ export default function TaskDetailPanel({
               Progress
             </label>
             <div className="flex items-center gap-2">
-              <div className={`h-2 flex-1 overflow-hidden rounded-full ${theme.progressBg}`}>
+              <div className={`${theme.progressHeight} flex-1 overflow-hidden ${theme.progressRadius} ${theme.progressBg}`}>
                 <div
-                  className={`h-full rounded-full ${theme.progressFill} transition-all`}
+                  className={`h-full ${theme.progressRadius} ${theme.progressFill} ${theme.progressExtra} transition-all ${theme.transitionSpeed}`}
                   style={{ width: `${task.progress}%` }}
                 />
               </div>
@@ -355,7 +357,7 @@ export default function TaskDetailPanel({
         </div>
       </div>
 
-      <div className={`border-t ${theme.panelBorder} px-4 py-3`}>
+      <div className={`border-t ${theme.panelBorder} ${theme.spacing}`}>
         {confirmDelete ? (
           <div className="space-y-2">
             <p className={`text-xs ${theme.labelText}`}>Are you sure? This cannot be undone.</p>
@@ -437,9 +439,9 @@ function SubtaskSection({
 
       {totalCount > 0 && (
         <div className="mb-2 flex items-center gap-2">
-          <div className={`h-1.5 flex-1 overflow-hidden rounded-full ${theme.progressBg}`}>
+          <div className={`${theme.progressHeightSm} flex-1 overflow-hidden ${theme.progressRadius} ${theme.progressBg}`}>
             <div
-              className={`h-full rounded-full ${theme.progressFill} transition-all`}
+              className={`h-full ${theme.progressRadius} ${theme.progressFill} ${theme.progressExtra} transition-all ${theme.transitionSpeed}`}
               style={{ width: `${totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%` }}
             />
           </div>
@@ -568,7 +570,7 @@ function SubtaskItem({
           type="button"
           onClick={() => { if (!subtask.isCompleted) onToggle(subtask.id); }}
           disabled={subtask.isCompleted}
-          className={`h-3.5 w-3.5 shrink-0 rounded-sm border transition ${
+          className={`h-3.5 w-3.5 shrink-0 ${theme.checkboxRadius} border transition ${theme.transitionSpeed} ${theme.checkboxExtra} ${
             subtask.isCompleted ? theme.checkboxChecked : `${theme.checkbox} cursor-pointer`
           } flex items-center justify-center`}
         >
@@ -820,7 +822,7 @@ function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCom
       )}
 
       {showAdd && (
-        <div className={`mt-2 ${theme.borderRadius} border ${theme.inputBorder} ${theme.bg} p-2`}>
+        <div className={`mt-2 ${theme.borderRadius} ${theme.cardStyle} ${theme.inputBorder} ${theme.bg} p-2`}>
           <div className="mb-2 flex gap-1">
             <button
               type="button"
@@ -998,7 +1000,7 @@ function RecurrenceSection({
       )}
 
       {editing && (
-        <div className={`mt-1 ${theme.borderRadius} border ${theme.inputBorder} ${theme.bg} p-2`}>
+        <div className={`mt-1 ${theme.borderRadius} ${theme.cardStyle} ${theme.inputBorder} ${theme.bg} p-2`}>
           <select
             value={selectedPreset}
             onChange={(e) => setSelectedPreset(Number(e.target.value))}

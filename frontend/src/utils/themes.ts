@@ -55,6 +55,39 @@ export interface ThemeColors {
   labelStyle: string;
   decorativeBorder: string;
   cardStyle: string;
+  bgPattern: string;
+  checkboxRadius: string;
+  checkboxSize: string;
+  checkboxExtra: string;
+  progressRadius: string;
+  progressHeight: string;
+  progressHeightSm: string;
+  progressExtra: string;
+  headerStyle: string;
+  headerTitleSize: string;
+  transitionSpeed: string;
+  // TASK-053: unique decorative elements per theme
+  sidebarSectionUnderline: string;
+  badgeFont: string;
+  taskHoverIndicator: string;
+  sidebarDividerStyle: string;
+  addBtnExtra: string;
+  sidebarActiveStyle: string;
+  taskNumbering: boolean;
+  taskCompletedStamp: boolean;
+  headerAccent: string;
+  taskActiveUnderline: string;
+  sidebarTopBorder: string;
+  neonDotIndicator: boolean;
+  scanlineOverlay: boolean;
+  glowText: string;
+  animatedBorder: boolean;
+  breathingBg: boolean;
+  leafIcon: boolean;
+  blobBadge: boolean;
+  floatingShadow: string;
+  pulseAddBtn: boolean;
+  dropCapProject: boolean;
 }
 
 const MINIMALIST: ThemeColors = {
@@ -108,10 +141,42 @@ const MINIMALIST: ThemeColors = {
   shadowLg: 'shadow-none',
   fontFamily: 'font-sans',
   headerFont: 'font-sans',
-  spacing: 'p-3',
+  spacing: 'px-3 py-2',
   labelStyle: '',
   decorativeBorder: 'border',
   cardStyle: 'border',
+  bgPattern: '',
+  checkboxRadius: 'rounded-none',
+  checkboxSize: 'h-[18px] w-[18px]',
+  checkboxExtra: '',
+  progressRadius: 'rounded-none',
+  progressHeight: 'h-1',
+  progressHeightSm: 'h-1',
+  progressExtra: '',
+  headerStyle: '',
+  headerTitleSize: 'text-base',
+  transitionSpeed: 'duration-75',
+  sidebarSectionUnderline: 'border-b border-stone-200',
+  badgeFont: 'font-mono',
+  taskHoverIndicator: 'theme-minimalist-hover-indicator',
+  sidebarDividerStyle: 'gap',
+  addBtnExtra: '',
+  sidebarActiveStyle: '',
+  taskNumbering: false,
+  taskCompletedStamp: false,
+  headerAccent: '',
+  taskActiveUnderline: '',
+  sidebarTopBorder: '',
+  neonDotIndicator: false,
+  scanlineOverlay: false,
+  glowText: '',
+  animatedBorder: false,
+  breathingBg: false,
+  leafIcon: false,
+  blobBadge: false,
+  floatingShadow: '',
+  pulseAddBtn: false,
+  dropCapProject: false,
 };
 
 const DESIGN: ThemeColors = {
@@ -128,7 +193,7 @@ const DESIGN: ThemeColors = {
   sidebarItemActive: 'bg-violet-100',
   sidebarItemActiveText: 'font-medium text-violet-900',
   sidebarBadge: 'bg-violet-100 text-violet-500',
-  sidebarBadgeActive: 'bg-violet-200 text-violet-700',
+  sidebarBadgeActive: 'theme-design-pill-badge',
   sidebarDivider: 'border-violet-100',
   mainBg: 'bg-white',
   listHeaderBorder: 'border-violet-100',
@@ -165,10 +230,42 @@ const DESIGN: ThemeColors = {
   shadowLg: 'shadow-xl',
   fontFamily: 'font-sans',
   headerFont: 'font-sans',
-  spacing: 'p-5',
+  spacing: 'px-5 py-3',
   labelStyle: 'tracking-wide',
   decorativeBorder: 'border-2',
   cardStyle: 'border-2 bg-gradient-to-br from-white to-violet-50/50',
+  bgPattern: 'theme-bg-dots',
+  checkboxRadius: 'rounded-full',
+  checkboxSize: 'h-5 w-5',
+  checkboxExtra: 'hover:ring-2 hover:ring-violet-200/50',
+  progressRadius: 'rounded-full',
+  progressHeight: 'h-2.5',
+  progressHeightSm: 'h-1.5',
+  progressExtra: '',
+  headerStyle: 'bg-gradient-to-r from-violet-50 to-white',
+  headerTitleSize: 'text-lg',
+  transitionSpeed: 'duration-300 ease-out',
+  sidebarSectionUnderline: '',
+  badgeFont: '',
+  taskHoverIndicator: '',
+  sidebarDividerStyle: 'theme-design-gradient-divider',
+  addBtnExtra: 'theme-design-pulse',
+  sidebarActiveStyle: 'theme-design-notch',
+  taskNumbering: false,
+  taskCompletedStamp: false,
+  headerAccent: '',
+  taskActiveUnderline: '',
+  sidebarTopBorder: '',
+  neonDotIndicator: false,
+  scanlineOverlay: false,
+  glowText: '',
+  animatedBorder: false,
+  breathingBg: false,
+  leafIcon: false,
+  blobBadge: false,
+  floatingShadow: 'theme-design-float',
+  pulseAddBtn: true,
+  dropCapProject: false,
 };
 
 const FORMAL: ThemeColors = {
@@ -222,10 +319,42 @@ const FORMAL: ThemeColors = {
   shadowLg: 'shadow-md',
   fontFamily: 'font-sans',
   headerFont: 'font-serif',
-  spacing: 'p-4',
+  spacing: 'px-4 py-3',
   labelStyle: 'uppercase tracking-wider',
   decorativeBorder: 'border-double border-2',
   cardStyle: 'border-double border-2',
+  bgPattern: 'theme-bg-lines',
+  checkboxRadius: 'rounded-sm',
+  checkboxSize: 'h-[18px] w-[18px]',
+  checkboxExtra: 'border-double',
+  progressRadius: 'rounded-sm',
+  progressHeight: 'h-1.5',
+  progressHeightSm: 'h-1',
+  progressExtra: '',
+  headerStyle: 'border-b-2',
+  headerTitleSize: 'text-sm',
+  transitionSpeed: 'duration-150',
+  sidebarSectionUnderline: '',
+  badgeFont: '',
+  taskHoverIndicator: '',
+  sidebarDividerStyle: '',
+  addBtnExtra: '',
+  sidebarActiveStyle: '',
+  taskNumbering: true,
+  taskCompletedStamp: true,
+  headerAccent: 'theme-formal-rule-line',
+  taskActiveUnderline: '',
+  sidebarTopBorder: '',
+  neonDotIndicator: false,
+  scanlineOverlay: false,
+  glowText: '',
+  animatedBorder: false,
+  breathingBg: false,
+  leafIcon: false,
+  blobBadge: false,
+  floatingShadow: '',
+  pulseAddBtn: false,
+  dropCapProject: true,
 };
 
 const NATURE: ThemeColors = {
@@ -279,10 +408,42 @@ const NATURE: ThemeColors = {
   shadowLg: 'shadow-lg shadow-emerald-100/50',
   fontFamily: 'font-sans',
   headerFont: 'font-sans',
-  spacing: 'p-5',
+  spacing: 'px-5 py-3',
   labelStyle: '',
   decorativeBorder: 'border',
   cardStyle: 'border',
+  bgPattern: 'theme-bg-gradient',
+  checkboxRadius: 'rounded-md',
+  checkboxSize: 'h-[18px] w-[18px]',
+  checkboxExtra: 'hover:ring-1 hover:ring-emerald-200/30',
+  progressRadius: 'rounded-xl',
+  progressHeight: 'h-2',
+  progressHeightSm: 'h-1.5',
+  progressExtra: '',
+  headerStyle: 'bg-gradient-to-b from-emerald-50/60 to-transparent',
+  headerTitleSize: 'text-base',
+  transitionSpeed: 'duration-300 ease-in-out',
+  sidebarSectionUnderline: '',
+  badgeFont: '',
+  taskHoverIndicator: '',
+  sidebarDividerStyle: '',
+  addBtnExtra: '',
+  sidebarActiveStyle: '',
+  taskNumbering: false,
+  taskCompletedStamp: false,
+  headerAccent: '',
+  taskActiveUnderline: 'theme-nature-underline',
+  sidebarTopBorder: 'theme-nature-wavy-top',
+  neonDotIndicator: false,
+  scanlineOverlay: false,
+  glowText: '',
+  animatedBorder: false,
+  breathingBg: true,
+  leafIcon: true,
+  blobBadge: true,
+  floatingShadow: '',
+  pulseAddBtn: false,
+  dropCapProject: false,
 };
 
 const DARK: ThemeColors = {
@@ -336,10 +497,42 @@ const DARK: ThemeColors = {
   shadowLg: 'shadow-xl shadow-black/40',
   fontFamily: 'font-sans',
   headerFont: 'font-sans',
-  spacing: 'p-4',
+  spacing: 'px-4 py-3',
   labelStyle: '',
   decorativeBorder: 'border',
   cardStyle: 'border backdrop-blur-md bg-zinc-800/80',
+  bgPattern: 'theme-bg-glow',
+  checkboxRadius: 'rounded',
+  checkboxSize: 'h-[18px] w-[18px]',
+  checkboxExtra: 'hover:shadow-sm hover:shadow-zinc-500/20',
+  progressRadius: 'rounded-lg',
+  progressHeight: 'h-2',
+  progressHeightSm: 'h-1.5',
+  progressExtra: '',
+  headerStyle: 'shadow-[0_1px_8px_rgba(139,92,246,0.15)]',
+  headerTitleSize: 'text-base',
+  transitionSpeed: 'duration-100 ease-linear',
+  sidebarSectionUnderline: '',
+  badgeFont: '',
+  taskHoverIndicator: '',
+  sidebarDividerStyle: '',
+  addBtnExtra: '',
+  sidebarActiveStyle: 'theme-dark-neon-glow',
+  taskNumbering: false,
+  taskCompletedStamp: false,
+  headerAccent: '',
+  taskActiveUnderline: '',
+  sidebarTopBorder: '',
+  neonDotIndicator: true,
+  scanlineOverlay: true,
+  glowText: 'theme-dark-glow-text',
+  animatedBorder: true,
+  breathingBg: false,
+  leafIcon: false,
+  blobBadge: false,
+  floatingShadow: '',
+  pulseAddBtn: false,
+  dropCapProject: false,
 };
 
 const THEME_MAP: Record<ContextTheme, ThemeColors> = {
