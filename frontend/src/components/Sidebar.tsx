@@ -1,11 +1,13 @@
 import { useDroppable } from '@dnd-kit/core';
 import {
   Inbox, Zap, FolderOpen, Clock, Lightbulb, BookOpen, Calendar,
-  CheckCircle, Settings, Tag, Leaf,
+  CheckCircle, Settings, Leaf,
 } from 'lucide-react';
+import { createElement } from 'react';
 import type { ComponentType } from 'react';
 import type { CategoryResponse, GtdList, TaskCountsResponse } from '../types';
 import type { ThemeColors } from '../utils/themes';
+import { getCategoryIcon } from '../utils/icons';
 
 const GTD_LISTS: { key: GtdList; label: string; Icon: ComponentType<{ className?: string }> }[] = [
   { key: 'INBOX', label: 'Inbox', Icon: Inbox },
@@ -170,14 +172,10 @@ export default function Sidebar({ counts, categories, activeSection, onSectionCh
                   : `${theme.sidebarItemText} ${theme.sidebarItemHover}`
               }`}
             >
-              {cat.color ? (
-                <span
-                  className={`h-3 w-3 rounded-full border ${theme.sidebarDivider}`}
-                  style={{ backgroundColor: cat.color }}
-                />
-              ) : (
-                <Tag className="h-4 w-4 shrink-0" />
-              )}
+              {createElement(getCategoryIcon(cat.icon), {
+                className: 'h-4 w-4 shrink-0',
+                ...(cat.color ? { style: { color: cat.color } } : {}),
+              })}
               <span className="flex-1 truncate">{cat.name}</span>
               {catCount(cat.id) > 0 && (
                 <span className={`min-w-[20px] ${catBadgeBlobClass} px-1.5 text-center text-xs ${theme.badgeFont} ${

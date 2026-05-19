@@ -58,10 +58,22 @@ export default function CategoryManager({
     setError('');
   }
 
+  function validHexColor(c: string): string | null {
+    const trimmed = c.trim();
+    if (!trimmed) return null;
+    return /^#[0-9A-Fa-f]{6}$/.test(trimmed) ? trimmed : null;
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
+
+    const validColor = validHexColor(color);
+    if (color && !validColor) {
+      setError('Color must be a valid HEX code (e.g. #FF5733)');
+      return;
+    }
 
     setSaving(true);
     setError('');
@@ -69,7 +81,7 @@ export default function CategoryManager({
       await apiClient.post(`/contexts/${contextId}/categories`, {
         name: trimmed,
         icon: icon || null,
-        color: color || null,
+        color: validColor,
       });
       onCategoriesChanged();
       resetToList();
@@ -87,13 +99,19 @@ export default function CategoryManager({
     const trimmed = name.trim();
     if (!trimmed) return;
 
+    const validColor = validHexColor(color);
+    if (color && !validColor) {
+      setError('Color must be a valid HEX code (e.g. #FF5733)');
+      return;
+    }
+
     setSaving(true);
     setError('');
     try {
       await apiClient.put(`/categories/${editingCategory.id}`, {
         name: trimmed,
         icon: icon || null,
-        color: color || null,
+        color: validColor,
       });
       onCategoriesChanged();
       resetToList();
@@ -215,7 +233,7 @@ export default function CategoryManager({
                 <label className={`mb-1.5 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
                   Icon
                 </label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="grid max-h-36 grid-cols-9 gap-1 overflow-y-auto rounded border border-transparent p-0.5">
                   {PRESET_CATEGORY_ICONS.map(({ key, Icon, label }) => (
                     <button
                       key={key}
@@ -224,8 +242,8 @@ export default function CategoryManager({
                       title={label}
                       className={`flex h-8 w-8 items-center justify-center ${theme.borderRadius} border transition ${theme.transitionSpeed} ${
                         icon === key
-                          ? `${theme.inputBorder} ${theme.sidebarItemActive}`
-                          : `${theme.inputBorder} ${theme.taskHover}`
+                          ? `${theme.inputBorder} ${theme.sidebarItemActive} ring-1 ring-offset-1`
+                          : `border-transparent ${theme.taskHover}`
                       }`}
                     >
                       <Icon className="h-4 w-4" />
@@ -233,13 +251,16 @@ export default function CategoryManager({
                   ))}
                 </div>
                 {icon && (
-                  <button
-                    type="button"
-                    onClick={() => setIcon('')}
-                    className={`mt-1 text-[10px] ${theme.labelText} hover:opacity-80`}
-                  >
-                    Clear icon
-                  </button>
+                  <p className={`mt-1.5 flex items-center gap-1 text-[10px] ${theme.labelText}`}>
+                    Selected: <span className="font-medium">{PRESET_CATEGORY_ICONS.find(i => i.key === icon)?.label ?? icon}</span>
+                    <button
+                      type="button"
+                      onClick={() => setIcon('')}
+                      className="ml-1 underline hover:opacity-80"
+                    >
+                      clear
+                    </button>
+                  </p>
                 )}
               </div>
 
@@ -331,14 +352,10 @@ function CategoryListItem({
     <li className={`group ${theme.borderRadius} border ${theme.sidebarDivider} px-3 py-2.5 transition ${theme.transitionSpeed}`}>
       <div className="flex items-center gap-3">
         <div className={`flex h-8 w-8 shrink-0 items-center justify-center ${theme.borderRadius} ${theme.sidebarItemActive}`}>
-          {category.color ? (
-            <span
-              className="h-4 w-4 rounded-full"
-              style={{ backgroundColor: category.color }}
-            />
-          ) : (
-            createElement(getCategoryIcon(category.icon), { className: `h-4 w-4 ${theme.sidebarItemText}` })
-          )}
+          {createElement(getCategoryIcon(category.icon), {
+            className: `h-4 w-4 ${theme.sidebarItemText}`,
+            ...(category.color ? { style: { color: category.color } } : {}),
+          })}
         </div>
 
         <div className="min-w-0 flex-1">
