@@ -22,6 +22,9 @@ interface ContextDao {
     @Query("SELECT * FROM contexts WHERE user_id = :userId AND is_deleted = 0 ORDER BY sort_order")
     fun observeByUserId(userId: String): Flow<List<ContextEntity>>
 
+    @Query("SELECT * FROM contexts WHERE user_id = :userId AND is_deleted = 0 ORDER BY sort_order")
+    suspend fun getByUserId(userId: String): List<ContextEntity>
+
     @Query("SELECT * FROM contexts WHERE id = :id")
     suspend fun getById(id: String): ContextEntity?
 

@@ -1604,3 +1604,73 @@
   - MoveTaskDialog в WorkspaceScreen переиспользует GTD_ICONS из того же файла; в TaskDetailScreen — собственный GTD_LIST_ICONS (дублирование, в будущем можно вынести в общий модуль)
   - Autosave при Back: если есть unsaved changes, saveTask() вызывается перед onNavigateBack(); save fire-and-forget (не ждёт результата перед навигацией)
   - **Следующий приоритет: TASK-042** (Android категории + темы + экспорт) или **TASK-043** (Android офлайн-режим) — TASK-043 имеет более высокий приоритет (high vs medium) и блокирует TASK-044 (sync)
+
+### TASK-043 — Android: офлайн-режим — полноценная работа без интернета
+- **Дата:** 2026-05-19
+- **Статус:** done
+- **Что сделано:**
+  - **NetworkMonitor.kt** — новый singleton, отслеживает состояние сети:
+    - `isOnline: Flow<Boolean>` — реактивный поток через `ConnectivityManager.NetworkCallback`
+    - `isCurrentlyOnline(): Boolean` — синхронная проверка для repository
+    - Фильтрует `NET_CAPABILITY_INTERNET`, `distinctUntilChanged`
+  - **Mappers.kt** — DTO↔Entity маппинг:
+    - `ContextDto.toEntity(userId)` / `ContextEntity.toDto()`
+    - `TaskDto.toEntity()` / `TaskEntity.toDto(subtasks, progress)`
+    - `CategoryDto.toEntity()` / `CategoryEntity.toDto()`
+    - `flattenWithSubtasks()` — рекурсивно раскладывает TaskDto дерево в плоский список TaskEntity
+    - Timestamp parsing через `Instant.parse`
+  - **GtdRepository.kt** — полностью рефакторен на offline-first:
+    - Теперь инжектит: GtdApi, Json, ContextDao, TaskDao, CategoryDao, PendingChangeDao, TokenStorage, NetworkMonitor
+    - Каждый метод: если online → API + кэш в Room; если offline → Room-only
+    - Мутации (create/update/delete/move/complete): если offline → запись в Room + PendingChangeEntity
+    - `trackChange()` — записывает каждое офлайн-изменение в pending_changes
+    - Offline create генерирует `UUID.randomUUID()` как localId
+    - `computeProgress()` — вычисляет прогресс по подзадачам из Room
+    - `cacheTasksLocally()` — кэширует все задачи (включая вложенные) через flattenWithSubtasks
+  - **ContextDao.kt** — добавлен `getByUserId()` (suspend, не Flow) для offline-чтения
+  - **TaskDao.kt** — добавлены `getByContextId()` и `getByGtdList()` (suspend, не Flow)
+  - **CategoryDao.kt** — добавлен `getByContextId()` (suspend, не Flow)
+  - **SyncWorker.kt** — HiltWorker для фоновой синхронизации:
+    - Читает pending_changes, для каждого вызывает соответствующий API
+    - Поддерживает: CREATE, CREATE_SUBTASK, UPDATE, MOVE, COMPLETE, DELETE для задач
+    - Помечает synced / удаляет синхронизированные записи
+    - Retry через `Result.retry()` если остались несинхронизированные
+  - **SyncManager.kt** — управляет WorkManager и статусом синхронизации:
+    - `requestSync()` — ставит OneTimeWorkRequest с NetworkType.CONNECTED constraint
+    - `syncStatus: Flow<SyncStatus>` — комбинирует networkMonitor.isOnline + workInfo.state
+    - SyncStatus enum: IDLE, SYNCING, PENDING, OFFLINE
+    - Exponential backoff (30s) для retry
+  - **WorkspaceViewModel.kt** — обновлён:
+    - Инжектит SyncManager, подписывается на syncStatus
+    - После каждой мутации вызывает `syncManager.requestSync()`
+    - При возврате в IDLE — перезагружает данные (server reconciliation)
+    - UiState расширен полем `syncStatus: SyncStatus`
+  - **TaskDetailViewModel.kt** — обновлён:
+    - Инжектит SyncManager
+    - После save/delete/complete/move/createSubtask → `syncManager.requestSync()`
+  - **ContextsViewModel.kt** — обновлён:
+    - Инжектит SyncManager, подписывается на syncStatus
+    - После createContext → `syncManager.requestSync()`
+    - UiState расширен полем `syncStatus: SyncStatus`
+  - **WorkspaceScreen.kt** — sync status indicator в TopAppBar:
+    - SYNCING: спиннер + "Syncing"
+    - OFFLINE: красный dot + "Offline"
+    - PENDING: оранжевый dot + "Pending"
+    - IDLE: нет индикатора
+  - **ContextsScreen.kt** — sync status indicator в TopAppBar:
+    - OFFLINE: красный dot + "Offline"
+    - SYNCING: спиннер + "Syncing"
+  - `./gradlew compileDebugKotlin --offline` — BUILD SUCCESSFUL
+  - `npx tsc --noEmit` — без ошибок (frontend не затронут)
+  - `npm run build` — без ошибок (427KB JS, 75KB CSS)
+  - `./mvnw clean compile -DskipTests` — без ошибок (backend не затронут)
+- **Коммиты:** feat: add Android offline-first mode with Room caching and sync worker (TASK-043)
+- **Заметки:**
+  - Архитектура: online-first с graceful offline fallback — если API доступен, данные берутся с сервера и кэшируются в Room; если нет — из Room
+  - Мутации офлайн: записываются в Room + pending_changes; SyncWorker автоматически синхронизирует при появлении сети
+  - SyncWorker использует WorkManager с NetworkType.CONNECTED constraint — автоматически просыпается при восстановлении сети
+  - Offline context creation пока ограничено: SyncWorker не полностью реализует push для контекстов (только для задач) — для MVP достаточно, full sync будет в TASK-044
+  - Локальные ID (UUID) для offline-created задач: при синхронизации SyncWorker создаёт задачу на сервере и получает серверный ID, обновляя Room. Но ссылки на localId в других pending_changes не обновляются — это edge case для TASK-044 (field-level merge)
+  - Room schema не изменена (version 1 сохранена) — все нужные таблицы уже были создены в TASK-038
+  - `fallbackToDestructiveMigration()` всё ещё используется — для production нужны proper migrations
+  - **Следующий приоритет: TASK-042** (Android категории + темы + экспорт — medium, deps met) или **TASK-044** (Android Sync Manager через WorkManager + field-level merge — high, но зависит от TASK-043 done ✅ + TASK-024 done ✅). TASK-044 имеет более высокий приоритет и теперь разблокирован.

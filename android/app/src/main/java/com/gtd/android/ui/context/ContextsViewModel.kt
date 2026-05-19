@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.gtd.android.data.remote.dto.ContextDto
 import com.gtd.android.data.repository.ApiResult
 import com.gtd.android.data.repository.GtdRepository
+import com.gtd.android.data.sync.SyncManager
+import com.gtd.android.data.sync.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -29,11 +31,13 @@ data class ContextsUiState(
     val showCreateDialog: Boolean = false,
     val isCreating: Boolean = false,
     val createError: String? = null,
+    val syncStatus: SyncStatus = SyncStatus.IDLE,
 )
 
 @HiltViewModel
 class ContextsViewModel @Inject constructor(
     private val repository: GtdRepository,
+    private val syncManager: SyncManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ContextsUiState())
@@ -45,6 +49,15 @@ class ContextsViewModel @Inject constructor(
 
     init {
         loadContexts()
+        observeSyncStatus()
+    }
+
+    private fun observeSyncStatus() {
+        viewModelScope.launch {
+            syncManager.syncStatus.collect { status ->
+                _uiState.value = _uiState.value.copy(syncStatus = status)
+            }
+        }
     }
 
     fun loadContexts() {
@@ -102,6 +115,7 @@ class ContextsViewModel @Inject constructor(
                         isCreating = false,
                         showCreateDialog = false,
                     )
+                    syncManager.requestSync()
                     loadContexts()
                 }
                 is ApiResult.Error -> {

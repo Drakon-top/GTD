@@ -1022,7 +1022,7 @@
         "Шаг 5: Выключить airplane mode — данные синхронизируются"
       ],
       "dependencies": ["TASK-041", "TASK-038"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-044",

@@ -8,6 +8,7 @@ import com.gtd.android.data.remote.dto.TaskDto
 import com.gtd.android.data.remote.dto.UpdateTaskRequest
 import com.gtd.android.data.repository.ApiResult
 import com.gtd.android.data.repository.GtdRepository
+import com.gtd.android.data.sync.SyncManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,6 +51,7 @@ data class TaskDetailUiState(
 class TaskDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: GtdRepository,
+    private val syncManager: SyncManager,
 ) : ViewModel() {
 
     val taskId: String = savedStateHandle["taskId"] ?: ""
@@ -171,6 +173,7 @@ class TaskDetailViewModel @Inject constructor(
                         isSaving = false,
                         hasUnsavedChanges = false,
                     )
+                    syncManager.requestSync()
                 }
                 is ApiResult.Error -> {
                     _uiState.value = _uiState.value.copy(
@@ -187,6 +190,7 @@ class TaskDetailViewModel @Inject constructor(
             when (repository.deleteTask(taskId)) {
                 is ApiResult.Success -> {
                     _uiState.value = _uiState.value.copy(isDeleted = true)
+                    syncManager.requestSync()
                 }
                 is ApiResult.Error -> { /* stay on screen */ }
             }
@@ -196,7 +200,10 @@ class TaskDetailViewModel @Inject constructor(
     fun completeTask() {
         viewModelScope.launch {
             when (repository.completeTask(taskId)) {
-                is ApiResult.Success -> loadTask()
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadTask()
+                }
                 is ApiResult.Error -> { /* silently fail */ }
             }
         }
@@ -205,7 +212,10 @@ class TaskDetailViewModel @Inject constructor(
     fun completeSubtask(subtaskId: String) {
         viewModelScope.launch {
             when (repository.completeTask(subtaskId)) {
-                is ApiResult.Success -> loadTask()
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadTask()
+                }
                 is ApiResult.Error -> { /* silently fail */ }
             }
         }
@@ -223,7 +233,10 @@ class TaskDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(showMoveDialog = false)
             when (repository.moveTask(taskId, gtdList)) {
-                is ApiResult.Success -> loadTask()
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadTask()
+                }
                 is ApiResult.Error -> { /* silently fail */ }
             }
         }
@@ -241,7 +254,10 @@ class TaskDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(showAddSubtask = false)
             when (repository.createSubtask(taskId, title)) {
-                is ApiResult.Success -> loadTask()
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadTask()
+                }
                 is ApiResult.Error -> { /* silently fail */ }
             }
         }

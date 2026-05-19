@@ -22,6 +22,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE context_id = :contextId AND is_deleted = 0 ORDER BY sort_order")
     fun observeByContextId(contextId: String): Flow<List<CategoryEntity>>
 
+    @Query("SELECT * FROM categories WHERE context_id = :contextId AND is_deleted = 0 ORDER BY sort_order")
+    suspend fun getByContextId(contextId: String): List<CategoryEntity>
+
     @Query("SELECT * FROM categories WHERE id = :id")
     suspend fun getById(id: String): CategoryEntity?
 

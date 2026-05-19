@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gtd.android.data.sync.SyncStatus
 import com.gtd.android.ui.auth.AuthViewModel
 import kotlinx.coroutines.launch
 
@@ -91,6 +92,43 @@ fun ContextsScreen(
             TopAppBar(
                 title = { Text("Contexts") },
                 actions = {
+                    if (state.syncStatus == SyncStatus.OFFLINE) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 4.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.error,
+                                        RoundedCornerShape(4.dp),
+                                    ),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "Offline",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    } else if (state.syncStatus == SyncStatus.SYNCING) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 4.dp),
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "Syncing",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     IconButton(onClick = {
                         scope.launch {
                             authViewModel.logout()

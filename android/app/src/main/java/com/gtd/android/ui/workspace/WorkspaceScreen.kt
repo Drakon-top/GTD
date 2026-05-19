@@ -67,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gtd.android.data.sync.SyncStatus
 import com.gtd.android.domain.model.GtdList
 import kotlinx.coroutines.launch
 
@@ -137,6 +138,9 @@ fun WorkspaceScreen(
                                 Icon(Icons.Default.Menu, contentDescription = "Menu")
                             }
                         }
+                    },
+                    actions = {
+                        SyncStatusIndicator(state.syncStatus)
                     },
                 )
             },
@@ -560,6 +564,73 @@ private fun CreateTaskDialog(
             }
         },
     )
+}
+
+@Composable
+private fun SyncStatusIndicator(syncStatus: SyncStatus) {
+    when (syncStatus) {
+        SyncStatus.SYNCING -> {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(end = 12.dp),
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    "Syncing",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        SyncStatus.OFFLINE -> {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(end = 12.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(
+                            MaterialTheme.colorScheme.error,
+                            RoundedCornerShape(4.dp),
+                        ),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    "Offline",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+        SyncStatus.PENDING -> {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(end = 12.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(
+                            Color(0xFFFFA000),
+                            RoundedCornerShape(4.dp),
+                        ),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    "Pending",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFFFA000),
+                )
+            }
+        }
+        SyncStatus.IDLE -> { /* no indicator */ }
+    }
 }
 
 private fun sectionLabel(key: String, sections: List<SidebarSection>): String {

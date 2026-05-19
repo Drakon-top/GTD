@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.gtd.android.data.remote.dto.TaskDto
 import com.gtd.android.data.repository.ApiResult
 import com.gtd.android.data.repository.GtdRepository
+import com.gtd.android.data.sync.SyncManager
+import com.gtd.android.data.sync.SyncStatus
 import com.gtd.android.domain.model.GtdList
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,12 +56,14 @@ data class WorkspaceUiState(
     val showMoveTask: Boolean = false,
     val moveTaskId: String? = null,
     val moveTaskCurrentList: String = "INBOX",
+    val syncStatus: SyncStatus = SyncStatus.IDLE,
 )
 
 @HiltViewModel
 class WorkspaceViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: GtdRepository,
+    private val syncManager: SyncManager,
 ) : ViewModel() {
 
     val contextId: String = savedStateHandle["contextId"] ?: ""
@@ -69,6 +73,18 @@ class WorkspaceViewModel @Inject constructor(
 
     init {
         loadAll()
+        observeSyncStatus()
+    }
+
+    private fun observeSyncStatus() {
+        viewModelScope.launch {
+            syncManager.syncStatus.collect { status ->
+                _uiState.value = _uiState.value.copy(syncStatus = status)
+                if (status == SyncStatus.IDLE) {
+                    loadAll()
+                }
+            }
+        }
     }
 
     fun loadAll() {
@@ -189,6 +205,7 @@ class WorkspaceViewModel @Inject constructor(
                         isCreatingTask = false,
                         showCreateTask = false,
                     )
+                    syncManager.requestSync()
                     loadAll()
                 }
                 is ApiResult.Error -> {
@@ -201,8 +218,11 @@ class WorkspaceViewModel @Inject constructor(
     fun completeTask(taskId: String) {
         viewModelScope.launch {
             when (repository.completeTask(taskId)) {
-                is ApiResult.Success -> loadAll()
-                is ApiResult.Error -> { /* silently fail for now */ }
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadAll()
+                }
+                is ApiResult.Error -> { /* silently fail */ }
             }
         }
     }
@@ -225,8 +245,11 @@ class WorkspaceViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(showMoveTask = false, moveTaskId = null)
         viewModelScope.launch {
             when (repository.moveTask(taskId, gtdList)) {
-                is ApiResult.Success -> loadAll()
-                is ApiResult.Error -> { /* silently fail for now */ }
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadAll()
+                }
+                is ApiResult.Error -> { /* silently fail */ }
             }
         }
     }
@@ -234,8 +257,11 @@ class WorkspaceViewModel @Inject constructor(
     fun deleteTask(taskId: String) {
         viewModelScope.launch {
             when (repository.deleteTask(taskId)) {
-                is ApiResult.Success -> loadAll()
-                is ApiResult.Error -> { /* silently fail for now */ }
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadAll()
+                }
+                is ApiResult.Error -> { /* silently fail */ }
             }
         }
     }

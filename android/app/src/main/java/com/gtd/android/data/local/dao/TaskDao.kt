@@ -31,11 +31,29 @@ interface TaskDao {
     @Query(
         """
         SELECT * FROM tasks 
+        WHERE context_id = :contextId AND is_deleted = 0 AND parent_task_id IS NULL
+        ORDER BY sort_order
+        """
+    )
+    suspend fun getByContextId(contextId: String): List<TaskEntity>
+
+    @Query(
+        """
+        SELECT * FROM tasks 
         WHERE context_id = :contextId AND gtd_list = :gtdList AND is_deleted = 0 AND parent_task_id IS NULL
         ORDER BY sort_order
         """
     )
     fun observeByGtdList(contextId: String, gtdList: String): Flow<List<TaskEntity>>
+
+    @Query(
+        """
+        SELECT * FROM tasks 
+        WHERE context_id = :contextId AND gtd_list = :gtdList AND is_deleted = 0 AND parent_task_id IS NULL
+        ORDER BY sort_order
+        """
+    )
+    suspend fun getByGtdList(contextId: String, gtdList: String): List<TaskEntity>
 
     @Query("SELECT * FROM tasks WHERE id = :id")
     suspend fun getById(id: String): TaskEntity?
