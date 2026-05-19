@@ -1850,3 +1850,34 @@
   - google-services.json — placeholder для dev; в production нужен реальный файл из Firebase Console
   - Hilt injection в BroadcastReceivers через `@AndroidEntryPoint` (поддерживается Hilt 2.40+)
   - **Следующий приоритет: TASK-050** (E2E тестирование — low, единственная оставшаяся задача со status pending)
+
+---
+
+## TASK-050: E2E тестирование и стресс-тест синхронизации (in_progress)
+**Дата:** 2026-05-19
+
+### Выполненная работа:
+- **Проверка сборок всех модулей:**
+  - `npm run build` (frontend) — OK (427KB JS, 75KB CSS, 1823 модуля)
+  - `npx tsc --noEmit` (frontend) — OK, без ошибок типов
+  - `npm run lint` (frontend) — OK, без ошибок
+  - `./mvnw clean compile -DskipTests` (backend) — OK (112 source files, 1 non-critical warning)
+  - `./gradlew compileDebugKotlin` (Android) — OK, BUILD SUCCESSFUL
+- **Исправлен баг в unit тестах backend:**
+  - `TaskControllerTest.shouldCompleteTask` и `TaskControllerTest.shouldReturnRecurrenceFieldsOnComplete` — тесты проверяли JSON path `$.completed`, но `TaskResponse` сериализует поле как `$.isCompleted` (через `@JsonProperty("isCompleted")`)
+  - Исправлено: `jsonPath("$.completed")` → `jsonPath("$.isCompleted")` в обоих тестах
+- **Unit тесты backend:** 345 тестов — все прошли после фикса
+- **Интеграционные тесты:** требуют PostgreSQL (через Testcontainers или реальную БД) — в sandbox не запускаются, это ожидаемо
+
+### Что осталось для завершения TASK-050:
+1. Запустить интеграционные тесты с PostgreSQL (docker-compose up + `./mvnw test`)
+2. Полный E2E цикл: регистрация → контексты → задачи → подзадачи → напоминания → повторение → экспорт (Web)
+3. Тестирование параллельной работы Web + Android
+4. Стресс-тест синхронизации: одновременные изменения и проверка field-level merge
+5. Офлайн-тест Android: 50+ задач офлайн → синхронизация без потерь
+
+### Заметки для следующей итерации:
+- Для полного E2E нужен `docker-compose up -d` (PostgreSQL + RabbitMQ) перед запуском интеграционных тестов
+- Android E2E тестирование требует запущенный эмулятор и реальный бэкенд
+- Рекомендуется создать скрипт для автоматического E2E: `scripts/e2e-test.sh`
+- Баг `@Builder will ignore the initializing expression` в `UpdateTaskRequest.java` — cosmetic warning, не влияет на функциональность

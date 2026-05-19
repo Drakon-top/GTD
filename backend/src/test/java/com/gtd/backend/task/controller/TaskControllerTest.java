@@ -331,7 +331,7 @@ class TaskControllerTest {
 
         mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId).with(withUser()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.isCompleted").value(true))
                 .andExpect(jsonPath("$.completedAt").isNotEmpty())
                 .andExpect(jsonPath("$.gtdList").value("DONE"));
     }
@@ -532,7 +532,7 @@ class TaskControllerTest {
 
         mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId).with(withUser()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.isCompleted").value(true))
                 .andExpect(jsonPath("$.isRecurring").value(true))
                 .andExpect(jsonPath("$.nextInstanceId").value(nextId.toString()));
     }

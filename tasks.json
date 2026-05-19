@@ -1168,7 +1168,7 @@
         "Шаг 5: Экспорт на обоих устройствах — данные идентичны"
       ],
       "dependencies": ["TASK-044", "TASK-036", "TASK-042"],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "id": "TASK-053",
