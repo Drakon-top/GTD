@@ -41,6 +41,11 @@ const THEME_STYLES: Record<ContextTheme, { card: string; badge: string; accent: 
     badge: 'bg-amber-950/50 text-amber-300',
     accent: 'text-amber-500',
   },
+  ICE_DRAGONS: {
+    card: 'bg-slate-900 border-cyan-800/40 hover:border-cyan-600/60',
+    badge: 'bg-cyan-950/50 text-cyan-300',
+    accent: 'text-cyan-500',
+  },
 };
 
 async function loadContexts(): Promise<{ contexts: ContextResponse[]; inboxCounts: Record<string, number> }> {

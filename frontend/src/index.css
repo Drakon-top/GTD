@@ -387,6 +387,180 @@
     100% { --fire-angle: 360deg; }
   }
 
+  /* ICE_DRAGONS: frost scale pattern background */
+  .theme-bg-frost-scales {
+    background-image:
+      radial-gradient(ellipse at 50% 0%, rgba(34, 211, 238, 0.12), transparent 45%),
+      radial-gradient(circle at 25% 75%, rgba(103, 232, 249, 0.08) 0%, transparent 35%),
+      radial-gradient(circle at 75% 25%, rgba(8, 145, 178, 0.08) 0%, transparent 35%),
+      radial-gradient(circle 12px at 20px 20px, rgba(34, 211, 238, 0.04) 40%, transparent 60%),
+      radial-gradient(circle 12px at 32px 8px, rgba(34, 211, 238, 0.04) 40%, transparent 60%);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 40px 28px, 40px 28px;
+  }
+
+  /* ICE_DRAGONS: frost glow on active sidebar item */
+  .theme-ice-dragons-frost-glow {
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.45), inset 0 0 6px rgba(103, 232, 249, 0.15);
+  }
+
+  /* ICE_DRAGONS: frost shimmer on hover */
+  .theme-ice-dragons-frost-hover {
+    position: relative;
+  }
+  .theme-ice-dragons-frost-hover::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 5%, rgba(103, 232, 249, 0.4), rgba(8, 145, 178, 0.3), transparent 95%);
+    opacity: 0;
+    transition: opacity 200ms ease-out;
+    pointer-events: none;
+  }
+  .theme-ice-dragons-frost-hover:hover::after {
+    opacity: 1;
+  }
+
+  /* ICE_DRAGONS: ice claw marks divider */
+  .theme-ice-dragons-claw-marks {
+    height: 12px;
+    background:
+      repeating-linear-gradient(
+        25deg,
+        transparent,
+        transparent 5px,
+        rgba(34, 211, 238, 0.3) 5px,
+        rgba(34, 211, 238, 0.3) 6.5px,
+        transparent 6.5px,
+        transparent 11px
+      );
+    border: none;
+  }
+
+  /* ICE_DRAGONS: frozen text glow */
+  .theme-ice-dragons-frozen-text {
+    text-shadow: 0 0 10px rgba(103, 232, 249, 0.5), 0 0 20px rgba(34, 211, 238, 0.3), 0 0 40px rgba(8, 145, 178, 0.1);
+  }
+
+  /* ICE_DRAGONS: frost progress bar — animated ice shimmer */
+  .theme-ice-dragons-frost-progress {
+    background: linear-gradient(90deg, #0891b2, #06b6d4, #22d3ee, #0891b2, #0891b2) !important;
+    background-size: 200% 100% !important;
+    animation: frost-progress-shimmer 2s ease-in-out infinite !important;
+  }
+  @keyframes frost-progress-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ICE_DRAGONS: ice gradient underline for selected task */
+  .theme-ice-dragons-ice-underline {
+    position: relative;
+  }
+  .theme-ice-dragons-ice-underline::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #06b6d4, #22d3ee, transparent);
+    border-radius: 1px;
+  }
+
+  /* ICE_DRAGONS: ice animated gradient border on detail panel */
+  .theme-ice-dragons-frost-border {
+    position: relative;
+    overflow: visible;
+  }
+  .theme-ice-dragons-frost-border::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: linear-gradient(
+      var(--ice-angle, 0deg),
+      rgba(103, 232, 249, 0.6),
+      rgba(34, 211, 238, 0.5),
+      rgba(8, 145, 178, 0.3),
+      rgba(103, 232, 249, 0.6)
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    padding: 2px;
+    animation: ice-frost-shift 4s linear infinite;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* ICE_DRAGONS: ice dot indicator for incomplete tasks */
+  .theme-ice-dragons-ice-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #22d3ee;
+    box-shadow: 0 0 4px #22d3ee, 0 0 8px rgba(8, 145, 178, 0.5);
+    animation: ice-dot-flicker 1.5s ease-in-out infinite;
+  }
+  @keyframes ice-dot-flicker {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px #22d3ee, 0 0 8px rgba(8, 145, 178, 0.5); }
+    30% { opacity: 0.7; box-shadow: 0 0 2px #22d3ee, 0 0 4px rgba(8, 145, 178, 0.3); }
+    60% { opacity: 1; box-shadow: 0 0 6px #22d3ee, 0 0 12px rgba(8, 145, 178, 0.6); }
+  }
+
+  /* ICE_DRAGONS: frost-breathing sidebar — cold ambient glow */
+  .theme-ice-dragons-breathing {
+    animation: ice-dragons-breathe 5s ease-in-out infinite;
+  }
+  @keyframes ice-dragons-breathe {
+    0%, 100% { opacity: 0.04; }
+    50% { opacity: 0.09; }
+  }
+
+  /* ICE_DRAGONS: frost shimmer on header */
+  .theme-ice-dragons-frost-header {
+    box-shadow: 0 2px 12px rgba(34, 211, 238, 0.2), 0 1px 4px rgba(8, 145, 178, 0.15);
+    animation: frost-header-pulse 3s ease-in-out infinite;
+  }
+  @keyframes frost-header-pulse {
+    0%, 100% { box-shadow: 0 2px 12px rgba(34, 211, 238, 0.2), 0 1px 4px rgba(8, 145, 178, 0.15); }
+    50% { box-shadow: 0 2px 16px rgba(34, 211, 238, 0.35), 0 1px 6px rgba(8, 145, 178, 0.25); }
+  }
+
+  /* ICE_DRAGONS: frozen stamp on completed tasks */
+  .theme-ice-dragons-frozen-stamp {
+    position: relative;
+  }
+  .theme-ice-dragons-frozen-stamp::after {
+    content: 'FROZEN';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%) rotate(-8deg);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    font-family: serif;
+    color: rgba(34, 211, 238, 0.2);
+    border: 2px solid rgba(34, 211, 238, 0.15);
+    padding: 1px 8px;
+    pointer-events: none;
+    border-radius: 2px;
+  }
+
+  @keyframes ice-frost-shift {
+    0% { --ice-angle: 0deg; }
+    100% { --ice-angle: 360deg; }
+  }
+
   /* DARK: neon dot indicator */
   .theme-dark-neon-dot {
     width: 6px;
@@ -409,6 +583,12 @@
 }
 
 @property --fire-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@property --ice-angle {
   syntax: '<angle>';
   initial-value: 0deg;
   inherits: false;

@@ -181,7 +181,7 @@ export default function ContextWorkspacePage() {
             </button>
             <div className="flex items-center gap-2">
               {createElement(getContextIcon(context.icon), { className: `h-5 w-5 ${theme.headerText}` })}
-              <h1 className={`${theme.headerTitleSize} font-semibold ${theme.headerFont} ${theme.headerText} ${theme.glowText} ${theme.moltenText}`}>{context.name}</h1>
+              <h1 className={`${theme.headerTitleSize} font-semibold ${theme.headerFont} ${theme.headerText} ${theme.glowText} ${theme.moltenText} ${theme.frozenText}`}>{context.name}</h1>
             </div>
             <div className="ml-auto flex items-center gap-3">
               {counts && (
@@ -223,6 +223,7 @@ export default function ContextWorkspacePage() {
                           : t === 'FORMAL' ? 'bg-slate-400'
                           : t === 'NATURE' ? 'bg-emerald-400'
                           : t === 'DRAGONS' ? 'bg-amber-500'
+                          : t === 'ICE_DRAGONS' ? 'bg-cyan-500'
                           : 'bg-zinc-700'
                         }`} />
                         {THEME_NAMES[t]}

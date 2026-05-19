@@ -96,6 +96,14 @@ export interface ThemeColors {
   emberDotIndicator: boolean;
   dragonsBreathingBg: boolean;
   dragonsForgeStamp: boolean;
+  // ICE_DRAGONS theme unique elements
+  iceAnimatedBorder: boolean;
+  frostHover: boolean;
+  iceClawMarks: boolean;
+  frozenText: string;
+  iceDotIndicator: boolean;
+  iceBreathingBg: boolean;
+  iceForgeStamp: boolean;
 }
 
 const MINIMALIST: ThemeColors = {
@@ -192,6 +200,13 @@ const MINIMALIST: ThemeColors = {
   emberDotIndicator: false,
   dragonsBreathingBg: false,
   dragonsForgeStamp: false,
+  iceAnimatedBorder: false,
+  frostHover: false,
+  iceClawMarks: false,
+  frozenText: '',
+  iceDotIndicator: false,
+  iceBreathingBg: false,
+  iceForgeStamp: false,
 };
 
 const DESIGN: ThemeColors = {
@@ -288,6 +303,13 @@ const DESIGN: ThemeColors = {
   emberDotIndicator: false,
   dragonsBreathingBg: false,
   dragonsForgeStamp: false,
+  iceAnimatedBorder: false,
+  frostHover: false,
+  iceClawMarks: false,
+  frozenText: '',
+  iceDotIndicator: false,
+  iceBreathingBg: false,
+  iceForgeStamp: false,
 };
 
 const FORMAL: ThemeColors = {
@@ -384,6 +406,13 @@ const FORMAL: ThemeColors = {
   emberDotIndicator: false,
   dragonsBreathingBg: false,
   dragonsForgeStamp: false,
+  iceAnimatedBorder: false,
+  frostHover: false,
+  iceClawMarks: false,
+  frozenText: '',
+  iceDotIndicator: false,
+  iceBreathingBg: false,
+  iceForgeStamp: false,
 };
 
 const NATURE: ThemeColors = {
@@ -480,6 +509,13 @@ const NATURE: ThemeColors = {
   emberDotIndicator: false,
   dragonsBreathingBg: false,
   dragonsForgeStamp: false,
+  iceAnimatedBorder: false,
+  frostHover: false,
+  iceClawMarks: false,
+  frozenText: '',
+  iceDotIndicator: false,
+  iceBreathingBg: false,
+  iceForgeStamp: false,
 };
 
 const DARK: ThemeColors = {
@@ -576,6 +612,13 @@ const DARK: ThemeColors = {
   emberDotIndicator: false,
   dragonsBreathingBg: false,
   dragonsForgeStamp: false,
+  iceAnimatedBorder: false,
+  frostHover: false,
+  iceClawMarks: false,
+  frozenText: '',
+  iceDotIndicator: false,
+  iceBreathingBg: false,
+  iceForgeStamp: false,
 };
 
 const DRAGONS: ThemeColors = {
@@ -672,6 +715,116 @@ const DRAGONS: ThemeColors = {
   emberDotIndicator: true,
   dragonsBreathingBg: true,
   dragonsForgeStamp: true,
+  iceAnimatedBorder: false,
+  frostHover: false,
+  iceClawMarks: false,
+  frozenText: '',
+  iceDotIndicator: false,
+  iceBreathingBg: false,
+  iceForgeStamp: false,
+};
+
+const ICE_DRAGONS: ThemeColors = {
+  bg: 'bg-slate-900',
+  headerBg: 'bg-slate-900',
+  headerBorder: 'border-cyan-900/50',
+  headerText: 'text-cyan-100',
+  headerSubtext: 'text-cyan-500/70',
+  sidebarBg: 'bg-slate-900',
+  sidebarBorder: 'border-cyan-900/40',
+  sidebarLabel: 'text-cyan-600/60',
+  sidebarItemText: 'text-cyan-300/70',
+  sidebarItemHover: 'hover:bg-cyan-950/50 hover:text-cyan-200',
+  sidebarItemActive: 'bg-cyan-950/60',
+  sidebarItemActiveText: 'font-medium text-cyan-100',
+  sidebarBadge: 'bg-cyan-950/50 text-cyan-400/70',
+  sidebarBadgeActive: 'bg-cyan-900/50 text-cyan-200',
+  sidebarDivider: 'border-cyan-900/30',
+  mainBg: 'bg-slate-950',
+  listHeaderBorder: 'border-cyan-900/40',
+  listHeaderText: 'text-cyan-100',
+  listCountBadge: 'bg-cyan-950/50 text-cyan-300',
+  taskText: 'text-cyan-100',
+  taskCompletedText: 'text-cyan-600/40',
+  taskSubtext: 'text-cyan-500/60',
+  taskHover: 'hover:bg-cyan-950/30',
+  taskSelected: 'bg-cyan-950/40',
+  taskDivider: 'divide-cyan-900/20',
+  checkbox: 'border-cyan-600/50 hover:border-cyan-400',
+  checkboxChecked: 'border-cyan-500 bg-cyan-600 text-slate-950',
+  progressBg: 'bg-slate-800',
+  progressFill: 'theme-ice-dragons-frost-progress',
+  inputBorder: 'border-cyan-800/40',
+  inputFocus: 'focus:border-cyan-500 focus:ring-cyan-500/20',
+  inputBg: 'bg-slate-900',
+  inputText: 'text-cyan-100',
+  inputPlaceholder: 'placeholder:text-cyan-700/50',
+  btnPrimary: 'bg-cyan-600',
+  btnPrimaryHover: 'hover:bg-cyan-500',
+  btnPrimaryText: 'text-slate-950',
+  labelText: 'text-cyan-600/60',
+  panelBg: 'bg-slate-900',
+  panelBorder: 'border-cyan-900/40',
+  emptyIcon: 'opacity-20',
+  emptyText: 'text-cyan-700/50',
+  dropTargetBg: 'bg-cyan-950/40',
+  dropTargetRing: 'ring-1 ring-cyan-600/40',
+  borderRadius: 'rounded-lg',
+  borderRadiusLg: 'rounded-xl',
+  shadow: 'shadow-lg shadow-cyan-950/40',
+  shadowLg: 'shadow-xl shadow-cyan-950/50',
+  fontFamily: 'font-sans',
+  headerFont: 'font-serif',
+  spacing: 'px-4 py-3',
+  labelStyle: '',
+  decorativeBorder: 'border',
+  cardStyle: 'border border-cyan-900/40 bg-slate-900/90',
+  bgPattern: 'theme-bg-frost-scales',
+  checkboxRadius: 'rounded',
+  checkboxSize: 'h-[18px] w-[18px]',
+  checkboxExtra: 'hover:shadow-sm hover:shadow-cyan-600/20',
+  progressRadius: 'rounded-lg',
+  progressHeight: 'h-2',
+  progressHeightSm: 'h-1.5',
+  progressExtra: 'shadow-[0_0_6px_rgba(34,211,238,0.3)]',
+  headerStyle: 'theme-ice-dragons-frost-header',
+  headerTitleSize: 'text-base',
+  transitionSpeed: 'duration-150 ease-out',
+  sidebarSectionUnderline: '',
+  badgeFont: 'font-serif',
+  taskHoverIndicator: 'theme-ice-dragons-frost-hover',
+  sidebarDividerStyle: 'theme-ice-dragons-claw-marks',
+  addBtnExtra: '',
+  sidebarActiveStyle: 'theme-ice-dragons-frost-glow',
+  taskNumbering: false,
+  taskCompletedStamp: false,
+  headerAccent: '',
+  taskActiveUnderline: 'theme-ice-dragons-ice-underline',
+  sidebarTopBorder: '',
+  neonDotIndicator: false,
+  scanlineOverlay: false,
+  glowText: '',
+  animatedBorder: false,
+  breathingBg: false,
+  leafIcon: false,
+  blobBadge: false,
+  floatingShadow: '',
+  pulseAddBtn: false,
+  dropCapProject: false,
+  fireAnimatedBorder: false,
+  emberHover: false,
+  clawMarks: false,
+  moltenText: '',
+  emberDotIndicator: false,
+  dragonsBreathingBg: false,
+  dragonsForgeStamp: false,
+  iceAnimatedBorder: true,
+  frostHover: true,
+  iceClawMarks: true,
+  frozenText: 'theme-ice-dragons-frozen-text',
+  iceDotIndicator: true,
+  iceBreathingBg: true,
+  iceForgeStamp: true,
 };
 
 const THEME_MAP: Record<ContextTheme, ThemeColors> = {
@@ -681,6 +834,7 @@ const THEME_MAP: Record<ContextTheme, ThemeColors> = {
   NATURE,
   DARK,
   DRAGONS,
+  ICE_DRAGONS,
 };
 
 export function getTheme(theme: ContextTheme): ThemeColors {
@@ -694,4 +848,5 @@ export const THEME_NAMES: Record<ContextTheme, string> = {
   NATURE: 'Nature',
   DARK: 'Dark',
   DRAGONS: 'Dragons',
+  ICE_DRAGONS: 'Ice Dragons',
 };
