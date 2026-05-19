@@ -1044,7 +1044,7 @@
         "Шаг 5: Проверить уведомление о конфликте (если был)"
       ],
       "dependencies": ["TASK-043", "TASK-024"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-045",

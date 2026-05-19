@@ -12,6 +12,7 @@ class TokenStorage @Inject constructor(
         private const val KEY_ACCESS_TOKEN = "access_token"
         private const val KEY_USER_ID = "user_id"
         private const val KEY_USER_EMAIL = "user_email"
+        private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
     }
 
     fun saveAccessToken(token: String) {
@@ -30,6 +31,12 @@ class TokenStorage @Inject constructor(
     fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
 
     fun getUserEmail(): String? = prefs.getString(KEY_USER_EMAIL, null)
+
+    fun saveLastSyncTimestamp(timestamp: String) {
+        prefs.edit().putString(KEY_LAST_SYNC_TIMESTAMP, timestamp).apply()
+    }
+
+    fun getLastSyncTimestamp(): String? = prefs.getString(KEY_LAST_SYNC_TIMESTAMP, null)
 
     fun clear() {
         prefs.edit().clear().apply()

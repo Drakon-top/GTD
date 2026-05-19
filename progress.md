@@ -1674,3 +1674,49 @@
   - Room schema не изменена (version 1 сохранена) — все нужные таблицы уже были создены в TASK-038
   - `fallbackToDestructiveMigration()` всё ещё используется — для production нужны proper migrations
   - **Следующий приоритет: TASK-042** (Android категории + темы + экспорт — medium, deps met) или **TASK-044** (Android Sync Manager через WorkManager + field-level merge — high, но зависит от TASK-043 done ✅ + TASK-024 done ✅). TASK-044 имеет более высокий приоритет и теперь разблокирован.
+
+---
+
+### TASK-044: Android Sync Manager через WorkManager + field-level merge
+- **Статус:** ✅ DONE
+- **Дата:** 2026-05-19
+- **Изменённые файлы:**
+  - **SyncDtos.kt** (NEW) — DTO для push/pull sync API:
+    - `SyncPushRequest`, `SyncChangeRequest` — запрос с полевыми изменениями
+    - `SyncPushResponse`, `SyncChangeResult` — ответ с результатами (applied, conflict, serverValue)
+    - `SyncPullResponse`, `SyncLogEntry` — ответ pull с серверными изменениями
+  - **GtdApi.kt** — добавлены два endpoint:
+    - `POST sync/push` → `syncPush(SyncPushRequest): Response<SyncPushResponse>`
+    - `GET sync/pull?since=` → `syncPull(since): Response<SyncPullResponse>`
+  - **TokenStorage.kt** — добавлены `saveLastSyncTimestamp()` и `getLastSyncTimestamp()` для delta pull
+  - **PendingChangeDao.kt** — добавлен `observeUnsyncedCount(): Flow<Int>` для reactive SyncStatus.PENDING
+  - **GtdRepository.kt** — field-level change tracking:
+    - `trackChange()` расширен параметром `fieldName`
+    - Новый метод `trackFieldChanges()` — для UPDATE записывает отдельный `PendingChangeEntity` на каждое изменённое поле (title, notes, dueDate, categoryId, gtdList, sortOrder, recurrenceRule)
+    - `moveTask()` теперь трекает с `fieldName = "gtdList"`
+    - `updateTask()` использует `trackFieldChanges()` вместо одного общего `trackChange("UPDATE")`
+  - **SyncWorker.kt** (REWRITTEN) — полноценный field-level sync:
+    - Phase 1: CRUD operations (CREATE, CREATE_SUBTASK, COMPLETE, DELETE) — прямые вызовы API (как раньше)
+    - Phase 2: FIELD_UPDATE entries → `POST /sync/push` с field-level changes
+    - Phase 3: Обработка результатов — applied → обновляем version; conflict → применяем serverValue локально
+    - Phase 4: `GET /sync/pull?since=lastTimestamp` → применяем серверные изменения локально (skip ANDROID-source)
+    - Legacy `UPDATE` и `MOVE` changes (pre-field-level) обрабатываются backward-compatible
+  - **SyncManager.kt** (REWRITTEN) — улучшенное управление синхронизацией:
+    - `syncStatus` теперь `combine(isOnline, isSyncing, unsyncedCount)` → правильно эмитит `PENDING` когда есть неотправленные изменения
+    - Автоматический запуск sync при восстановлении сети (`observeNetworkAndAutoSync()`)
+    - Использует `CoroutineScope` с `SupervisorJob` для lifecycle-independent network observation
+- **Сборка:**
+  - `./gradlew compileDebugKotlin --offline` — BUILD SUCCESSFUL
+  - `npx tsc --noEmit` — без ошибок (frontend не затронут)
+  - `npm run build` — без ошибок (427KB JS, 75KB CSS)
+  - `./mvnw clean compile -DskipTests` — без ошибок (backend не затронут)
+- **Коммиты:** feat: add field-level sync with push/pull API and auto-reconnect (TASK-044)
+- **Заметки:**
+  - Архитектура: SyncWorker разделяет pending_changes на два потока — CRUD (CREATE, DELETE, COMPLETE) идут прямыми вызовами API; FIELD_UPDATE отправляются пакетом через `POST /sync/push` для field-level merge на сервере
+  - Конфликты: если сервер побеждает (server-wins), SyncWorker применяет `serverValue` из ответа к локальной Room-задаче — данные не теряются
+  - Pull sync: после каждого push SyncWorker делает `GET /sync/pull?since=lastTimestamp` для получения изменений с других устройств (Web). Изменения с `deviceSource=ANDROID` пропускаются (anti-echo)
+  - Auto-reconnect: SyncManager наблюдает за `NetworkMonitor.isOnline` — при переходе offline→online автоматически вызывает `requestSync()`, не требуя действий пользователя
+  - PENDING status: теперь корректно эмитится когда `observeUnsyncedCount() > 0` и не syncing/offline — UI показывает оранжевую точку "Pending"
+  - Backward compatibility: старые `UPDATE`/`MOVE` записи (без fieldName) обрабатываются fallback-логикой через прямые API-вызовы
+  - Edge cases сохраняются: offline context creation всё ещё ограничено (stub), local UUID→server ID remapping не обновляет другие pending_changes
+  - **Следующий приоритет: TASK-042** (Android категории + темы + экспорт — medium, все deps met) или **TASK-045** (Android Push-уведомления через FCM — medium, deps met)

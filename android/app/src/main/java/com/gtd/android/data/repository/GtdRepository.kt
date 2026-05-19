@@ -215,7 +215,7 @@ class GtdRepository @Inject constructor(
             version = entity.version + 1,
         )
         taskDao.update(updated)
-        trackChange("TASK", taskId, "UPDATE", entity.title, updated.title)
+        trackFieldChanges(taskId, entity, updated, now)
         return ApiResult.Success(updated.toDto())
     }
 
@@ -247,7 +247,7 @@ class GtdRepository @Inject constructor(
         val now = System.currentTimeMillis()
         val updated = entity.copy(gtdList = gtdList, updatedAt = now, version = entity.version + 1)
         taskDao.update(updated)
-        trackChange("TASK", taskId, "MOVE", entity.gtdList, gtdList)
+        trackChange("TASK", taskId, "MOVE", entity.gtdList, gtdList, fieldName = "gtdList")
         return ApiResult.Success(updated.toDto())
     }
 
@@ -349,17 +349,51 @@ class GtdRepository @Inject constructor(
         changeType: String,
         oldValue: String?,
         newValue: String?,
+        fieldName: String? = null,
     ) {
         pendingChangeDao.insert(
             PendingChangeEntity(
                 entityType = entityType,
                 entityId = entityId,
                 changeType = changeType,
+                fieldName = fieldName,
                 oldValue = oldValue,
                 newValue = newValue,
                 createdAt = System.currentTimeMillis(),
             )
         )
+    }
+
+    private suspend fun trackFieldChanges(
+        taskId: String,
+        old: TaskEntity,
+        new: TaskEntity,
+        timestamp: Long,
+    ) {
+        val fields = listOf(
+            Triple("title", old.title, new.title),
+            Triple("notes", old.notes, new.notes),
+            Triple("dueDate", old.dueDate, new.dueDate),
+            Triple("categoryId", old.categoryId, new.categoryId),
+            Triple("gtdList", old.gtdList, new.gtdList),
+            Triple("sortOrder", old.sortOrder.toString(), new.sortOrder.toString()),
+            Triple("recurrenceRule", old.recurrenceRule, new.recurrenceRule),
+        )
+        for ((fieldName, oldVal, newVal) in fields) {
+            if (oldVal != newVal) {
+                pendingChangeDao.insert(
+                    PendingChangeEntity(
+                        entityType = "TASK",
+                        entityId = taskId,
+                        changeType = "FIELD_UPDATE",
+                        fieldName = fieldName,
+                        oldValue = oldVal,
+                        newValue = newVal,
+                        createdAt = timestamp,
+                    )
+                )
+            }
+        }
     }
 
     private suspend fun cacheTasksLocally(tasks: List<TaskDto>) {

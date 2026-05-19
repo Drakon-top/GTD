@@ -11,9 +11,14 @@ import androidx.work.WorkManager
 import com.gtd.android.data.NetworkMonitor
 import com.gtd.android.data.local.dao.PendingChangeDao
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -32,6 +37,11 @@ class SyncManager @Inject constructor(
     private val pendingChangeDao: PendingChangeDao,
 ) {
     private val workManager = WorkManager.getInstance(context)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    init {
+        observeNetworkAndAutoSync()
+    }
 
     fun requestSync() {
         val constraints = Constraints.Builder()
@@ -51,17 +61,31 @@ class SyncManager @Inject constructor(
         )
     }
 
+    private fun observeNetworkAndAutoSync() {
+        scope.launch {
+            var wasOffline = false
+            networkMonitor.isOnline.collect { isOnline ->
+                if (isOnline && wasOffline) {
+                    requestSync()
+                }
+                wasOffline = !isOnline
+            }
+        }
+    }
+
     val syncStatus: Flow<SyncStatus> = combine(
         networkMonitor.isOnline,
         workManager.getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME)
             .map { workInfos ->
                 workInfos.any { it.state == WorkInfo.State.RUNNING }
             },
-    ) { isOnline, isSyncing ->
+        pendingChangeDao.observeUnsyncedCount(),
+    ) { isOnline, isSyncing, unsyncedCount ->
         when {
             isSyncing -> SyncStatus.SYNCING
             !isOnline -> SyncStatus.OFFLINE
+            unsyncedCount > 0 -> SyncStatus.PENDING
             else -> SyncStatus.IDLE
         }
-    }
+    }.distinctUntilChanged()
 }

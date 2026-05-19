@@ -8,6 +8,9 @@ import com.gtd.android.data.remote.dto.CreateReminderRequest
 import com.gtd.android.data.remote.dto.CreateTaskRequest
 import com.gtd.android.data.remote.dto.MoveTaskRequest
 import com.gtd.android.data.remote.dto.ReminderDto
+import com.gtd.android.data.remote.dto.SyncPullResponse
+import com.gtd.android.data.remote.dto.SyncPushRequest
+import com.gtd.android.data.remote.dto.SyncPushResponse
 import com.gtd.android.data.remote.dto.TaskCountsDto
 import com.gtd.android.data.remote.dto.TaskDto
 import com.gtd.android.data.remote.dto.UpdateTaskRequest
@@ -112,4 +115,11 @@ interface GtdApi {
 
     @DELETE("reminders/{id}")
     suspend fun deleteReminder(@Path("id") id: String): Response<Unit>
+
+    // Sync
+    @POST("sync/push")
+    suspend fun syncPush(@Body request: SyncPushRequest): Response<SyncPushResponse>
+
+    @GET("sync/pull")
+    suspend fun syncPull(@Query("since") since: String): Response<SyncPullResponse>
 }

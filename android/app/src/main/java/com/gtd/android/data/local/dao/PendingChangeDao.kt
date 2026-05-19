@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import com.gtd.android.data.local.entity.PendingChangeEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PendingChangeDao {
@@ -12,6 +13,9 @@ interface PendingChangeDao {
 
     @Query("SELECT * FROM pending_changes WHERE is_synced = 0 ORDER BY created_at")
     suspend fun getUnsyncedChanges(): List<PendingChangeEntity>
+
+    @Query("SELECT COUNT(*) FROM pending_changes WHERE is_synced = 0")
+    fun observeUnsyncedCount(): Flow<Int>
 
     @Query("UPDATE pending_changes SET is_synced = 1 WHERE id IN (:ids)")
     suspend fun markSynced(ids: List<Long>)
