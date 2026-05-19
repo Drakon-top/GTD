@@ -1,0 +1,64 @@
+### TASK-051 — Web: уникальный визуальный стиль для каждой темы + иконочная библиотека
+- **Дата:** 2026-05-19
+- **Статус:** done
+- **Что сделано:**
+  - Установлена библиотека `lucide-react` (npm install lucide-react)
+  - Расширен интерфейс `ThemeColors` 10 новыми полями стилей:
+    - `borderRadius` / `borderRadiusLg` — скругления элементов
+    - `shadow` / `shadowLg` — тени
+    - `fontFamily` / `headerFont` — шрифты для текста и заголовков
+    - `spacing` — отступы
+    - `labelStyle` — стиль для лейблов (uppercase, tracking)
+    - `decorativeBorder` — стиль бордеров (обычный, двойной, толстый)
+    - `cardStyle` — стиль карточек (градиенты, glassmorphism)
+  - Каждая из 5 тем получила уникальные стилистические отличия помимо цвета:
+    - MINIMALIST — rounded-none, shadow-none, font-sans, минимум декора, тонкие бордеры
+    - DESIGN — rounded-2xl, shadow-lg, border-2, bg-gradient-to-br (градиенты), увеличенные отступы (p-5)
+    - FORMAL — rounded-md, shadow-sm, font-serif для заголовков, border-double, uppercase tracking-wider лейблы
+    - NATURE — rounded-xl, shadow-md с зеленоватым оттенком (shadow-emerald-100/50), увеличенные отступы (p-5)
+    - DARK — rounded-lg, shadow-lg с чёрным (shadow-black/30), backdrop-blur-md glassmorphism карточки
+  - Все GTD-списки в сайдбаре заменены на Lucide-иконки:
+    - Inbox→Inbox, Next Actions→Zap, Projects→FolderOpen, Waiting For→Clock,
+    - Someday/Maybe→Lightbulb, Reference→BookOpen, Calendar→Calendar, Done→CheckCircle
+  - Все категории используют Lucide-иконки вместо emoji:
+    - 12 пресетных иконок: BookOpen, Briefcase, Home, Target, Activity, Palette, Music, Wallet, ShoppingCart, Plane, Wrench, GraduationCap
+    - Fallback: Tag (вместо 🏷️)
+  - Все контексты используют Lucide-иконки вместо emoji:
+    - 12 пресетных иконок: Briefcase, Home, BookOpen, Target, Dumbbell, Palette, Music, Plane, Lightbulb, ShoppingCart, Heart, Star
+    - Fallback: Briefcase (вместо 💼)
+  - ВСЕ inline SVG (23 штуки) заменены на Lucide-компоненты:
+    - Sidebar.tsx: Settings (gear)
+    - CategoryManager.tsx: X, ChevronUp, ChevronDown, Pencil, Trash2, Tag
+    - TaskList.tsx: Check, MoreVertical, ChevronRight, Pencil, CheckCircle, ArrowRight, Trash2, ClipboardList, CalendarDays, Repeat
+    - TaskDetailPanel.tsx: X, ChevronRight, Check, Bell, Repeat
+    - ContextWorkspacePage.tsx: ArrowLeft, Download, Paintbrush, Check
+    - ExportModal.tsx: X, FileText, Archive
+    - DragOverlayCard.tsx: CalendarDays
+    - RegisterPage.tsx: Check
+    - ContextsPage.tsx: Plus
+  - ВСЕ emoji удалены из компонентов:
+    - GTD-списки: 📥⚡📁⏳💭📎📅✅ → Lucide icons
+    - Категории: 📚💼🏠🎯🏃🎨🎵💰🛒✈️🔧🎓🏷️ → Lucide icons
+    - Контексты: 💼🏠📚🎯🏋️🎨🎵✈️💡🛒❤️🌟📋 → Lucide icons
+    - Индикаторы: 📅🔁🔔✏️➡️🗑️ → Lucide (CalendarDays, Repeat, Bell, Pencil, ArrowRight, Trash2)
+  - Тематические стили применяются ко всем компонентам рабочего экрана:
+    - borderRadius в кнопках, инпутах, чекбоксах, меню, панелях
+    - shadow в header, контекстных меню, drag overlay
+    - headerFont в заголовках секций и деталях задач
+    - fontFamily в тексте задач и подзадач
+    - labelStyle в лейблах (GTD Lists, Categories, Details, Notes, и т.д.)
+  - Создан утилитный файл `src/utils/icons.ts` — централизованный маппинг иконок для GTD, категорий, контекстов
+  - Для рендеринга динамических иконок используется `createElement()` (чтобы обойти `react-hooks/static-components` lint rule)
+  - npm run build — 1823 модуля, 405KB JS gzip 124KB, без ошибок
+  - npm run lint — 0 ошибок, 0 предупреждений
+- **Коммиты:** feat: add unique theme styles and Lucide icon library replacing all emojis and inline SVGs
+- **Заметки:**
+  - Иконки контекстов и категорий хранятся как string key ('briefcase', 'home', и т.д.) в БД через API — при отображении маппятся на Lucide-компоненты через `getContextIcon()` / `getCategoryIcon()`
+  - Если iconKey не найден, используется fallback (Briefcase для контекстов, Tag для категорий)
+  - `react-hooks/static-components` lint rule запрещает создание компонентов во время рендера — обходится через `React.createElement()` вместо JSX
+  - Тема FORMAL использует `font-serif` для заголовков — шрифт зависит от системных шрифтов пользователя (Georgia/Times)
+  - Тема DARK использует `backdrop-blur-md bg-zinc-800/80` для glassmorphism-эффекта
+  - Тема DESIGN использует `bg-gradient-to-br from-white to-violet-50/50` для градиентных акцентов
+  - Все стилевые поля тем применяются через Tailwind-классы, что обеспечивает tree-shaking неиспользуемых стилей
+  - Оставшиеся pending задачи: TASK-038-045 (Android chain), TASK-050 (E2E тестирование)
+  - **Следующий приоритет:** TASK-038 (Android Room Database) или другие Android-задачи

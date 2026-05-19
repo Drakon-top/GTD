@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { X, ChevronRight, Check, Bell, Repeat } from 'lucide-react';
 import apiClient from '../api/client';
 import type { CategoryResponse, GtdList, ReminderResponse, TaskResponse } from '../types';
 import type { ThemeColors } from '../utils/themes';
@@ -184,16 +185,14 @@ export default function TaskDetailPanel({
   return (
     <div className={`flex h-full w-80 shrink-0 flex-col border-l ${theme.panelBorder} ${theme.panelBg}`}>
       <div className={`flex items-center justify-between border-b ${theme.panelBorder} px-4 py-3`}>
-        <span className={`text-xs font-medium uppercase tracking-wide ${theme.labelText}`}>Details</span>
+        <span className={`text-xs font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>Details</span>
         <button
           type="button"
           onClick={onClose}
           className={`rounded-md p-1 ${theme.labelText} transition hover:opacity-80`}
           aria-label="Close details"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X className="h-4 w-4" />
         </button>
       </div>
 
@@ -208,12 +207,12 @@ export default function TaskDetailPanel({
               if (e.key === 'Enter') saveTitle();
               if (e.key === 'Escape') { setTitleDraft(task.title); setEditingTitle(false); }
             }}
-            className={`mb-3 w-full rounded border ${theme.inputBorder} px-2 py-1 text-sm font-semibold ${theme.inputText} ${theme.inputBg} outline-none ${theme.inputFocus}`}
+            className={`mb-3 w-full ${theme.borderRadius} border ${theme.inputBorder} px-2 py-1 text-sm font-semibold ${theme.inputText} ${theme.inputBg} outline-none ${theme.inputFocus}`}
           />
         ) : (
           <h3
             onClick={() => { if (!task.isCompleted) setEditingTitle(true); }}
-            className={`mb-3 rounded px-1 -mx-1 text-sm font-semibold ${
+            className={`mb-3 ${theme.borderRadius} px-1 -mx-1 text-sm font-semibold ${theme.headerFont} ${
               task.isCompleted
                 ? `${theme.taskCompletedText} line-through`
                 : `cursor-pointer ${theme.taskText} ${theme.taskHover}`
@@ -224,14 +223,14 @@ export default function TaskDetailPanel({
         )}
 
         <div className="mb-4">
-          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
+          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
             GTD List
           </label>
           <select
             value={task.gtdList}
             onChange={(e) => handleMove(e.target.value as GtdList)}
             disabled={task.isCompleted}
-            className={`w-full rounded-md border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
+            className={`w-full ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
           >
             {GTD_OPTIONS.map((g) => (
               <option key={g} value={g}>{gtdListLabel(g)}</option>
@@ -241,7 +240,7 @@ export default function TaskDetailPanel({
         </div>
 
         <div className="mb-4">
-          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
+          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
             Due Date
           </label>
           <div className="flex items-center gap-2">
@@ -250,7 +249,7 @@ export default function TaskDetailPanel({
               value={dueDateInputValue()}
               onChange={(e) => handleDueDateChange(e.target.value)}
               disabled={task.isCompleted}
-              className={`flex-1 rounded-md border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
+              className={`flex-1 ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
             />
             {task.dueDate && !task.isCompleted && (
               <button
@@ -259,28 +258,26 @@ export default function TaskDetailPanel({
                 className={`rounded-md p-1.5 ${theme.labelText} transition hover:opacity-80`}
                 title="Clear due date"
               >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
         </div>
 
         <div className="mb-4">
-          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
+          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
             Category
           </label>
           <select
             value={task.categoryId ?? ''}
             onChange={(e) => handleCategoryChange(e.target.value)}
             disabled={task.isCompleted}
-            className={`w-full rounded-md border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
+            className={`w-full ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
           >
             <option value="">No category</option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
-                {cat.icon ? `${cat.icon} ` : ''}{cat.name}
+                {cat.name}
               </option>
             ))}
           </select>
@@ -292,7 +289,7 @@ export default function TaskDetailPanel({
         </div>
 
         <div className="mb-4">
-          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
+          <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
             Notes
           </label>
           <textarea
@@ -302,7 +299,7 @@ export default function TaskDetailPanel({
             rows={4}
             placeholder="Add notes..."
             disabled={task.isCompleted}
-            className={`w-full resize-none rounded-md border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputPlaceholder} ${theme.inputFocus} disabled:opacity-50`}
+            className={`w-full resize-none ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputPlaceholder} ${theme.inputFocus} disabled:opacity-50`}
           />
           {savingNotes && <p className={`mt-0.5 text-[10px] ${theme.labelText}`}>Saving...</p>}
         </div>
@@ -324,7 +321,7 @@ export default function TaskDetailPanel({
 
         {task.progress != null && (
           <div className="mb-4">
-            <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
+            <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
               Progress
             </label>
             <div className="flex items-center gap-2">
@@ -366,14 +363,14 @@ export default function TaskDetailPanel({
               <button
                 type="button"
                 onClick={handleDelete}
-                className="flex-1 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-red-700"
+                className={`flex-1 ${theme.borderRadius} bg-red-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-red-700`}
               >
                 Delete
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmDelete(false)}
-                className={`flex-1 rounded-md border ${theme.inputBorder} px-3 py-1.5 text-sm font-medium ${theme.taskText} transition hover:opacity-80`}
+                className={`flex-1 ${theme.borderRadius} border ${theme.inputBorder} px-3 py-1.5 text-sm font-medium ${theme.taskText} transition hover:opacity-80`}
               >
                 Cancel
               </button>
@@ -385,7 +382,7 @@ export default function TaskDetailPanel({
               <button
                 type="button"
                 onClick={handleComplete}
-                className={`flex-1 rounded-md ${theme.btnPrimary} px-3 py-1.5 text-sm font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover}`}
+                className={`flex-1 ${theme.borderRadius} ${theme.btnPrimary} px-3 py-1.5 text-sm font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover}`}
               >
                 Complete
               </button>
@@ -393,7 +390,7 @@ export default function TaskDetailPanel({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50"
+              className={`${theme.borderRadius} border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50`}
             >
               Delete
             </button>
@@ -428,7 +425,7 @@ function SubtaskSection({
   return (
     <div className="mb-4">
       <div className="mb-1 flex items-center justify-between">
-        <label className={`text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
+        <label className={`text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
           Subtasks
           {totalCount > 0 && (
             <span className="ml-1 normal-case">
@@ -559,15 +556,9 @@ function SubtaskItem({
             onClick={() => setExpanded(!expanded)}
             className={`flex h-4 w-4 shrink-0 items-center justify-center rounded ${theme.labelText} hover:opacity-80`}
           >
-            <svg
+            <ChevronRight
               className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
+            />
           </button>
         ) : (
           <span className="w-4 shrink-0" />
@@ -581,14 +572,10 @@ function SubtaskItem({
             subtask.isCompleted ? theme.checkboxChecked : `${theme.checkbox} cursor-pointer`
           } flex items-center justify-center`}
         >
-          {subtask.isCompleted && (
-            <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          )}
+          {subtask.isCompleted && <Check className="h-2.5 w-2.5" />}
         </button>
 
-        <span className={`flex-1 text-sm ${subtask.isCompleted ? `${theme.taskCompletedText} line-through` : theme.taskText}`}>
+        <span className={`flex-1 text-sm ${theme.fontFamily} ${subtask.isCompleted ? `${theme.taskCompletedText} line-through` : theme.taskText}`}>
           {subtask.title}
         </span>
 
@@ -669,13 +656,13 @@ function AddSubtaskInline({
         onChange={(e) => setNewTitle(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Escape') { setAdding(false); setNewTitle(''); } }}
         placeholder="Subtask title..."
-        className={`flex-1 rounded border ${theme.inputBorder} px-2 py-1 text-xs ${theme.inputText} ${theme.inputBg} outline-none ${theme.inputPlaceholder} ${theme.inputFocus}`}
+        className={`flex-1 ${theme.borderRadius} border ${theme.inputBorder} px-2 py-1 text-xs ${theme.inputText} ${theme.inputBg} outline-none ${theme.inputPlaceholder} ${theme.inputFocus}`}
         disabled={submitting}
       />
       <button
         type="submit"
         disabled={submitting || !newTitle.trim()}
-        className={`rounded ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
+        className={`${theme.borderRadius} ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
       >
         Add
       </button>
@@ -684,13 +671,11 @@ function AddSubtaskInline({
         onClick={() => { setAdding(false); setNewTitle(''); }}
         className={`rounded px-1.5 py-0.5 text-[10px] ${theme.labelText} transition hover:opacity-80`}
       >
-        ✕
+        <X className="h-3 w-3" />
       </button>
     </form>
   );
 }
-
-// --- Reminder Section ---
 
 type OffsetPreset = { label: string; offsetType: string; offsetValue: number };
 const OFFSET_PRESETS: OffsetPreset[] = [
@@ -773,7 +758,7 @@ function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCom
   if (loading) {
     return (
       <div className="mb-4">
-        <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
+        <label className={`mb-1 block text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
           Reminders
         </label>
         <p className={`text-xs ${theme.labelText}`}>Loading...</p>
@@ -784,7 +769,7 @@ function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCom
   return (
     <div className="mb-4">
       <div className="mb-1 flex items-center justify-between">
-        <label className={`text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
+        <label className={`text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
           Reminders
           {reminders.length > 0 && (
             <span className="ml-1 normal-case">({reminders.length})</span>
@@ -805,7 +790,7 @@ function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCom
         <ul className="space-y-1">
           {reminders.map((r) => (
             <li key={r.id} className={`group flex items-center gap-1.5 rounded px-1.5 py-1 ${theme.taskHover}`}>
-              <span className="text-xs">🔔</span>
+              <Bell className="h-3 w-3 shrink-0" />
               <span className={`flex-1 text-xs ${r.isSent ? `${theme.taskCompletedText} line-through` : theme.taskText}`}>
                 {formatReminderDate(r.remindAt)}
                 {r.offsetType && (
@@ -822,9 +807,7 @@ function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCom
                   className={`hidden rounded p-0.5 ${theme.labelText} transition hover:opacity-80 group-hover:block`}
                   title="Delete reminder"
                 >
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="h-3 w-3" />
                 </button>
               )}
             </li>
@@ -837,7 +820,7 @@ function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCom
       )}
 
       {showAdd && (
-        <div className={`mt-2 rounded-md border ${theme.inputBorder} ${theme.bg} p-2`}>
+        <div className={`mt-2 ${theme.borderRadius} border ${theme.inputBorder} ${theme.bg} p-2`}>
           <div className="mb-2 flex gap-1">
             <button
               type="button"
@@ -865,13 +848,13 @@ function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCom
                 type="datetime-local"
                 value={remindAt}
                 onChange={(e) => setRemindAt(e.target.value)}
-                className={`flex-1 rounded border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
+                className={`flex-1 ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
               />
               <button
                 type="button"
                 onClick={handleAddExact}
                 disabled={submitting || !remindAt}
-                className={`rounded ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
+                className={`${theme.borderRadius} ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
               >
                 Save
               </button>
@@ -881,7 +864,7 @@ function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCom
               <select
                 value={selectedPreset}
                 onChange={(e) => setSelectedPreset(Number(e.target.value))}
-                className={`flex-1 rounded border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
+                className={`flex-1 ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
               >
                 {OFFSET_PRESETS.map((p, i) => (
                   <option key={i} value={i}>{p.label}</option>
@@ -891,7 +874,7 @@ function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCom
                 type="button"
                 onClick={handleAddOffset}
                 disabled={submitting}
-                className={`rounded ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
+                className={`${theme.borderRadius} ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
               >
                 Save
               </button>
@@ -927,8 +910,6 @@ function formatOffset(offsetType: string, offsetValue: number | null): string {
     default: return '';
   }
 }
-
-// --- Recurrence Section ---
 
 type RecurrencePattern = { type: string; interval?: number; dayOfWeek?: string; time?: string };
 
@@ -991,7 +972,7 @@ function RecurrenceSection({
   return (
     <div className="mb-4">
       <div className="mb-1 flex items-center justify-between">
-        <label className={`text-[11px] font-medium uppercase tracking-wide ${theme.labelText}`}>
+        <label className={`text-[11px] font-medium uppercase tracking-wide ${theme.labelText} ${theme.labelStyle}`}>
           Recurrence
         </label>
         {!task.isCompleted && !editing && (
@@ -1007,7 +988,7 @@ function RecurrenceSection({
 
       {!editing && isRecurring && (
         <div className={`flex items-center gap-1.5 rounded px-1.5 py-1 text-xs ${theme.taskText}`}>
-          <span>🔁</span>
+          <Repeat className="h-3 w-3 shrink-0" />
           <span>{describeRecurrence(currentRule)}</span>
         </div>
       )}
@@ -1017,11 +998,11 @@ function RecurrenceSection({
       )}
 
       {editing && (
-        <div className={`mt-1 rounded-md border ${theme.inputBorder} ${theme.bg} p-2`}>
+        <div className={`mt-1 ${theme.borderRadius} border ${theme.inputBorder} ${theme.bg} p-2`}>
           <select
             value={selectedPreset}
             onChange={(e) => setSelectedPreset(Number(e.target.value))}
-            className={`mb-2 w-full rounded border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
+            className={`mb-2 w-full ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
           >
             {RECURRENCE_PRESETS.map((p, i) => (
               <option key={i} value={i}>{p.label}</option>
@@ -1032,7 +1013,7 @@ function RecurrenceSection({
               type="button"
               onClick={handleSetRecurrence}
               disabled={saving}
-              className={`rounded ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
+              className={`${theme.borderRadius} ${theme.btnPrimary} px-2 py-1 text-[10px] font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover} disabled:opacity-40`}
             >
               {isRecurring ? 'Update' : 'Enable'}
             </button>
@@ -1041,7 +1022,7 @@ function RecurrenceSection({
                 type="button"
                 onClick={handleStopRecurrence}
                 disabled={saving}
-                className="rounded border border-red-200 px-2 py-1 text-[10px] font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-40"
+                className={`${theme.borderRadius} border border-red-200 px-2 py-1 text-[10px] font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-40`}
               >
                 Stop
               </button>

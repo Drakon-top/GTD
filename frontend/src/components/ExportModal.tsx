@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { X, FileText, Archive } from 'lucide-react';
 import apiClient from '../api/client';
 
 interface ExportModalProps {
@@ -63,9 +64,7 @@ export default function ExportModal({ contextId, contextName, onClose }: ExportM
             onClick={onClose}
             className="rounded-md p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="h-4 w-4" />
           </button>
         </div>
 
@@ -81,9 +80,7 @@ export default function ExportModal({ contextId, contextName, onClose }: ExportM
             className="flex items-center gap-3 rounded-lg border border-stone-200 px-4 py-3 text-left transition hover:border-stone-300 hover:bg-stone-50 disabled:opacity-50"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-600">
-              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              <FileText className="h-4.5 w-4.5" />
             </div>
             <div>
               <div className="text-sm font-medium text-stone-900">
@@ -102,9 +99,7 @@ export default function ExportModal({ contextId, contextName, onClose }: ExportM
             className="flex items-center gap-3 rounded-lg border border-stone-200 px-4 py-3 text-left transition hover:border-stone-300 hover:bg-stone-50 disabled:opacity-50"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-600">
-              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
+              <Archive className="h-4.5 w-4.5" />
             </div>
             <div>
               <div className="text-sm font-medium text-stone-900">

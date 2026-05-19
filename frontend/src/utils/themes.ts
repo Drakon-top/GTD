@@ -45,6 +45,16 @@ export interface ThemeColors {
   emptyText: string;
   dropTargetBg: string;
   dropTargetRing: string;
+  borderRadius: string;
+  borderRadiusLg: string;
+  shadow: string;
+  shadowLg: string;
+  fontFamily: string;
+  headerFont: string;
+  spacing: string;
+  labelStyle: string;
+  decorativeBorder: string;
+  cardStyle: string;
 }
 
 const MINIMALIST: ThemeColors = {
@@ -92,6 +102,16 @@ const MINIMALIST: ThemeColors = {
   emptyText: 'text-stone-400',
   dropTargetBg: 'bg-blue-50',
   dropTargetRing: 'ring-1 ring-blue-300',
+  borderRadius: 'rounded-none',
+  borderRadiusLg: 'rounded-sm',
+  shadow: 'shadow-none',
+  shadowLg: 'shadow-none',
+  fontFamily: 'font-sans',
+  headerFont: 'font-sans',
+  spacing: 'p-3',
+  labelStyle: '',
+  decorativeBorder: 'border',
+  cardStyle: 'border',
 };
 
 const DESIGN: ThemeColors = {
@@ -139,6 +159,16 @@ const DESIGN: ThemeColors = {
   emptyText: 'text-violet-400',
   dropTargetBg: 'bg-violet-50',
   dropTargetRing: 'ring-1 ring-violet-300',
+  borderRadius: 'rounded-2xl',
+  borderRadiusLg: 'rounded-3xl',
+  shadow: 'shadow-lg',
+  shadowLg: 'shadow-xl',
+  fontFamily: 'font-sans',
+  headerFont: 'font-sans',
+  spacing: 'p-5',
+  labelStyle: 'tracking-wide',
+  decorativeBorder: 'border-2',
+  cardStyle: 'border-2 bg-gradient-to-br from-white to-violet-50/50',
 };
 
 const FORMAL: ThemeColors = {
@@ -186,6 +216,16 @@ const FORMAL: ThemeColors = {
   emptyText: 'text-slate-400',
   dropTargetBg: 'bg-blue-50',
   dropTargetRing: 'ring-1 ring-blue-300',
+  borderRadius: 'rounded-md',
+  borderRadiusLg: 'rounded-lg',
+  shadow: 'shadow-sm',
+  shadowLg: 'shadow-md',
+  fontFamily: 'font-sans',
+  headerFont: 'font-serif',
+  spacing: 'p-4',
+  labelStyle: 'uppercase tracking-wider',
+  decorativeBorder: 'border-double border-2',
+  cardStyle: 'border-double border-2',
 };
 
 const NATURE: ThemeColors = {
@@ -233,6 +273,16 @@ const NATURE: ThemeColors = {
   emptyText: 'text-emerald-400',
   dropTargetBg: 'bg-emerald-50',
   dropTargetRing: 'ring-1 ring-emerald-300',
+  borderRadius: 'rounded-xl',
+  borderRadiusLg: 'rounded-2xl',
+  shadow: 'shadow-md shadow-emerald-100/50',
+  shadowLg: 'shadow-lg shadow-emerald-100/50',
+  fontFamily: 'font-sans',
+  headerFont: 'font-sans',
+  spacing: 'p-5',
+  labelStyle: '',
+  decorativeBorder: 'border',
+  cardStyle: 'border',
 };
 
 const DARK: ThemeColors = {
@@ -280,6 +330,16 @@ const DARK: ThemeColors = {
   emptyText: 'text-zinc-500',
   dropTargetBg: 'bg-zinc-700',
   dropTargetRing: 'ring-1 ring-zinc-500',
+  borderRadius: 'rounded-lg',
+  borderRadiusLg: 'rounded-xl',
+  shadow: 'shadow-lg shadow-black/30',
+  shadowLg: 'shadow-xl shadow-black/40',
+  fontFamily: 'font-sans',
+  headerFont: 'font-sans',
+  spacing: 'p-4',
+  labelStyle: '',
+  decorativeBorder: 'border',
+  cardStyle: 'border backdrop-blur-md bg-zinc-800/80',
 };
 
 const THEME_MAP: Record<ContextTheme, ThemeColors> = {

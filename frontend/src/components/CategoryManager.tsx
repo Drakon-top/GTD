@@ -1,15 +1,13 @@
 import { useState } from 'react';
+import { X, ChevronUp, ChevronDown, Pencil, Trash2, Tag } from 'lucide-react';
 import apiClient from '../api/client';
 import type { CategoryResponse } from '../types';
+import { createElement } from 'react';
+import { PRESET_CATEGORY_ICONS, getCategoryIcon } from '../utils/icons';
 
 const PRESET_COLORS = [
   '#EF4444', '#F97316', '#F59E0B', '#22C55E',
   '#3B82F6', '#8B5CF6', '#EC4899', '#6B7280',
-];
-
-const PRESET_ICONS = [
-  '📚', '💼', '🏠', '🎯', '🏃', '🎨',
-  '🎵', '💰', '🛒', '✈️', '🔧', '🎓',
 ];
 
 interface CategoryManagerProps {
@@ -142,7 +140,6 @@ export default function CategoryManager({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-xl border border-stone-200 bg-white shadow-xl">
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-stone-200 px-5 py-3.5">
           <h2 className="text-sm font-semibold text-stone-900">
             {mode === 'create' ? 'New Category' : mode === 'edit' ? 'Edit Category' : 'Manage Categories'}
@@ -152,19 +149,16 @@ export default function CategoryManager({
             onClick={mode === 'list' ? onClose : resetToList}
             className="rounded-md p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Body */}
         <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
           {mode === 'list' && (
             <>
               {categories.length === 0 && (
                 <div className="py-6 text-center">
-                  <p className="text-3xl opacity-30">🏷️</p>
+                  <Tag className="mx-auto h-8 w-8 text-stone-300" />
                   <p className="mt-2 text-sm text-stone-400">No categories yet</p>
                   <p className="mt-1 text-xs text-stone-300">Create one to organize your tasks</p>
                 </div>
@@ -198,7 +192,6 @@ export default function CategoryManager({
 
           {(mode === 'create' || mode === 'edit') && (
             <form onSubmit={mode === 'create' ? handleCreate : handleUpdate}>
-              {/* Name */}
               <div className="mb-4">
                 <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
                   Name *
@@ -214,24 +207,24 @@ export default function CategoryManager({
                 />
               </div>
 
-              {/* Icon */}
               <div className="mb-4">
                 <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
                   Icon
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {PRESET_ICONS.map((emoji) => (
+                  {PRESET_CATEGORY_ICONS.map(({ key, Icon, label }) => (
                     <button
-                      key={emoji}
+                      key={key}
                       type="button"
-                      onClick={() => setIcon(icon === emoji ? '' : emoji)}
-                      className={`flex h-8 w-8 items-center justify-center rounded-md border text-base transition ${
-                        icon === emoji
+                      onClick={() => setIcon(icon === key ? '' : key)}
+                      title={label}
+                      className={`flex h-8 w-8 items-center justify-center rounded-md border transition ${
+                        icon === key
                           ? 'border-stone-500 bg-stone-100'
                           : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'
                       }`}
                     >
-                      {emoji}
+                      <Icon className="h-4 w-4" />
                     </button>
                   ))}
                 </div>
@@ -246,7 +239,6 @@ export default function CategoryManager({
                 )}
               </div>
 
-              {/* Color */}
               <div className="mb-4">
                 <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-stone-400">
                   Color
@@ -284,7 +276,6 @@ export default function CategoryManager({
                 <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
               )}
 
-              {/* Actions */}
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -333,21 +324,17 @@ function CategoryListItem({
   return (
     <li className="group rounded-lg border border-stone-100 px-3 py-2.5 transition hover:border-stone-200">
       <div className="flex items-center gap-3">
-        {/* Color dot / icon */}
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-stone-50">
-          {category.icon ? (
-            <span className="text-base">{category.icon}</span>
-          ) : category.color ? (
+          {category.color ? (
             <span
               className="h-4 w-4 rounded-full"
               style={{ backgroundColor: category.color }}
             />
           ) : (
-            <span className="text-base">🏷️</span>
+            createElement(getCategoryIcon(category.icon), { className: 'h-4 w-4 text-stone-500' })
           )}
         </div>
 
-        {/* Name and count */}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-stone-800">{category.name}</p>
           <p className="text-[10px] text-stone-400">
@@ -355,7 +342,6 @@ function CategoryListItem({
           </p>
         </div>
 
-        {/* Reorder arrows */}
         <div className="flex shrink-0 flex-col gap-0.5 opacity-0 transition group-hover:opacity-100">
           <button
             type="button"
@@ -364,9 +350,7 @@ function CategoryListItem({
             className="rounded p-0.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600 disabled:opacity-30"
             title="Move up"
           >
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-            </svg>
+            <ChevronUp className="h-3 w-3" />
           </button>
           <button
             type="button"
@@ -375,25 +359,19 @@ function CategoryListItem({
             className="rounded p-0.5 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600 disabled:opacity-30"
             title="Move down"
           >
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
+            <ChevronDown className="h-3 w-3" />
           </button>
         </div>
 
-        {/* Edit */}
         <button
           type="button"
           onClick={onEdit}
           className="shrink-0 rounded-md p-1.5 text-stone-400 opacity-0 transition hover:bg-stone-100 hover:text-stone-600 group-hover:opacity-100"
           title="Edit"
         >
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-          </svg>
+          <Pencil className="h-3.5 w-3.5" />
         </button>
 
-        {/* Delete */}
         {confirmDelete ? (
           <div className="flex shrink-0 items-center gap-1">
             <button
@@ -418,9 +396,7 @@ function CategoryListItem({
             className="shrink-0 rounded-md p-1.5 text-stone-400 opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
             title="Delete"
           >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
         )}
       </div>

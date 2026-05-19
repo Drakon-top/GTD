@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ContextTheme } from '../types';
+import { PRESET_CONTEXT_ICONS } from '../utils/icons';
 
 interface CreateContextModalProps {
   open: boolean;
@@ -16,12 +17,10 @@ const THEMES: { value: ContextTheme; label: string; colors: string }[] = [
   { value: 'DARK', label: 'Dark', colors: 'bg-zinc-800 border-zinc-600 text-zinc-100' },
 ];
 
-const ICONS = ['💼', '🏠', '📚', '🎯', '🏋️', '🎨', '🎵', '✈️', '💡', '🛒', '❤️', '🌟'];
-
 export default function CreateContextModal({ open, onClose, onCreated, onSubmit }: CreateContextModalProps) {
   const [name, setName] = useState('');
   const [theme, setTheme] = useState<ContextTheme>('MINIMALIST');
-  const [icon, setIcon] = useState('💼');
+  const [icon, setIcon] = useState('briefcase');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -41,7 +40,7 @@ export default function CreateContextModal({ open, onClose, onCreated, onSubmit 
       await onSubmit({ name: name.trim(), theme, icon });
       setName('');
       setTheme('MINIMALIST');
-      setIcon('💼');
+      setIcon('briefcase');
       onCreated();
       onClose();
     } catch (err: unknown) {
@@ -78,18 +77,19 @@ export default function CreateContextModal({ open, onClose, onCreated, onSubmit 
           <div>
             <label className="mb-2 block text-sm font-medium text-stone-700">Icon</label>
             <div className="flex flex-wrap gap-2">
-              {ICONS.map((ic) => (
+              {PRESET_CONTEXT_ICONS.map(({ key, Icon, label }) => (
                 <button
-                  key={ic}
+                  key={key}
                   type="button"
-                  onClick={() => setIcon(ic)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg border text-lg transition ${
-                    icon === ic
+                  onClick={() => setIcon(key)}
+                  title={label}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg border transition ${
+                    icon === key
                       ? 'border-stone-900 bg-stone-100 ring-1 ring-stone-900'
                       : 'border-stone-200 hover:border-stone-400'
                   }`}
                 >
-                  {ic}
+                  <Icon className="h-4.5 w-4.5" />
                 </button>
               ))}
             </div>

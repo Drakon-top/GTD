@@ -19,6 +19,43 @@
   },
   "tasks": [
     {
+      "id": "TASK-051",
+      "category": "ui",
+      "priority": "critical",
+      "description": "Web: уникальный визуальный стиль для каждой темы (не только цвета) + иконочная библиотека",
+      "acceptance_criteria": [
+        "Каждая тема имеет уникальные стилистические отличия помимо цветовой палитры:",
+        "  MINIMALIST — плоский дизайн, минимум теней, тонкие 1px бордеры, системный шрифт sans-serif, квадратные углы (rounded-none/rounded-sm), компактные отступы",
+        "  DESIGN — градиентные акценты, крупные тени (shadow-lg), скруглённые углы (rounded-2xl), декоративные элементы (dot patterns, gradient dividers), межстрочные интервалы увеличены",
+        "  FORMAL — serif шрифт для заголовков (Georgia/Times), строгие линии, двойные бордеры, uppercase для лейблов, классические тени (shadow-sm), средние скругления (rounded-md)",
+        "  NATURE — органические формы (rounded-xl), мягкие тени (shadow-md с зеленоватым оттенком), leaf-like декоративные SVG-элементы, увеличенные отступы для воздушности",
+        "  DARK — неоновые акценты (ring-glow эффекты), glassmorphism для панелей (backdrop-blur), subtle gradient backgrounds, rounded-lg углы",
+        "Подключена иконочная библиотека Lucide React (lucide-react) вместо inline SVG и emoji",
+        "Все inline SVG в компонентах заменены на компоненты Lucide",
+        "Emoji для GTD-списков в сайдбаре заменены на Lucide-иконки (Inbox, Zap, FolderOpen, Clock, Lightbulb, BookOpen, Calendar, CheckCircle)",
+        "Emoji для категорий заменены на набор Lucide-иконок в CategoryManager",
+        "Emoji для контекстов заменены на набор Lucide-иконок в CreateContextModal",
+        "ThemeColors интерфейс расширен новыми полями: borderRadius, shadow, fontFamily, headerFont, spacing, decorative elements",
+        "Все компоненты рабочего экрана применяют тематические стили (border-radius, shadow, font)"
+      ],
+      "test_steps": [
+        "Шаг 1: npm install lucide-react — библиотека установлена",
+        "Шаг 2: npm run build — сборка без ошибок",
+        "Шаг 3: Создать контекст с темой MINIMALIST — плоский дизайн, квадратные углы, без теней",
+        "Шаг 4: Сменить тему на DESIGN — появились скругления, тени, градиенты",
+        "Шаг 5: Сменить тему на FORMAL — serif заголовки, строгие линии, uppercase лейблы",
+        "Шаг 6: Сменить тему на NATURE — органические формы, мягкие тени, воздушные отступы",
+        "Шаг 7: Сменить тему на DARK — glassmorphism, неоновые акценты, blur-эффекты",
+        "Шаг 8: Проверить сайдбар — GTD-списки используют Lucide-иконки вместо emoji",
+        "Шаг 9: Проверить создание категории — Lucide-иконки вместо emoji",
+        "Шаг 10: Проверить создание контекста — Lucide-иконки вместо emoji",
+        "Шаг 11: Проверить все inline SVG (стрелка назад, экспорт, чекмарки и т.д.) — заменены на Lucide",
+        "Шаг 12: npm run lint — без ошибок"
+      ],
+      "dependencies": ["TASK-035"],
+      "status": "done"
+    },
+    {
       "id": "TASK-001",
       "category": "infrastructure",
       "priority": "critical",

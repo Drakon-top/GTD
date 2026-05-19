@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
+import { Check } from 'lucide-react';
 import apiClient from '../api/client';
 import type { ErrorResponse } from '../types';
 
@@ -47,19 +48,7 @@ export default function RegisterPage() {
       <div className="flex min-h-screen items-center justify-center bg-stone-50 px-4">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
-            <svg
-              className="h-6 w-6 text-emerald-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+            <Check className="h-6 w-6 text-emerald-600" />
           </div>
           <h2 className="text-lg font-semibold text-stone-900">
             Account created!

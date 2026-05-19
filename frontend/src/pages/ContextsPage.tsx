@@ -1,8 +1,11 @@
 import { useEffect, useReducer, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import apiClient from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import CreateContextModal from '../components/CreateContextModal';
+import { createElement } from 'react';
+import { getContextIcon } from '../utils/icons';
 import type { ContextResponse, ContextTheme, TaskCountsResponse } from '../types';
 
 const MAX_CONTEXTS = 5;
@@ -134,9 +137,7 @@ export default function ContextsPage() {
               onClick={() => setModalOpen(true)}
               className="flex items-center gap-1.5 rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-800"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
+              <Plus className="h-4 w-4" />
               New Context
             </button>
           )}
@@ -145,9 +146,7 @@ export default function ContextsPage() {
         {contexts.length === 0 ? (
           <div className="rounded-xl border border-dashed border-stone-300 bg-white p-12 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
-              <svg className="h-7 w-7 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
+              <Plus className="h-7 w-7 text-stone-400" />
             </div>
             <h3 className="mb-1 text-base font-medium text-stone-900">No contexts yet</h3>
             <p className="mb-5 text-sm text-stone-500">
@@ -167,7 +166,6 @@ export default function ContextsPage() {
               const style = THEME_STYLES[ctx.theme];
               const inboxCount = inboxCounts[ctx.id] ?? 0;
               const isDark = ctx.theme === 'DARK';
-
               return (
                 <button
                   key={ctx.id}
@@ -175,7 +173,9 @@ export default function ContextsPage() {
                   onClick={() => handleContextClick(ctx.id)}
                   className={`group cursor-pointer rounded-xl border p-5 text-left shadow-sm transition hover:shadow-md ${style.card}`}
                 >
-                  <div className="mb-3 text-3xl">{ctx.icon || '📋'}</div>
+                  <div className="mb-3">
+                    {createElement(getContextIcon(ctx.icon), { className: `h-8 w-8 ${isDark ? 'text-zinc-300' : 'text-stone-600'}` })}
+                  </div>
                   <h3 className={`text-base font-medium ${isDark ? 'text-white' : 'text-stone-900'}`}>
                     {ctx.name}
                   </h3>

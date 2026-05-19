@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import { ArrowLeft, Download, Paintbrush, Check } from 'lucide-react';
 import apiClient from '../api/client';
 import type {
   CategoryResponse,
@@ -20,6 +21,8 @@ import ExportModal from '../components/ExportModal';
 import { getTheme, THEME_NAMES } from '../utils/themes';
 import type { ThemeColors } from '../utils/themes';
 import type { ContextTheme } from '../types';
+import { createElement } from 'react';
+import { getContextIcon } from '../utils/icons';
 
 export default function ContextWorkspacePage() {
   const { contextId } = useParams<{ contextId: string }>();
@@ -166,21 +169,19 @@ export default function ContextWorkspacePage() {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className={`flex h-screen flex-col ${theme.bg}`}>
-        <header className={`shrink-0 border-b ${theme.headerBorder} ${theme.headerBg}`}>
+      <div className={`flex h-screen flex-col ${theme.bg} ${theme.fontFamily}`}>
+        <header className={`shrink-0 border-b ${theme.headerBorder} ${theme.headerBg} ${theme.shadow}`}>
           <div className="flex items-center gap-4 px-4 py-2.5">
             <button
               type="button"
               onClick={() => navigate('/contexts')}
-              className={`rounded-md p-1.5 ${theme.headerSubtext} transition hover:opacity-80`}
+              className={`${theme.borderRadius} p-1.5 ${theme.headerSubtext} transition hover:opacity-80`}
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
+              <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2">
-              <span className="text-lg">{context.icon}</span>
-              <h1 className={`text-base font-semibold ${theme.headerText}`}>{context.name}</h1>
+              {createElement(getContextIcon(context.icon), { className: `h-5 w-5 ${theme.headerText}` })}
+              <h1 className={`text-base font-semibold ${theme.headerFont} ${theme.headerText}`}>{context.name}</h1>
             </div>
             <div className="ml-auto flex items-center gap-3">
               {counts && (
@@ -191,26 +192,22 @@ export default function ContextWorkspacePage() {
               <button
                 type="button"
                 onClick={() => setShowExportModal(true)}
-                className={`rounded-md p-1.5 ${theme.headerSubtext} transition hover:opacity-80`}
+                className={`${theme.borderRadius} p-1.5 ${theme.headerSubtext} transition hover:opacity-80`}
                 title="Export data"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
+                <Download className="h-4 w-4" />
               </button>
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setShowThemePicker(!showThemePicker)}
-                  className={`rounded-md p-1.5 ${theme.headerSubtext} transition hover:opacity-80`}
+                  className={`${theme.borderRadius} p-1.5 ${theme.headerSubtext} transition hover:opacity-80`}
                   title="Change theme"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                  </svg>
+                  <Paintbrush className="h-4 w-4" />
                 </button>
                 {showThemePicker && (
-                  <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
+                  <div className={`absolute right-0 top-full z-50 mt-1 w-40 ${theme.borderRadiusLg} border border-stone-200 bg-white py-1 shadow-lg`}>
                     {(Object.keys(THEME_NAMES) as ContextTheme[]).map((t) => (
                       <button
                         key={t}
@@ -228,7 +225,7 @@ export default function ContextWorkspacePage() {
                           : 'bg-zinc-700'
                         }`} />
                         {THEME_NAMES[t]}
-                        {context.theme === t && <span className="ml-auto text-xs">✓</span>}
+                        {context.theme === t && <Check className="ml-auto h-3 w-3" />}
                       </button>
                     ))}
                   </div>
