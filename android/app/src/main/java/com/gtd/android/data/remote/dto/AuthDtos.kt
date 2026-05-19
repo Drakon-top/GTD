@@ -18,6 +18,12 @@ data class RegisterRequest(
 @Serializable
 data class AuthResponse(
     @SerialName("accessToken") val accessToken: String,
-    @SerialName("userId") val userId: String? = null,
-    @SerialName("email") val email: String? = null,
+    @SerialName("tokenType") val tokenType: String? = null,
+)
+
+@Serializable
+data class RegisterResponse(
+    val id: String,
+    val email: String,
+    val createdAt: String? = null,
 )

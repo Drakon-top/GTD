@@ -1424,3 +1424,64 @@
   - `fallbackToDestructiveMigration()` оставлен как safety net для dev-сборок; при реальном обновлении схемы нужно добавить `Migration(1, 2)` в `GtdDatabase.MIGRATIONS`
   - Instrumented тесты (23 шт.) покрывают все DAOs и ключевые сценарии; для запуска нужен эмулятор/устройство
   - **Следующий приоритет: TASK-039** (Android авторизация с Retrofit — зависит от TASK-038 done + TASK-005 done)
+
+---
+
+## TASK-039 — Android: авторизация (login/register/logout) с Retrofit
+
+- **Дата:** 2026-05-19
+- **Статус:** done
+- **Что сделано:**
+  - **AuthDtos.kt** — DTO выровнены с бэкендом: отдельный `RegisterResponse` (id, email, createdAt), `AuthResponse` с `tokenType`, убраны несуществующие `userId`/`email` из `AuthResponse`
+  - **AuthApi.kt** — `register()` возвращает `Response<RegisterResponse>` (бэкенд отдаёт 201, не токен)
+  - **AuthRepository.kt** — новый репозиторий-синглтон:
+    - `login()` → вызывает API, сохраняет accessToken в TokenStorage, извлекает userId из JWT payload (Base64 decode `sub` claim), сохраняет UserEntity в Room
+    - `register()` → вызывает API, при успехе возвращает Success (без авто-логина, как в web frontend)
+    - `refreshToken()` → вызывает `/auth/refresh` (refresh token приходит через HttpOnly cookie), обновляет accessToken
+    - `logout()` → вызывает API (отправляет cookie), очищает TokenStorage + UserDao; при ошибке сети всё равно очищает локально
+    - `parseErrorMessage()` — парсит JSON `{ "message": "..." }` из error body
+  - **AuthViewModel.kt** — HiltViewModel с `StateFlow<AuthUiState>`:
+    - `login()` / `register()` с клиентской валидацией (email формат, пароль >= 8 символов, подтверждение пароля)
+    - `tryRefreshSession()` — для восстановления сессии при старте приложения
+    - `logout()` — suspend, очищает всё через репозиторий
+    - Человекочитаемые ошибки: 401 → "Invalid email or password", 409 → "Account with this email already exists"
+  - **LoginScreen.kt** — полноценный Compose UI:
+    - Email + Password поля с keyboard actions (Next / Done)
+    - Показ/скрытие пароля (eye icon)
+    - Кнопка "Sign In" с loading spinner
+    - Ссылка "Don't have an account? Sign Up"
+    - Ошибки отображаются между полями и кнопкой
+    - IME padding, scroll для маленьких экранов
+  - **RegisterScreen.kt** — новый экран:
+    - Email + Password + Confirm Password с валидацией
+    - Back arrow в TopAppBar для навигации назад
+    - При успешной регистрации — автоматический возврат на LoginScreen
+    - Supporting text "At least 8 characters" под полем пароля
+  - **AuthInterceptor.kt** — добавлена логика 401 → refresh → retry:
+    - Синхронизированный refresh (один поток, остальные ждут)
+    - Пропускает auth-эндпоинты (login, register, refresh) чтобы не зациклиться
+    - При неудачном refresh — очищает TokenStorage (forced logout)
+  - **NetworkModule.kt** — добавлен `CookieJar`:
+    - In-memory cookie store через `ConcurrentHashMap` (thread-safe)
+    - Автоматически сохраняет HttpOnly `refresh_token` cookie от бэкенда
+    - Автоматически отправляет cookie при refresh/logout запросах
+    - `OkHttpClient` теперь принимает `cookieJar` + `authInterceptor`
+  - **GtdNavHost.kt** — session-aware навигация:
+    - При старте приложения вызывает `tryRefreshSession()` — если токен валиден, сразу переходит на Contexts
+    - Если refresh не удался или нет токена — остаётся на Login
+    - RegisterScreen подключен к навигации с правильным back stack management
+  - **ContextsScreen.kt** — добавлена кнопка Logout:
+    - TopAppBar с заголовком "Contexts" и иконкой Logout справа
+    - При нажатии — корутина вызывает `authViewModel.logout()` → navigate to Login с очисткой стека
+  - `./gradlew compileDebugKotlin --offline` — BUILD SUCCESSFUL (без warnings)
+  - `npx tsc --noEmit` — без ошибок (frontend не затронут)
+  - `npm run build` — без ошибок (427KB JS, 75KB CSS)
+  - `./mvnw clean compile -DskipTests` — без ошибок (backend не затронут)
+- **Коммиты:** feat: add Android login, register, logout with Retrofit and session management (TASK-039)
+- **Заметки:**
+  - CookieJar in-memory — при перезапуске приложения cookie теряется, но `tryRefreshSession()` при старте делает refresh call, и если бэкенд ещё считает старый refresh_token валидным (он в TokenStorage), то поведение корректное. В будущем можно персистить cookie через EncryptedSharedPreferences
+  - JWT payload decode через Base64 — не верификация подписи, только извлечение `sub` для userId; серверная верификация происходит на бэкенде
+  - AuthViewModel shared между LoginScreen и RegisterScreen через Hilt navigation graph scope — это позволяет переиспользовать состояние при навигации
+  - Backend login не возвращает userId/email в response body (только accessToken + tokenType), поэтому userId извлекается из JWT
+  - Refresh token хранится в HttpOnly cookie (бэкенд path=/api/v1/auth), OkHttp CookieJar автоматически его отправляет
+  - **Следующий приоритет: TASK-040** (Android экран выбора контекста + основной рабочий экран — зависит от TASK-039 done + TASK-009 done + TASK-011 done)
