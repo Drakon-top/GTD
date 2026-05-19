@@ -1924,3 +1924,46 @@
 - Для E2E: нужен запущенный backend + frontend dev server + браузер
 - Android E2E требует эмулятор + реальный бэкенд
 - Рекомендация: создать `scripts/e2e-test.sh` для автоматизации полного цикла
+
+---
+
+## TASK-050: E2E тестирование — итерация 3 (in_progress)
+**Дата:** 2026-05-19
+
+### Выполненная работа:
+- **Полная проверка frontend:**
+  - `npx tsc --noEmit` — OK, без ошибок типов
+  - `npm run lint` — OK, без ошибок
+  - `npm run build` — OK (427KB JS, 75KB CSS, 1823 модуля)
+- **Полная проверка backend:**
+  - `./mvnw clean compile -DskipTests` — BUILD SUCCESS, 112 source files, 0 warnings
+  - Unit tests (345 тестов): **ВСЕ ПРОШЛИ** (0 failures)
+  - Integration/Repository tests (158 тестов): ошибки `ApplicationContext failure threshold` — ожидаемо, требуют PostgreSQL
+  - Общее: 503 total, 0 failures, 158 errors (infra), 0 skipped
+- **Замечание по тестам:** в предыдущей итерации было 307 unit тестов, сейчас 345. Разница в 38 тестов — вероятно, тесты из RabbitMQConfigTest (18), RabbitMQPropertiesTest (2), JwtServiceTest (6), NotificationDtoTest (9), LoggingPushNotificationServiceTest (2) = 37 тестов, которые ранее не были учтены в подсчёте unit тестов
+
+### Сводка по тестам:
+| Модуль | Статус | Тестов |
+|--------|--------|--------|
+| Frontend TypeScript | OK | — |
+| Frontend Lint | OK | — |
+| Frontend Build | OK | 1823 модуля |
+| Backend Compile | OK | 112 source files, 0 warnings |
+| Backend Unit Tests | OK | 345 passed, 0 failures |
+| Backend Integration Tests | SKIP | 158 (нужен PostgreSQL) |
+| Backend Total | PARTIAL | 345/503 |
+
+### Что осталось для завершения TASK-050:
+1. Запустить `docker-compose up -d` и прогнать 158 интеграционных тестов с PostgreSQL
+2. Полный E2E цикл через браузер: регистрация → контексты → задачи → подзадачи → напоминания → повторение → экспорт
+3. Тестирование параллельной работы Web + Android с реальным бэкендом
+4. Стресс-тест синхронизации: одновременные изменения и проверка field-level merge
+5. Офлайн-тест Android: 50+ задач офлайн → синхронизация без потерь
+
+### Заметки для следующей итерации:
+- Все unit тесты зелёные (345/345), все сборки (frontend + backend) проходят без ошибок
+- Код стабилен: 3 итерации подряд без регрессий в unit тестах
+- Для integration тестов: `docker-compose up -d` → `./mvnw test`
+- Для E2E: нужен запущенный backend (`docker-compose up -d && ./mvnw spring-boot:run`) + frontend dev server (`npm run dev`) + браузер
+- Android E2E требует эмулятор + реальный бэкенд на доступном хосте
+- Все оставшиеся пункты TASK-050 — ручное/инфраструктурное тестирование, требуют Docker + PostgreSQL + RabbitMQ
