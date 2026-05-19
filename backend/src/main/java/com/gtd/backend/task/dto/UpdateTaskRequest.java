@@ -45,6 +45,7 @@ public class UpdateTaskRequest {
 
     @JsonIgnore
     @Schema(hidden = true)
+    @Builder.Default
     private boolean recurrenceRuleProvided = false;
 
     public void setRecurrenceRule(String recurrenceRule) {

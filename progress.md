@@ -1880,4 +1880,47 @@
 - Для полного E2E нужен `docker-compose up -d` (PostgreSQL + RabbitMQ) перед запуском интеграционных тестов
 - Android E2E тестирование требует запущенный эмулятор и реальный бэкенд
 - Рекомендуется создать скрипт для автоматического E2E: `scripts/e2e-test.sh`
-- Баг `@Builder will ignore the initializing expression` в `UpdateTaskRequest.java` — cosmetic warning, не влияет на функциональность
+- ~~Баг `@Builder will ignore the initializing expression` в `UpdateTaskRequest.java` — cosmetic warning, не влияет на функциональность~~ **ИСПРАВЛЕНО** (добавлен `@Builder.Default`)
+
+---
+
+## TASK-050: E2E тестирование — итерация 2 (in_progress)
+**Дата:** 2026-05-19
+
+### Выполненная работа:
+- **Исправлен Lombok @Builder warning** в `UpdateTaskRequest.java`:
+  - Добавлен `@Builder.Default` к полю `recurrenceRuleProvided` — warning `@Builder will ignore the initializing expression` устранён
+  - Backend компилируется без единого warning: `./mvnw clean compile -DskipTests` — BUILD SUCCESS, 112 source files, 0 warnings
+- **Полная проверка frontend:**
+  - `npx tsc --noEmit` — OK, без ошибок типов
+  - `npm run lint` — OK, без ошибок
+  - `npm run build` — OK (427KB JS, 75KB CSS, 1823 модуля)
+- **Полная проверка backend:**
+  - `./mvnw clean compile -DskipTests` — BUILD SUCCESS, 0 warnings
+  - Unit tests (307 тестов): **ВСЕ ПРОШЛИ** (ServiceTest, ControllerTest, SchedulerTest, ConsumerTest, ExportServiceTest)
+  - Integration/Repository tests (158 тестов): пропущены — требуют PostgreSQL (docker-compose), ожидаемое поведение
+
+### Сводка по тестам:
+| Модуль | Статус | Тестов |
+|--------|--------|--------|
+| Frontend TypeScript | OK | — |
+| Frontend Lint | OK | — |
+| Frontend Build | OK | 1823 модуля |
+| Backend Compile | OK | 112 source files, 0 warnings |
+| Backend Unit Tests | OK | 307 passed |
+| Backend Integration Tests | SKIP | 158 (нужен PostgreSQL) |
+| Backend Total | PARTIAL | 307/465 |
+
+### Что осталось для завершения TASK-050:
+1. Запустить `docker-compose up -d` и прогнать 158 интеграционных тестов
+2. Полный E2E цикл через браузер: регистрация → контексты → задачи → подзадачи → напоминания → повторение → экспорт
+3. Тестирование параллельной работы Web + Android с реальным бэкендом
+4. Стресс-тест синхронизации: одновременные изменения и проверка field-level merge
+5. Офлайн-тест Android: 50+ задач офлайн → синхронизация без потерь
+
+### Заметки для следующей итерации:
+- Все unit тесты зелёные (307/307), код компилируется без warnings
+- Для integration тестов: `docker-compose up -d` → `./mvnw test -Dspring.profiles.active=test`
+- Для E2E: нужен запущенный backend + frontend dev server + браузер
+- Android E2E требует эмулятор + реальный бэкенд
+- Рекомендация: создать `scripts/e2e-test.sh` для автоматизации полного цикла
