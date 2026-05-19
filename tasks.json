@@ -956,7 +956,7 @@
         "Шаг 5: Hamburger menu — переключение между GTD-списками"
       ],
       "dependencies": ["TASK-039", "TASK-009", "TASK-011"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-041",

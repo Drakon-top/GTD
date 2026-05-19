@@ -1485,3 +1485,63 @@
   - Backend login не возвращает userId/email в response body (только accessToken + tokenType), поэтому userId извлекается из JWT
   - Refresh token хранится в HttpOnly cookie (бэкенд path=/api/v1/auth), OkHttp CookieJar автоматически его отправляет
   - **Следующий приоритет: TASK-040** (Android экран выбора контекста + основной рабочий экран — зависит от TASK-039 done + TASK-009 done + TASK-011 done)
+
+### TASK-040 — Android: экран выбора контекста + основной рабочий экран
+- **Дата:** 2026-05-19
+- **Статус:** done
+- **Что сделано:**
+  - **TaskCountsDto.kt** — новый DTO для API-ответа `/contexts/{id}/tasks/counts` (byGtdList, byCategory, total)
+  - **GtdApi.kt** — добавлен эндпоинт `getTaskCounts(@Path contextId): Response<TaskCountsDto>`
+  - **GtdRepository.kt** — новый singleton-репозиторий с generic `safeCall` обёрткой:
+    - `getContexts()`, `createContext()`, `getTaskCounts()`, `getTasks()`, `createTask()`, `completeTask()`, `getCategories()`
+    - Единый паттерн обработки ошибок (`ApiResult.Success | ApiResult.Error`)
+  - **ContextsViewModel.kt** — загрузка контекстов с параллельным получением inbox count:
+    - `loadContexts()` → `getContexts()` + parallel `getTaskCounts()` per context via `async/awaitAll`
+    - `createContext()` → POST + reload
+    - `MAX_CONTEXTS = 5` — контроль лимита
+  - **ContextsScreen.kt** — полная реализация (заменил placeholder):
+    - Themed карточки контекстов в `LazyVerticalGrid(2 columns)` — каждая тема (7 тем) имеет свой цветовой стиль (cardBg, textColor, badgeBg, accentColor)
+    - Emoji-иконка + название + inbox count badge
+    - FAB `+` для создания (скрыт при 5 контекстах)
+    - Empty state: "No contexts yet" + подсказка
+    - Error state: сообщение + "Tap to retry"
+    - Loading state: CircularProgressIndicator
+    - Logout сохранён в TopAppBar
+  - **CreateContextDialog.kt** — AlertDialog для создания контекста:
+    - Name text field
+    - Theme picker — FlowRow с 7 тематическими кнопками (цвет + label)
+    - Icon picker — FlowRow с 12 emoji-иконками в CircleShape
+    - Validation: name не пустой + loading state
+  - **WorkspaceViewModel.kt** — основная логика рабочего экрана:
+    - Получает `contextId` из `SavedStateHandle` (navigation args)
+    - `loadAll()` → параллельно: context info + task counts + categories → sidebar sections
+    - `selectSection(key)` → загружает задачи по GTD-списку или категории
+    - `createTask(title)`, `completeTask(taskId)` с перезагрузкой данных
+    - GTD Labels маппинг (INBOX → "Inbox", NEXT_ACTIONS → "Next Actions", ...)
+  - **WorkspaceScreen.kt** — основной рабочий экран:
+    - `DismissibleNavigationDrawer` с sidebar: GTD-списки (7) + разделитель + Done + разделитель + Categories
+    - Emoji-иконки для GTD-списков (📥, ⚡, 📂, 🕰️, 💡, 📖, 📅, ✅)
+    - Счётчики задач в badge рядом с каждым пунктом
+    - TopAppBar: Back arrow + Hamburger menu + context name + current section label
+    - `LazyColumn` со списком задач — каждая задача: Checkbox + title + due date + subtasks indicator + progress bar
+    - Стриктрэф (strikethrough) для выполненных задач
+    - FAB для быстрого добавления задачи
+    - `CreateTaskDialog` — минимальная форма (только title)
+    - Empty/Loading/Error states
+  - **GtdNavHost.kt** — обновлена навигация:
+    - Workspace route с `navArgument("contextId", NavType.StringType)`
+    - `WorkspaceScreen` подключён с `onNavigateBack = popBackStack()`
+  - `./gradlew compileDebugKotlin --offline` — BUILD SUCCESSFUL
+  - `npx tsc --noEmit` — без ошибок (frontend не затронут)
+  - `npm run build` — без ошибок (427KB JS, 75KB CSS)
+  - `./mvnw clean compile -DskipTests` — без ошибок (backend не затронут)
+- **Коммиты:** feat: add Android context selection and workspace screens (TASK-040)
+- **Заметки:**
+  - Данные загружаются только из API (без Room-кэширования) — Room-кэш будет добавлен в TASK-043 (офлайн-режим)
+  - GtdRepository использует `ApiResult<T>` sealed class — аналог `AuthResult<T>` из AuthRepository; в будущем можно унифицировать в общий `Result<T>`
+  - ContextsScreen загружает inbox counts параллельно через `async/awaitAll` — O(N) запросов при N контекстах; для оптимизации можно добавить batch endpoint на бэкенде
+  - WorkspaceScreen использует DismissibleNavigationDrawer (не ModalNavigationDrawer) — лучше для планшетов, drawer остаётся видимым на wide screens
+  - Категории в sidebar фильтруются клиент-сайд: сначала загружаются все задачи контекста, затем фильтруются по categoryId — для MVP достаточно, для production лучше серверный фильтр
+  - CreateTaskDialog создаёт задачу только с title → попадает в INBOX с nesting_level=1 (backend default); full CRUD (notes, due_date, category, etc.) будет в TASK-041
+  - Checkbox complete работает через API PATCH /tasks/{id}/complete → после успеха перезагружает все данные; оптимизация (optimistic UI) будет в рамках офлайн-режима
+  - **Следующий приоритет: TASK-041** (Android CRUD задач + подзадачи + перемещение — зависит от TASK-040 done + TASK-012 done + TASK-013 done, все deps met)

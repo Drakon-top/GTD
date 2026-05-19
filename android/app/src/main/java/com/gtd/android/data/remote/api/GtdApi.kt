@@ -8,6 +8,7 @@ import com.gtd.android.data.remote.dto.CreateReminderRequest
 import com.gtd.android.data.remote.dto.CreateTaskRequest
 import com.gtd.android.data.remote.dto.MoveTaskRequest
 import com.gtd.android.data.remote.dto.ReminderDto
+import com.gtd.android.data.remote.dto.TaskCountsDto
 import com.gtd.android.data.remote.dto.TaskDto
 import com.gtd.android.data.remote.dto.UpdateTaskRequest
 import retrofit2.Response
@@ -37,6 +38,10 @@ interface GtdApi {
 
     @DELETE("contexts/{id}")
     suspend fun deleteContext(@Path("id") id: String): Response<Unit>
+
+    // Task Counts
+    @GET("contexts/{contextId}/tasks/counts")
+    suspend fun getTaskCounts(@Path("contextId") contextId: String): Response<TaskCountsDto>
 
     // Tasks
     @GET("contexts/{contextId}/tasks")

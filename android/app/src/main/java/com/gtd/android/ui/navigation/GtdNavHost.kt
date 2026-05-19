@@ -7,13 +7,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.gtd.android.ui.auth.AuthViewModel
 import com.gtd.android.ui.auth.LoginScreen
 import com.gtd.android.ui.auth.RegisterScreen
 import com.gtd.android.ui.context.ContextsScreen
+import com.gtd.android.ui.workspace.WorkspaceScreen
 
 object Routes {
     const val LOGIN = "login"
@@ -82,8 +85,15 @@ fun GtdNavHost() {
             )
         }
 
-        composable(Routes.WORKSPACE) {
-            // Placeholder — will be implemented in TASK-040
+        composable(
+            route = Routes.WORKSPACE,
+            arguments = listOf(navArgument("contextId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val contextId = backStackEntry.arguments?.getString("contextId") ?: ""
+            WorkspaceScreen(
+                contextId = contextId,
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
     }
 }
