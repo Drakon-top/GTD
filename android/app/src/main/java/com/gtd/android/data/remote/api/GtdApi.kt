@@ -14,6 +14,7 @@ import com.gtd.android.data.remote.dto.SyncPushResponse
 import com.gtd.android.data.remote.dto.TaskCountsDto
 import com.gtd.android.data.remote.dto.TaskDto
 import com.gtd.android.data.remote.dto.UpdateTaskRequest
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -115,6 +116,10 @@ interface GtdApi {
 
     @DELETE("reminders/{id}")
     suspend fun deleteReminder(@Path("id") id: String): Response<Unit>
+
+    // Export
+    @GET("export")
+    suspend fun exportData(@Query("context_id") contextId: String? = null): Response<ResponseBody>
 
     // Sync
     @POST("sync/push")

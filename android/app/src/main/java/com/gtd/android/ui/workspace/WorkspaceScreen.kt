@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,6 +32,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DismissibleDrawerSheet
 import androidx.compose.material3.DismissibleNavigationDrawer
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -141,6 +144,11 @@ fun WorkspaceScreen(
                     },
                     actions = {
                         SyncStatusIndicator(state.syncStatus)
+                        WorkspaceMenu(
+                            onManageCategories = { viewModel.showCategoryManager() },
+                            onChangeTheme = { viewModel.showThemePicker() },
+                            onExport = { viewModel.showExport() },
+                        )
                     },
                 )
             },
@@ -239,6 +247,64 @@ fun WorkspaceScreen(
                     onMove = { gtdList -> viewModel.moveTask(gtdList) },
                 )
             }
+
+            if (state.showCategoryManager) {
+                CategoryManagerDialog(
+                    categories = state.categories,
+                    onDismiss = { viewModel.dismissCategoryManager() },
+                    onCreate = { name, icon, color -> viewModel.createCategory(name, icon, color) },
+                    onEdit = { id, name, icon, color -> viewModel.updateCategory(id, name, icon, color) },
+                    onDelete = { id -> viewModel.deleteCategory(id) },
+                )
+            }
+
+            if (state.showThemePicker) {
+                ThemePickerDialog(
+                    currentTheme = state.contextTheme,
+                    onSelect = { theme -> viewModel.changeTheme(theme) },
+                    onDismiss = { viewModel.dismissThemePicker() },
+                )
+            }
+
+            if (state.showExport) {
+                ExportDialog(
+                    contextName = state.contextName,
+                    isExporting = state.isExporting,
+                    exportError = state.exportError,
+                    onExportContext = { viewModel.exportContext() },
+                    onExportAll = { viewModel.exportAll() },
+                    onDismiss = { viewModel.dismissExport() },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkspaceMenu(
+    onManageCategories: () -> Unit,
+    onChangeTheme: () -> Unit,
+    onExport: () -> Unit,
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(onClick = { showMenu = true }) {
+            Icon(Icons.Default.MoreVert, contentDescription = "Settings")
+        }
+        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+            DropdownMenuItem(
+                text = { Text("Manage Categories") },
+                onClick = { showMenu = false; onManageCategories() },
+            )
+            DropdownMenuItem(
+                text = { Text("Change Theme") },
+                onClick = { showMenu = false; onChangeTheme() },
+            )
+            DropdownMenuItem(
+                text = { Text("Export Data") },
+                onClick = { showMenu = false; onExport() },
+            )
         }
     }
 }

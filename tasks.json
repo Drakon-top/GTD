@@ -1000,7 +1000,7 @@
         "Шаг 5: Включить повторение задачи"
       ],
       "dependencies": ["TASK-041", "TASK-014", "TASK-016", "TASK-021"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-043",

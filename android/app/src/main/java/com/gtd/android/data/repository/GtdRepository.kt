@@ -6,16 +6,22 @@ import com.gtd.android.data.local.TokenStorage
 import com.gtd.android.data.local.dao.CategoryDao
 import com.gtd.android.data.local.dao.ContextDao
 import com.gtd.android.data.local.dao.PendingChangeDao
+import com.gtd.android.data.local.dao.ReminderDao
 import com.gtd.android.data.local.dao.TaskDao
+import com.gtd.android.data.local.entity.CategoryEntity
 import com.gtd.android.data.local.entity.ContextEntity
 import com.gtd.android.data.local.entity.PendingChangeEntity
+import com.gtd.android.data.local.entity.ReminderEntity
 import com.gtd.android.data.local.entity.TaskEntity
 import com.gtd.android.data.remote.api.GtdApi
 import com.gtd.android.data.remote.dto.CategoryDto
 import com.gtd.android.data.remote.dto.ContextDto
+import com.gtd.android.data.remote.dto.CreateCategoryRequest
 import com.gtd.android.data.remote.dto.CreateContextRequest
+import com.gtd.android.data.remote.dto.CreateReminderRequest
 import com.gtd.android.data.remote.dto.CreateTaskRequest
 import com.gtd.android.data.remote.dto.MoveTaskRequest
+import com.gtd.android.data.remote.dto.ReminderDto
 import com.gtd.android.data.remote.dto.TaskCountsDto
 import com.gtd.android.data.remote.dto.TaskDto
 import com.gtd.android.data.remote.dto.UpdateTaskRequest
@@ -40,6 +46,7 @@ class GtdRepository @Inject constructor(
     private val contextDao: ContextDao,
     private val taskDao: TaskDao,
     private val categoryDao: CategoryDao,
+    private val reminderDao: ReminderDao,
     private val pendingChangeDao: PendingChangeDao,
     private val tokenStorage: TokenStorage,
     private val networkMonitor: NetworkMonitor,
@@ -327,8 +334,156 @@ class GtdRepository @Inject constructor(
         return loadCategoriesFromRoom(contextId)
     }
 
+    suspend fun createCategory(contextId: String, name: String, icon: String?, color: String?): ApiResult<CategoryDto> {
+        val request = CreateCategoryRequest(name = name, icon = icon, color = color)
+        if (networkMonitor.isCurrentlyOnline()) {
+            val result = safeCall { api.createCategory(contextId, request) }
+            if (result is ApiResult.Success) {
+                categoryDao.insert(result.data.toEntity())
+            }
+            return result
+        }
+        val localId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        val entity = CategoryEntity(
+            id = localId,
+            contextId = contextId,
+            name = name,
+            icon = icon,
+            color = color,
+            createdAt = now,
+            updatedAt = now,
+        )
+        categoryDao.insert(entity)
+        trackChange("CATEGORY", localId, "CREATE", null, name)
+        return ApiResult.Success(entity.toDto())
+    }
+
+    suspend fun updateCategory(categoryId: String, name: String, icon: String?, color: String?): ApiResult<CategoryDto> {
+        val request = CreateCategoryRequest(name = name, icon = icon, color = color)
+        if (networkMonitor.isCurrentlyOnline()) {
+            val result = safeCall { api.updateCategory(categoryId, request) }
+            if (result is ApiResult.Success) {
+                categoryDao.insert(result.data.toEntity())
+            }
+            return result
+        }
+        val entity = categoryDao.getById(categoryId) ?: return ApiResult.Error("Category not found")
+        val now = System.currentTimeMillis()
+        val updated = entity.copy(name = name, icon = icon, color = color, updatedAt = now)
+        categoryDao.update(updated)
+        trackChange("CATEGORY", categoryId, "UPDATE", entity.name, name)
+        return ApiResult.Success(updated.toDto())
+    }
+
+    suspend fun deleteCategory(categoryId: String): ApiResult<Unit> {
+        if (networkMonitor.isCurrentlyOnline()) {
+            val result = safeCall { api.deleteCategory(categoryId) }
+            if (result is ApiResult.Success) {
+                categoryDao.softDelete(categoryId, System.currentTimeMillis())
+                return result
+            }
+        }
+        categoryDao.softDelete(categoryId, System.currentTimeMillis())
+        trackChange("CATEGORY", categoryId, "DELETE", null, null)
+        return ApiResult.Success(Unit)
+    }
+
+    // ── Reminders ──
+
+    suspend fun getReminders(taskId: String): ApiResult<List<ReminderDto>> {
+        if (networkMonitor.isCurrentlyOnline()) {
+            val result = safeCall { api.getReminders(taskId) }
+            if (result is ApiResult.Success) {
+                reminderDao.insertAll(result.data.map { it.toEntity() })
+                return result
+            }
+        }
+        return loadRemindersFromRoom(taskId)
+    }
+
+    suspend fun createReminder(taskId: String, remindAt: String, offsetType: String?, offsetValue: Int?): ApiResult<ReminderDto> {
+        val request = CreateReminderRequest(remindAt = remindAt, offsetType = offsetType, offsetValue = offsetValue)
+        if (networkMonitor.isCurrentlyOnline()) {
+            val result = safeCall { api.createReminder(taskId, request) }
+            if (result is ApiResult.Success) {
+                reminderDao.insert(result.data.toEntity())
+            }
+            return result
+        }
+        val localId = UUID.randomUUID().toString()
+        val entity = ReminderEntity(
+            id = localId,
+            taskId = taskId,
+            remindAt = java.time.Instant.parse(remindAt).toEpochMilli(),
+            offsetType = offsetType,
+            offsetValue = offsetValue,
+            createdAt = System.currentTimeMillis(),
+        )
+        reminderDao.insert(entity)
+        trackChange("REMINDER", localId, "CREATE", null, remindAt)
+        return ApiResult.Success(entity.toDto())
+    }
+
+    suspend fun deleteReminder(reminderId: String): ApiResult<Unit> {
+        if (networkMonitor.isCurrentlyOnline()) {
+            val result = safeCall { api.deleteReminder(reminderId) }
+            if (result is ApiResult.Success) {
+                reminderDao.delete(reminderId)
+                return result
+            }
+        }
+        reminderDao.delete(reminderId)
+        trackChange("REMINDER", reminderId, "DELETE", null, null)
+        return ApiResult.Success(Unit)
+    }
+
+    // ── Export ──
+
+    suspend fun exportData(contextId: String? = null): ApiResult<String> {
+        if (!networkMonitor.isCurrentlyOnline()) {
+            return ApiResult.Error("Export requires internet connection")
+        }
+        return try {
+            val response = api.exportData(contextId)
+            if (response.isSuccessful) {
+                val body = response.body()?.string() ?: return ApiResult.Error("Empty response")
+                ApiResult.Success(body)
+            } else {
+                ApiResult.Error(parseErrorMessage(response.errorBody()?.string()))
+            }
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "Export failed")
+        }
+    }
+
+    // ── Context update ──
+
+    suspend fun updateContext(contextId: String, name: String, theme: String, icon: String): ApiResult<ContextDto> {
+        val request = CreateContextRequest(name = name, theme = theme, icon = icon)
+        if (networkMonitor.isCurrentlyOnline()) {
+            val result = safeCall { api.updateContext(contextId, request) }
+            if (result is ApiResult.Success) {
+                val userId = tokenStorage.getUserId() ?: ""
+                contextDao.insert(result.data.toEntity(userId))
+            }
+            return result
+        }
+        val entity = contextDao.getById(contextId) ?: return ApiResult.Error("Context not found")
+        val now = System.currentTimeMillis()
+        val updated = entity.copy(name = name, theme = theme, icon = icon, updatedAt = now)
+        contextDao.insert(updated)
+        trackChange("CONTEXT", contextId, "UPDATE", entity.theme, theme)
+        return ApiResult.Success(updated.toDto())
+    }
+
     private suspend fun loadCategoriesFromRoom(contextId: String): ApiResult<List<CategoryDto>> {
         val entities = categoryDao.getByContextId(contextId)
+        return ApiResult.Success(entities.map { it.toDto() })
+    }
+
+    private suspend fun loadRemindersFromRoom(taskId: String): ApiResult<List<ReminderDto>> {
+        val entities = reminderDao.getByTaskId(taskId)
         return ApiResult.Success(entities.map { it.toDto() })
     }
 

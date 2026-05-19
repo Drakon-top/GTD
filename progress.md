@@ -1720,3 +1720,62 @@
   - Backward compatibility: старые `UPDATE`/`MOVE` записи (без fieldName) обрабатываются fallback-логикой через прямые API-вызовы
   - Edge cases сохраняются: offline context creation всё ещё ограничено (stub), local UUID→server ID remapping не обновляет другие pending_changes
   - **Следующий приоритет: TASK-042** (Android категории + темы + экспорт — medium, все deps met) или **TASK-045** (Android Push-уведомления через FCM — medium, deps met)
+
+---
+
+### TASK-042: Android: кастомные категории + темы оформления + экспорт
+- **Статус:** ✅ DONE
+- **Дата:** 2026-05-19
+- **Изменённые файлы:**
+  - **GtdRepository.kt** — добавлены методы:
+    - `createCategory()`, `updateCategory()`, `deleteCategory()` — полный CRUD с offline support и `trackChange()`
+    - `getReminders()`, `createReminder()`, `deleteReminder()` — CRUD напоминаний с Room кэшированием
+    - `exportData()` — вызов `GET /export` API и возврат raw JSON string
+    - `updateContext()` — обновление темы/имени контекста с offline support
+  - **GtdApi.kt** — добавлен endpoint `exportData(@Query context_id): Response<ResponseBody>`
+  - **ReminderDao.kt** — добавлен `getByTaskId()` для one-shot загрузки
+  - **Mappers.kt** — добавлены `ReminderDto.toEntity()` и `ReminderEntity.toDto()`
+  - **CategoryManagerDialog.kt** (NEW) — UI для создания/редактирования/удаления категорий:
+    - Список категорий с иконкой, цветом, счётчиком задач
+    - Кнопки Edit/Delete для каждой категории
+    - Форма создания: name + icon picker (emoji grid) + color picker (8 цветов)
+  - **ThemePickerDialog.kt** (NEW) — диалог смены темы контекста:
+    - 7 тем (MINIMALIST, DESIGN, FORMAL, NATURE, DARK, DRAGONS, ICE_DRAGONS)
+    - Preview цвета для каждой темы, чекмарк на текущей
+  - **ExportDialog.kt** (NEW) — диалог экспорта данных:
+    - Две опции: экспорт текущего контекста / экспорт всех
+    - Индикатор загрузки и ошибки
+    - Файл шарится через Android Share Sheet (FileProvider + Intent.ACTION_SEND)
+  - **WorkspaceViewModel.kt** — расширен:
+    - `categories` в UiState для CategoryManagerDialog
+    - `showCategoryManager`, `showThemePicker`, `showExport` state flags
+    - Методы: `createCategory()`, `updateCategory()`, `deleteCategory()`
+    - Методы: `showThemePicker()`, `changeTheme()` — вызывает `repository.updateContext()`
+    - Методы: `showExport()`, `exportContext()`, `exportAll()` — экспорт через `FileProvider`
+  - **WorkspaceScreen.kt** — добавлены:
+    - Dropdown menu (MoreVert) в top bar: "Manage Categories", "Change Theme", "Export Data"
+    - `CategoryManagerDialog`, `ThemePickerDialog`, `ExportDialog` composables
+  - **TaskDetailViewModel.kt** — расширен:
+    - `reminders` и `recurrenceRule` в UiState
+    - Загрузка reminders в `loadTask()`
+    - Методы: `createReminder()`, `deleteReminder()`, `setRecurrence()`
+  - **TaskDetailScreen.kt** — добавлены:
+    - `RemindersSection` — список напоминаний с кнопкой добавления/удаления
+    - `RecurrenceSection` — отображение текущего правила, кнопка настройки/очистки
+    - `AddReminderDialog` — preset'ы ("In 1 hour", "Tomorrow morning", "In 1 week")
+    - `RecurrencePickerDialog` — preset'ы (Daily, Weekly, Every 2/3 days, Monthly)
+  - **AndroidManifest.xml** — добавлен FileProvider для экспорта файлов
+  - **res/xml/file_paths.xml** (NEW) — cache-path для exports/
+- **Сборка:**
+  - `./gradlew compileDebugKotlin --offline` — BUILD SUCCESSFUL
+  - `npx tsc --noEmit` — без ошибок (frontend не затронут)
+  - `npm run build` — без ошибок (427KB JS, 75KB CSS)
+  - `./mvnw clean compile -DskipTests` — без ошибок (backend не затронут)
+- **Заметки:**
+  - Архитектура категорий: полный CRUD через Repository pattern с offline fallback — offline creates используют local UUID + PendingChangeEntity, online-first при наличии сети
+  - Theme picker обновляет контекст на сервере через `PUT /contexts/{id}` с новым theme string
+  - Export реализован через FileProvider + Intent.ACTION_SEND (Android Share Sheet) — пользователь может сохранить/отправить JSON куда угодно
+  - Reminders UI использует presets вместо date/time picker для простоты — "In 1 hour", "In 3 hours", "Tomorrow morning", "In 2 days", "In 1 week"
+  - Recurrence UI использует предустановленные правила в JSON формате, совместимом с backend ({"type":"daily"}, {"type":"weekly"}, {"type":"custom","intervalDays":N})
+  - Категории уже отображались в drawer sidebar (из предыдущих задач), теперь добавлено управление (create/edit/delete)
+  - **Следующий приоритет: TASK-045** (Android Push-уведомления через FCM + локальные — medium, deps met) или **TASK-050** (E2E тестирование — low, но теперь все deps met)

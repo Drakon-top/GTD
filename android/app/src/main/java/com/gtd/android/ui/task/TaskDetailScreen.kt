@@ -18,9 +18,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Checkbox
@@ -190,6 +193,22 @@ fun TaskDetailScreen(
                         onTap = onNavigateToSubtask,
                         onAddSubtask = { viewModel.showAddSubtask() },
                     )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                    RemindersSection(
+                        reminders = state.reminders,
+                        isCompleted = state.isCompleted,
+                        onAdd = { viewModel.showAddReminder() },
+                        onDelete = { viewModel.deleteReminder(it) },
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                    RecurrenceSection(
+                        recurrenceRule = state.recurrenceRule,
+                        isCompleted = state.isCompleted,
+                        onConfigure = { viewModel.showRecurrencePicker() },
+                        onClear = { viewModel.setRecurrence(null) },
+                    )
                 }
             }
         }
@@ -216,6 +235,21 @@ fun TaskDetailScreen(
             onDismiss = { viewModel.dismissDatePicker() },
             onConfirm = { viewModel.updateDueDate(it) },
             onClear = { viewModel.clearDueDate() },
+        )
+    }
+
+    if (state.showAddReminder) {
+        AddReminderDialog(
+            onDismiss = { viewModel.dismissAddReminder() },
+            onCreate = { viewModel.createReminder(it) },
+        )
+    }
+
+    if (state.showRecurrencePicker) {
+        RecurrencePickerDialog(
+            currentRule = state.recurrenceRule,
+            onDismiss = { viewModel.dismissRecurrencePicker() },
+            onSelect = { viewModel.setRecurrence(it) },
         )
     }
 }
@@ -539,6 +573,263 @@ private fun TaskDatePickerDialog(
         },
     ) {
         DatePicker(state = datePickerState)
+    }
+}
+
+@Composable
+private fun RemindersSection(
+    reminders: List<ReminderUiItem>,
+    isCompleted: Boolean,
+    onAdd: () -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    "Reminders (${reminders.size})",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            if (!isCompleted) {
+                IconButton(onClick = onAdd) {
+                    Icon(Icons.Default.Add, contentDescription = "Add reminder")
+                }
+            }
+        }
+
+        if (reminders.isEmpty()) {
+            Text(
+                "No reminders set",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 4.dp),
+            )
+        } else {
+            reminders.forEach { reminder ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("🔔", fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = formatReminderTime(reminder.remindAt),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (!isCompleted) {
+                        IconButton(onClick = { onDelete(reminder.id) }, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Delete",
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecurrenceSection(
+    recurrenceRule: String?,
+    isCompleted: Boolean,
+    onConfigure: () -> Unit,
+    onClear: () -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    "Recurrence",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        if (recurrenceRule.isNullOrBlank()) {
+            if (!isCompleted) {
+                TextButton(onClick = onConfigure) {
+                    Text("Set up recurring task")
+                }
+            } else {
+                Text(
+                    "Not recurring",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AssistChip(
+                    onClick = { if (!isCompleted) onConfigure() },
+                    label = { Text(formatRecurrenceLabel(recurrenceRule)) },
+                )
+                if (!isCompleted) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = onClear, modifier = Modifier.size(28.dp)) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Stop recurrence",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddReminderDialog(
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit,
+) {
+    val presets = listOf(
+        "In 1 hour" to 1L,
+        "In 3 hours" to 3L,
+        "Tomorrow morning" to 24L,
+        "In 2 days" to 48L,
+        "In 1 week" to 168L,
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Reminder") },
+        text = {
+            Column {
+                presets.forEach { (label, hours) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val remindAt = java.time.Instant
+                                    .now()
+                                    .plusSeconds(hours * 3600)
+                                    .toString()
+                                onCreate(remindAt)
+                            }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("🔔", fontSize = 16.sp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                    if (label != presets.last().first) {
+                        HorizontalDivider()
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun RecurrencePickerDialog(
+    currentRule: String?,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    val options = listOf(
+        "Daily" to """{"type":"daily"}""",
+        "Weekly" to """{"type":"weekly"}""",
+        "Every 2 days" to """{"type":"custom","intervalDays":2}""",
+        "Every 3 days" to """{"type":"custom","intervalDays":3}""",
+        "Monthly" to """{"type":"custom","intervalDays":30}""",
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Set Recurrence") },
+        text = {
+            Column {
+                options.forEach { (label, rule) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(rule) }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("🔄", fontSize = 16.sp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                        if (rule == currentRule) {
+                            Spacer(modifier = Modifier.weight(1f))
+                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    if (label != options.last().first) {
+                        HorizontalDivider()
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+private fun formatReminderTime(isoString: String): String {
+    return try {
+        val instant = java.time.Instant.parse(isoString)
+        val local = instant.atZone(java.time.ZoneId.systemDefault())
+        val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm")
+        local.format(formatter)
+    } catch (_: Exception) {
+        isoString
+    }
+}
+
+private fun formatRecurrenceLabel(rule: String): String {
+    return when {
+        rule.contains("\"daily\"") -> "Daily"
+        rule.contains("\"weekly\"") -> "Weekly"
+        rule.contains("\"intervalDays\":2") -> "Every 2 days"
+        rule.contains("\"intervalDays\":3") -> "Every 3 days"
+        rule.contains("\"intervalDays\":30") -> "Monthly"
+        else -> "Custom"
     }
 }
 

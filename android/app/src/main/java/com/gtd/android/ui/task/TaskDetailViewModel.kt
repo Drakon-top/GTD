@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gtd.android.data.remote.dto.CategoryDto
+import com.gtd.android.data.remote.dto.ReminderDto
 import com.gtd.android.data.remote.dto.TaskDto
 import com.gtd.android.data.remote.dto.UpdateTaskRequest
 import com.gtd.android.data.repository.ApiResult
@@ -24,6 +25,13 @@ data class SubtaskUiItem(
     val subtasks: List<SubtaskUiItem> = emptyList(),
 )
 
+data class ReminderUiItem(
+    val id: String,
+    val remindAt: String,
+    val offsetType: String?,
+    val offsetValue: Int?,
+)
+
 data class TaskDetailUiState(
     val taskId: String = "",
     val contextId: String = "",
@@ -35,7 +43,9 @@ data class TaskDetailUiState(
     val nestingLevel: Int = 1,
     val isCompleted: Boolean = false,
     val progress: Int? = null,
+    val recurrenceRule: String? = null,
     val subtasks: List<SubtaskUiItem> = emptyList(),
+    val reminders: List<ReminderUiItem> = emptyList(),
     val categories: List<CategoryDto> = emptyList(),
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
@@ -44,6 +54,8 @@ data class TaskDetailUiState(
     val showAddSubtask: Boolean = false,
     val showMoveDialog: Boolean = false,
     val showDatePicker: Boolean = false,
+    val showAddReminder: Boolean = false,
+    val showRecurrencePicker: Boolean = false,
     val hasUnsavedChanges: Boolean = false,
 )
 
@@ -75,6 +87,7 @@ class TaskDetailViewModel @Inject constructor(
 
             val taskResult = repository.getTask(taskId)
             val categoriesResult = repository.getCategories(contextId)
+            val remindersResult = repository.getReminders(taskId)
 
             when (taskResult) {
                 is ApiResult.Success -> {
@@ -83,6 +96,10 @@ class TaskDetailViewModel @Inject constructor(
                     originalNotes = task.notes ?: ""
                     originalDueDate = task.dueDate ?: ""
                     originalCategoryId = task.categoryId
+
+                    val reminderItems = if (remindersResult is ApiResult.Success) {
+                        remindersResult.data.map { it.toUiItem() }
+                    } else emptyList()
 
                     _uiState.value = _uiState.value.copy(
                         title = task.title,
@@ -93,7 +110,9 @@ class TaskDetailViewModel @Inject constructor(
                         nestingLevel = task.nestingLevel,
                         isCompleted = task.isCompleted,
                         progress = task.progress,
+                        recurrenceRule = task.recurrenceRule,
                         subtasks = task.subtasks?.map { it.toSubtaskUi() } ?: emptyList(),
+                        reminders = reminderItems,
                         categories = if (categoriesResult is ApiResult.Success) categoriesResult.data else emptyList(),
                         isLoading = false,
                         hasUnsavedChanges = false,
@@ -262,6 +281,72 @@ class TaskDetailViewModel @Inject constructor(
             }
         }
     }
+
+    // ── Reminders ──
+
+    fun showAddReminder() {
+        _uiState.value = _uiState.value.copy(showAddReminder = true)
+    }
+
+    fun dismissAddReminder() {
+        _uiState.value = _uiState.value.copy(showAddReminder = false)
+    }
+
+    fun createReminder(remindAt: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(showAddReminder = false)
+            when (repository.createReminder(taskId, remindAt, null, null)) {
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadTask()
+                }
+                is ApiResult.Error -> { /* silently fail */ }
+            }
+        }
+    }
+
+    fun deleteReminder(reminderId: String) {
+        viewModelScope.launch {
+            when (repository.deleteReminder(reminderId)) {
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadTask()
+                }
+                is ApiResult.Error -> { /* silently fail */ }
+            }
+        }
+    }
+
+    // ── Recurrence ──
+
+    fun showRecurrencePicker() {
+        _uiState.value = _uiState.value.copy(showRecurrencePicker = true)
+    }
+
+    fun dismissRecurrencePicker() {
+        _uiState.value = _uiState.value.copy(showRecurrencePicker = false)
+    }
+
+    fun setRecurrence(rule: String?) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(showRecurrencePicker = false)
+            val request = UpdateTaskRequest(recurrenceRule = rule)
+            when (repository.updateTask(taskId, request)) {
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadTask()
+                }
+                is ApiResult.Error -> { /* silently fail */ }
+            }
+        }
+    }
+
+    private fun ReminderDto.toUiItem() = ReminderUiItem(
+        id = id,
+        remindAt = remindAt,
+        offsetType = offsetType,
+        offsetValue = offsetValue,
+    )
 
     private fun TaskDto.toSubtaskUi(): SubtaskUiItem = SubtaskUiItem(
         id = id,

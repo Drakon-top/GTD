@@ -2,9 +2,11 @@ package com.gtd.android.data
 
 import com.gtd.android.data.local.entity.CategoryEntity
 import com.gtd.android.data.local.entity.ContextEntity
+import com.gtd.android.data.local.entity.ReminderEntity
 import com.gtd.android.data.local.entity.TaskEntity
 import com.gtd.android.data.remote.dto.CategoryDto
 import com.gtd.android.data.remote.dto.ContextDto
+import com.gtd.android.data.remote.dto.ReminderDto
 import com.gtd.android.data.remote.dto.TaskDto
 import java.time.Instant
 
@@ -94,6 +96,26 @@ fun CategoryEntity.toDto(): CategoryDto = CategoryDto(
     color = color,
     sortOrder = sortOrder,
     isDeleted = isDeleted,
+)
+
+fun ReminderDto.toEntity(): ReminderEntity = ReminderEntity(
+    id = id,
+    taskId = taskId,
+    remindAt = remindAt.toEpochMillis() ?: 0L,
+    offsetType = offsetType,
+    offsetValue = offsetValue,
+    isSent = isSent,
+    createdAt = createdAt?.toEpochMillis(),
+)
+
+fun ReminderEntity.toDto(): ReminderDto = ReminderDto(
+    id = id,
+    taskId = taskId,
+    remindAt = Instant.ofEpochMilli(remindAt).toString(),
+    offsetType = offsetType,
+    offsetValue = offsetValue,
+    isSent = isSent,
+    createdAt = createdAt?.let { Instant.ofEpochMilli(it).toString() },
 )
 
 private fun String.toEpochMillis(): Long? = try {
