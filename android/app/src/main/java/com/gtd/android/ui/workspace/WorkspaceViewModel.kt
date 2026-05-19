@@ -51,6 +51,9 @@ data class WorkspaceUiState(
     val error: String? = null,
     val showCreateTask: Boolean = false,
     val isCreatingTask: Boolean = false,
+    val showMoveTask: Boolean = false,
+    val moveTaskId: String? = null,
+    val moveTaskCurrentList: String = "INBOX",
 )
 
 @HiltViewModel
@@ -198,6 +201,39 @@ class WorkspaceViewModel @Inject constructor(
     fun completeTask(taskId: String) {
         viewModelScope.launch {
             when (repository.completeTask(taskId)) {
+                is ApiResult.Success -> loadAll()
+                is ApiResult.Error -> { /* silently fail for now */ }
+            }
+        }
+    }
+
+    fun showMoveTask(taskId: String) {
+        val task = _uiState.value.tasks.find { it.id == taskId }
+        _uiState.value = _uiState.value.copy(
+            showMoveTask = true,
+            moveTaskId = taskId,
+            moveTaskCurrentList = task?.gtdList ?: "INBOX",
+        )
+    }
+
+    fun dismissMoveTask() {
+        _uiState.value = _uiState.value.copy(showMoveTask = false, moveTaskId = null)
+    }
+
+    fun moveTask(gtdList: String) {
+        val taskId = _uiState.value.moveTaskId ?: return
+        _uiState.value = _uiState.value.copy(showMoveTask = false, moveTaskId = null)
+        viewModelScope.launch {
+            when (repository.moveTask(taskId, gtdList)) {
+                is ApiResult.Success -> loadAll()
+                is ApiResult.Error -> { /* silently fail for now */ }
+            }
+        }
+    }
+
+    fun deleteTask(taskId: String) {
+        viewModelScope.launch {
+            when (repository.deleteTask(taskId)) {
                 is ApiResult.Success -> loadAll()
                 is ApiResult.Error -> { /* silently fail for now */ }
             }

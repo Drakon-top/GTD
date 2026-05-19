@@ -1,5 +1,7 @@
 package com.gtd.android.ui.workspace
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -39,11 +42,15 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +59,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -59,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gtd.android.domain.model.GtdList
 import kotlinx.coroutines.launch
 
 private val GTD_ICONS = mapOf(
@@ -77,6 +86,7 @@ private val GTD_ICONS = mapOf(
 fun WorkspaceScreen(
     contextId: String,
     onNavigateBack: () -> Unit,
+    onTaskClick: (String) -> Unit = {},
     viewModel: WorkspaceViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -197,9 +207,12 @@ fun WorkspaceScreen(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             items(state.tasks, key = { it.id }) { task ->
-                                TaskListItem(
+                                SwipeableTaskItem(
                                     task = task,
                                     onCheckedChange = { viewModel.completeTask(task.id) },
+                                    onClick = { onTaskClick(task.id) },
+                                    onSwipeComplete = { viewModel.completeTask(task.id) },
+                                    onSwipeMove = { viewModel.showMoveTask(task.id) },
                                 )
                             }
                         }
@@ -212,6 +225,14 @@ fun WorkspaceScreen(
                     isCreating = state.isCreatingTask,
                     onDismiss = { viewModel.dismissCreateTask() },
                     onCreate = { title -> viewModel.createTask(title) },
+                )
+            }
+
+            if (state.showMoveTask) {
+                MoveTaskDialog(
+                    currentList = state.moveTaskCurrentList,
+                    onDismiss = { viewModel.dismissMoveTask() },
+                    onMove = { gtdList -> viewModel.moveTask(gtdList) },
                 )
             }
         }
@@ -294,13 +315,96 @@ private fun WorkspaceDrawerContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TaskListItem(
+private fun SwipeableTaskItem(
     task: TaskUiItem,
     onCheckedChange: () -> Unit,
+    onClick: () -> Unit,
+    onSwipeComplete: () -> Unit,
+    onSwipeMove: () -> Unit,
+) {
+    if (task.isCompleted) {
+        TaskListItemContent(task = task, onCheckedChange = onCheckedChange, onClick = onClick)
+        return
+    }
+
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onSwipeMove()
+                    false
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onSwipeComplete()
+                    false
+                }
+                SwipeToDismissBoxValue.Settled -> false
+            }
+        },
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            val direction = dismissState.dismissDirection
+            val bgColor by animateColorAsState(
+                when (direction) {
+                    SwipeToDismissBoxValue.StartToEnd -> Color(0xFF1565C0)
+                    SwipeToDismissBoxValue.EndToStart -> Color(0xFF2E7D32)
+                    else -> Color.Transparent
+                },
+                label = "swipeBg",
+            )
+            val icon = when (direction) {
+                SwipeToDismissBoxValue.StartToEnd -> "📂"
+                SwipeToDismissBoxValue.EndToStart -> "✅"
+                else -> ""
+            }
+            val label = when (direction) {
+                SwipeToDismissBoxValue.StartToEnd -> "Move"
+                SwipeToDismissBoxValue.EndToStart -> "Complete"
+                else -> ""
+            }
+            val alignment = when (direction) {
+                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                else -> Alignment.CenterEnd
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(bgColor, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = alignment,
+            ) {
+                if (icon.isNotEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(icon, fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(label, color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        },
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = true,
+    ) {
+        TaskListItemContent(task = task, onCheckedChange = onCheckedChange, onClick = onClick)
+    }
+}
+
+@Composable
+private fun TaskListItemContent(
+    task: TaskUiItem,
+    onCheckedChange: () -> Unit,
+    onClick: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -368,6 +472,50 @@ private fun TaskListItem(
             }
         }
     }
+}
+
+@Composable
+private fun MoveTaskDialog(
+    currentList: String,
+    onDismiss: () -> Unit,
+    onMove: (String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Move to...") },
+        text = {
+            Column {
+                GtdList.entries.forEach { list ->
+                    val label = WorkspaceViewModel.GTD_LABELS[list.name] ?: list.name
+                    val icon = GTD_ICONS[list.name] ?: "📋"
+                    val selected = list.name == currentList
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !selected) { onMove(list.name) }
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(icon, fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    if (list != GtdList.entries.last()) {
+                        HorizontalDivider()
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable

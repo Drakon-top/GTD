@@ -16,6 +16,7 @@ import com.gtd.android.ui.auth.AuthViewModel
 import com.gtd.android.ui.auth.LoginScreen
 import com.gtd.android.ui.auth.RegisterScreen
 import com.gtd.android.ui.context.ContextsScreen
+import com.gtd.android.ui.task.TaskDetailScreen
 import com.gtd.android.ui.workspace.WorkspaceScreen
 
 object Routes {
@@ -23,8 +24,10 @@ object Routes {
     const val REGISTER = "register"
     const val CONTEXTS = "contexts"
     const val WORKSPACE = "workspace/{contextId}"
+    const val TASK_DETAIL = "workspace/{contextId}/task/{taskId}"
 
     fun workspace(contextId: String) = "workspace/$contextId"
+    fun taskDetail(contextId: String, taskId: String) = "workspace/$contextId/task/$taskId"
 }
 
 @Composable
@@ -93,6 +96,28 @@ fun GtdNavHost() {
             WorkspaceScreen(
                 contextId = contextId,
                 onNavigateBack = { navController.popBackStack() },
+                onTaskClick = { taskId ->
+                    navController.navigate(Routes.taskDetail(contextId, taskId))
+                },
+            )
+        }
+
+        composable(
+            route = Routes.TASK_DETAIL,
+            arguments = listOf(
+                navArgument("contextId") { type = NavType.StringType },
+                navArgument("taskId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val contextId = backStackEntry.arguments?.getString("contextId") ?: ""
+            val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
+            TaskDetailScreen(
+                taskId = taskId,
+                contextId = contextId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToSubtask = { subtaskId ->
+                    navController.navigate(Routes.taskDetail(contextId, subtaskId))
+                },
             )
         }
     }

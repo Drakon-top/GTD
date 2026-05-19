@@ -5,8 +5,10 @@ import com.gtd.android.data.remote.dto.CategoryDto
 import com.gtd.android.data.remote.dto.ContextDto
 import com.gtd.android.data.remote.dto.CreateContextRequest
 import com.gtd.android.data.remote.dto.CreateTaskRequest
+import com.gtd.android.data.remote.dto.MoveTaskRequest
 import com.gtd.android.data.remote.dto.TaskCountsDto
 import com.gtd.android.data.remote.dto.TaskDto
+import com.gtd.android.data.remote.dto.UpdateTaskRequest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -37,8 +39,26 @@ class GtdRepository @Inject constructor(
     suspend fun createTask(contextId: String, title: String): ApiResult<TaskDto> =
         safeCall { api.createTask(contextId, CreateTaskRequest(title = title)) }
 
+    suspend fun getTask(taskId: String): ApiResult<TaskDto> =
+        safeCall { api.getTask(taskId) }
+
+    suspend fun updateTask(taskId: String, request: UpdateTaskRequest): ApiResult<TaskDto> =
+        safeCall { api.updateTask(taskId, request) }
+
+    suspend fun deleteTask(taskId: String): ApiResult<Unit> =
+        safeCall { api.deleteTask(taskId) }
+
+    suspend fun moveTask(taskId: String, gtdList: String): ApiResult<TaskDto> =
+        safeCall { api.moveTask(taskId, MoveTaskRequest(gtdList)) }
+
     suspend fun completeTask(taskId: String): ApiResult<TaskDto> =
         safeCall { api.completeTask(taskId) }
+
+    suspend fun createSubtask(parentId: String, title: String): ApiResult<TaskDto> =
+        safeCall { api.createSubtask(parentId, CreateTaskRequest(title = title)) }
+
+    suspend fun getSubtasks(taskId: String): ApiResult<List<TaskDto>> =
+        safeCall { api.getSubtasks(taskId) }
 
     suspend fun getCategories(contextId: String): ApiResult<List<CategoryDto>> =
         safeCall { api.getCategories(contextId) }

@@ -978,7 +978,7 @@
         "Шаг 5: Проверить прогресс-бар для проекта с подзадачами"
       ],
       "dependencies": ["TASK-040", "TASK-012", "TASK-013"],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-042",

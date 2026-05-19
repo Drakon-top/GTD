@@ -1545,3 +1545,62 @@
   - CreateTaskDialog создаёт задачу только с title → попадает в INBOX с nesting_level=1 (backend default); full CRUD (notes, due_date, category, etc.) будет в TASK-041
   - Checkbox complete работает через API PATCH /tasks/{id}/complete → после успеха перезагружает все данные; оптимизация (optimistic UI) будет в рамках офлайн-режима
   - **Следующий приоритет: TASK-041** (Android CRUD задач + подзадачи + перемещение — зависит от TASK-040 done + TASK-012 done + TASK-013 done, все deps met)
+
+### TASK-041 — Android: CRUD задач + подзадачи + перемещение между списками
+- **Дата:** 2026-05-19
+- **Статус:** done
+- **Что сделано:**
+  - **GtdRepository.kt** — расширен 6 новыми методами:
+    - `getTask(taskId)` — получение одной задачи с подзадачами
+    - `updateTask(taskId, UpdateTaskRequest)` — обновление title, notes, dueDate, categoryId
+    - `deleteTask(taskId)` — soft delete через API
+    - `moveTask(taskId, gtdList)` — перемещение между GTD-списками через PATCH /move
+    - `createSubtask(parentId, title)` — создание подзадачи
+    - `getSubtasks(taskId)` — получение подзадач
+  - **TaskDetailViewModel.kt** — новый ViewModel для экрана деталей задачи:
+    - Загрузка задачи + категорий контекста при инициализации
+    - Отслеживание unsaved changes (title, notes, dueDate, categoryId)
+    - Автосохранение при нажатии Back (если есть изменения)
+    - CRUD: save, delete, complete, move to list
+    - Управление подзадачами: create subtask, complete subtask
+    - Диалоги: move, add subtask, date picker
+  - **TaskDetailScreen.kt** — новый полноценный экран деталей задачи:
+    - Title — редактируемое OutlinedTextField (disabled для completed)
+    - Notes — многострочное текстовое поле (120dp высота)
+    - Due date — AssistChip с DatePickerDialog (Material3), clear кнопка
+    - Category — FilterChip row (None + все категории контекста)
+    - GTD list — AssistChip "Move to..." → MoveTaskDialog со всеми 8 списками
+    - Progress bar — отображается для задач с подзадачами (percentage)
+    - Subtasks section — иерархическое отображение с рекурсивным SubtaskItem
+    - Add subtask кнопка (скрыта при nestingLevel >= 4)
+    - Нажатие на подзадачу → навигация на тот же TaskDetailScreen (reuse route)
+    - Top bar: Back (с автосохранением), Save icon (при unsaved changes), MoreVert menu (Move, Complete, Delete)
+    - Loading/Error/Retry states
+  - **WorkspaceScreen.kt** — улучшен с двумя новыми фичами:
+    - **Tap-to-detail**: клик на задачу → навигация на TaskDetailScreen
+    - **Swipe gestures** (SwipeToDismissBox): свайп влево → Complete (зелёный фон, ✅), свайп вправо → Move (синий фон, 📂)
+    - MoveTaskDialog — выбор GTD-списка с эмодзи и highlight текущего
+    - Completed задачи не свайпятся (swipe disabled для isCompleted)
+    - TaskListItemContent выделен из TaskListItem для переиспользования в swipe и non-swipe режимах
+  - **WorkspaceViewModel.kt** — расширен:
+    - `showMoveTask(taskId)` / `dismissMoveTask()` / `moveTask(gtdList)` — полный flow перемещения через workspace
+    - `deleteTask(taskId)` — удаление из списка
+    - WorkspaceUiState расширен: showMoveTask, moveTaskId, moveTaskCurrentList
+  - **GtdNavHost.kt** — добавлен route для task detail:
+    - `Routes.TASK_DETAIL = "workspace/{contextId}/task/{taskId}"`
+    - `Routes.taskDetail(contextId, taskId)` — helper
+    - TaskDetailScreen с навигацией на подзадачи (reuse того же route)
+    - WorkspaceScreen получил `onTaskClick` callback
+  - `./gradlew compileDebugKotlin --offline` — BUILD SUCCESSFUL
+  - `npx tsc --noEmit` — без ошибок (frontend не затронут)
+  - `npm run build` — без ошибок (427KB JS, 75KB CSS)
+  - `./mvnw clean compile -DskipTests` — без ошибок (backend не затронут)
+- **Коммиты:** feat: add Android task CRUD, subtasks, and swipe-to-move/complete (TASK-041)
+- **Заметки:**
+  - Все данные загружаются из API (без Room-кэширования) — Room будет подключен в TASK-043 (офлайн)
+  - UpdateTaskRequest отправляет null для пустых полей (dueDate="" → null), бэкенд интерпретирует null как "не менять"; для очистки поля нужен отдельный механизм (TODO)
+  - TaskDetailScreen поддерживает навигацию в подзадачи (тот же route с другим taskId) — навигационный стек может углубиться до 4 уровней
+  - SwipeToDismissBox confirmValueChange всегда возвращает false → карточка возвращается на место после действия (не исчезает)
+  - MoveTaskDialog в WorkspaceScreen переиспользует GTD_ICONS из того же файла; в TaskDetailScreen — собственный GTD_LIST_ICONS (дублирование, в будущем можно вынести в общий модуль)
+  - Autosave при Back: если есть unsaved changes, saveTask() вызывается перед onNavigateBack(); save fire-and-forget (не ждёт результата перед навигацией)
+  - **Следующий приоритет: TASK-042** (Android категории + темы + экспорт) или **TASK-043** (Android офлайн-режим) — TASK-043 имеет более высокий приоритет (high vs medium) и блокирует TASK-044 (sync)
