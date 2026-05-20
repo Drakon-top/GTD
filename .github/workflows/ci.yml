@@ -56,7 +56,7 @@ jobs:
       - name: Run tests
         env:
           SPRING_PROFILES_ACTIVE: ci
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/gtd_test
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/gtd_test?stringtype=unspecified
           SPRING_DATASOURCE_USERNAME: gtd_test
           SPRING_DATASOURCE_PASSWORD: gtd_test
           SPRING_RABBITMQ_HOST: localhost
