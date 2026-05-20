@@ -1967,3 +1967,10 @@
 - Для E2E: нужен запущенный backend (`docker-compose up -d && ./mvnw spring-boot:run`) + frontend dev server (`npm run dev`) + браузер
 - Android E2E требует эмулятор + реальный бэкенд на доступном хосте
 - Все оставшиеся пункты TASK-050 — ручное/инфраструктурное тестирование, требуют Docker + PostgreSQL + RabbitMQ
+
+## 2026-05-21: CI/CD и деплой
+- Исправлен порядок очистки FK в setUp() интеграционных тестов (33 ошибки → 0)
+- Исправлено сравнение recurrenceRule как JSON-дерева (2 failures → 0)
+- Добавлена поддержка IP-only деплоя без домена и SSL
+- Настроен CI: workflow_dispatch, conditional docker/deploy jobs
+- Первый деплой на Yandex Cloud VPS (158.160.71.58)
