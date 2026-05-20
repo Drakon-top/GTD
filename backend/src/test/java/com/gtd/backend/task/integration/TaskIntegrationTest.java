@@ -763,13 +763,14 @@ class TaskIntegrationTest {
                 .recurrenceRule("{\"type\":\"daily\",\"time\":\"09:00\"}")
                 .build();
 
-        mockMvc.perform(post("/api/v1/contexts/{contextId}/tasks", contextId)
+        MvcResult result = mockMvc.perform(post("/api/v1/contexts/{contextId}/tasks", contextId)
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.title").value("Daily standup"))
-                .andExpect(jsonPath("$.recurrenceRule").value("{\"type\":\"daily\",\"time\":\"09:00\"}"));
+                .andReturn();
+        assertRecurrenceRule(result, "{\"type\":\"daily\",\"time\":\"09:00\"}");
     }
 
     @Test
@@ -800,13 +801,14 @@ class TaskIntegrationTest {
         String nextInstanceId = objectMapper.readTree(completeResult.getResponse().getContentAsString())
                 .get("nextInstanceId").asText();
 
-        mockMvc.perform(get("/api/v1/tasks/{id}", nextInstanceId)
+        MvcResult nextResult = mockMvc.perform(get("/api/v1/tasks/{id}", nextInstanceId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Daily standup"))
-                .andExpect(jsonPath("$.recurrenceRule").value(recurrenceRule))
                 .andExpect(jsonPath("$.isCompleted").value(false))
-                .andExpect(jsonPath("$.gtdList").value("INBOX"));
+                .andExpect(jsonPath("$.gtdList").value("INBOX"))
+                .andReturn();
+        assertRecurrenceRule(nextResult, "{\"type\":\"daily\",\"time\":\"09:00\"}");
     }
 
     @Test
@@ -951,11 +953,19 @@ class TaskIntegrationTest {
         String nextInstanceId = objectMapper.readTree(completeResult.getResponse().getContentAsString())
                 .get("nextInstanceId").asText();
 
-        mockMvc.perform(get("/api/v1/tasks/{id}", nextInstanceId)
+        MvcResult inheritResult = mockMvc.perform(get("/api/v1/tasks/{id}", nextInstanceId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contextId").value(contextId))
                 .andExpect(jsonPath("$.categoryId").value(categoryId))
-                .andExpect(jsonPath("$.recurrenceRule").value("{\"type\":\"weekly\"}"));
+                .andReturn();
+        assertRecurrenceRule(inheritResult, "{\"type\":\"weekly\"}");
+    }
+
+    private void assertRecurrenceRule(MvcResult result, String expectedJson) throws Exception {
+        var responseJson = objectMapper.readTree(result.getResponse().getContentAsString());
+        var actual = objectMapper.readTree(responseJson.get("recurrenceRule").asText());
+        var expected = objectMapper.readTree(expectedJson);
+        assertThat(actual).isEqualTo(expected);
     }
 }
