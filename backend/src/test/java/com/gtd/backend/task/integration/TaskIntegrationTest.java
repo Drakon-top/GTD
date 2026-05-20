@@ -99,7 +99,7 @@ class TaskIntegrationTest {
                 .andExpect(jsonPath("$.title").value("Buy groceries"))
                 .andExpect(jsonPath("$.gtdList").value("INBOX"))
                 .andExpect(jsonPath("$.nestingLevel").value(1))
-                .andExpect(jsonPath("$.completed").value(false))
+                .andExpect(jsonPath("$.isCompleted").value(false))
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.contextId").value(contextId))
                 .andExpect(jsonPath("$.createdAt").isNotEmpty());
@@ -288,7 +288,7 @@ class TaskIntegrationTest {
         mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.isCompleted").value(true))
                 .andExpect(jsonPath("$.completedAt").isNotEmpty())
                 .andExpect(jsonPath("$.gtdList").value("DONE"));
     }
@@ -473,7 +473,7 @@ class TaskIntegrationTest {
         mockMvc.perform(patch("/api/v1/tasks/{id}/complete", parentId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.isCompleted").value(true))
                 .andExpect(jsonPath("$.hasIncompleteSubtasks").value(true));
     }
 
@@ -484,7 +484,7 @@ class TaskIntegrationTest {
         mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.isCompleted").value(true))
                 .andExpect(jsonPath("$.hasIncompleteSubtasks").doesNotExist());
     }
 
@@ -791,7 +791,7 @@ class TaskIntegrationTest {
         MvcResult completeResult = mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.isCompleted").value(true))
                 .andExpect(jsonPath("$.gtdList").value("DONE"))
                 .andExpect(jsonPath("$.isRecurring").value(true))
                 .andExpect(jsonPath("$.nextInstanceId").isNotEmpty())
@@ -805,7 +805,7 @@ class TaskIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Daily standup"))
                 .andExpect(jsonPath("$.recurrenceRule").value(recurrenceRule))
-                .andExpect(jsonPath("$.completed").value(false))
+                .andExpect(jsonPath("$.isCompleted").value(false))
                 .andExpect(jsonPath("$.gtdList").value("INBOX"));
     }
 
@@ -846,7 +846,7 @@ class TaskIntegrationTest {
         mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.isCompleted").value(true))
                 .andExpect(jsonPath("$.nextInstanceId").doesNotExist())
                 .andExpect(jsonPath("$.isRecurring").doesNotExist());
     }
@@ -914,7 +914,7 @@ class TaskIntegrationTest {
         mockMvc.perform(patch("/api/v1/tasks/{id}/complete", taskId)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.isCompleted").value(true))
                 .andExpect(jsonPath("$.nextInstanceId").doesNotExist())
                 .andExpect(jsonPath("$.isRecurring").doesNotExist());
     }
