@@ -6,6 +6,9 @@ import com.gtd.backend.auth.dto.RegisterRequest;
 import com.gtd.backend.auth.repository.RefreshTokenRepository;
 import com.gtd.backend.auth.repository.UserRepository;
 import com.gtd.backend.category.repository.CategoryRepository;
+import com.gtd.backend.reminder.repository.ReminderRepository;
+import com.gtd.backend.sync.repository.SyncLogRepository;
+import com.gtd.backend.task.repository.TaskRepository;
 import com.gtd.backend.context.dto.CreateContextRequest;
 import com.gtd.backend.context.dto.UpdateContextRequest;
 import com.gtd.backend.context.model.ContextTheme;
@@ -50,12 +53,24 @@ class ContextIntegrationTest {
     private CategoryRepository categoryRepository;
 
     @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
+    private ReminderRepository reminderRepository;
+
+    @Autowired
+    private SyncLogRepository syncLogRepository;
+
+    @Autowired
     private RateLimitingFilter rateLimitingFilter;
 
     private String accessToken;
 
     @BeforeEach
     void setUp() throws Exception {
+        syncLogRepository.deleteAll();
+        reminderRepository.deleteAll();
+        taskRepository.deleteAll();
         categoryRepository.deleteAll();
         contextRepository.deleteAll();
         refreshTokenRepository.deleteAll();

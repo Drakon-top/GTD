@@ -8,6 +8,9 @@ import com.gtd.backend.auth.repository.UserRepository;
 import com.gtd.backend.category.repository.CategoryRepository;
 import com.gtd.backend.config.RateLimitingFilter;
 import com.gtd.backend.context.repository.ContextRepository;
+import com.gtd.backend.reminder.repository.ReminderRepository;
+import com.gtd.backend.sync.repository.SyncLogRepository;
+import com.gtd.backend.task.repository.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +50,15 @@ class RegistrationIntegrationTest {
     private CategoryRepository categoryRepository;
 
     @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
+    private ReminderRepository reminderRepository;
+
+    @Autowired
+    private SyncLogRepository syncLogRepository;
+
+    @Autowired
     private RateLimitingFilter rateLimitingFilter;
 
     @Autowired
@@ -54,6 +66,9 @@ class RegistrationIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        syncLogRepository.deleteAll();
+        reminderRepository.deleteAll();
+        taskRepository.deleteAll();
         categoryRepository.deleteAll();
         contextRepository.deleteAll();
         refreshTokenRepository.deleteAll();

@@ -157,6 +157,9 @@ class ExportIntegrationTest {
 
     @Test
     void shouldReturnEmptyExportForUserWithNoContexts() throws Exception {
+        reminderRepository.deleteAll();
+        taskRepository.deleteAll();
+        categoryRepository.deleteAll();
         contextRepository.deleteAll();
 
         mockMvc.perform(get("/api/v1/export")

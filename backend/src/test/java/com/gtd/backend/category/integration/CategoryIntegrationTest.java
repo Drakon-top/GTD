@@ -12,6 +12,8 @@ import com.gtd.backend.config.RateLimitingFilter;
 import com.gtd.backend.context.dto.CreateContextRequest;
 import com.gtd.backend.context.model.ContextTheme;
 import com.gtd.backend.context.repository.ContextRepository;
+import com.gtd.backend.reminder.repository.ReminderRepository;
+import com.gtd.backend.sync.repository.SyncLogRepository;
 import com.gtd.backend.task.dto.CreateTaskRequest;
 import com.gtd.backend.task.repository.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +58,12 @@ class CategoryIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private ReminderRepository reminderRepository;
+
+    @Autowired
+    private SyncLogRepository syncLogRepository;
+
+    @Autowired
     private RateLimitingFilter rateLimitingFilter;
 
     private String accessToken;
@@ -63,6 +71,8 @@ class CategoryIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        syncLogRepository.deleteAll();
+        reminderRepository.deleteAll();
         taskRepository.deleteAll();
         categoryRepository.deleteAll();
         contextRepository.deleteAll();
