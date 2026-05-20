@@ -177,12 +177,16 @@ jobs:
             chmod +x scripts/*.sh
             docker pull ${{ vars.DOCKER_REGISTRY }}/gtd-backend:${{ github.sha }}
             docker tag ${{ vars.DOCKER_REGISTRY }}/gtd-backend:${{ github.sha }} gtd-backend:latest
-            # Generate nginx config from template if DOMAIN is set
+            # Pick nginx config: SSL with domain, init for fresh domain, or plain HTTP for IP-only
             if [ -n "${DOMAIN:-}" ] && [ -f certbot/conf/live/${DOMAIN}/fullchain.pem ]; then
               sed "s/__DOMAIN__/${DOMAIN}/g" nginx/nginx.conf > nginx/nginx-generated.conf
+              docker compose -f docker-compose.prod.yml --profile ssl up -d --no-build
+            elif [ -n "${DOMAIN:-}" ]; then
+              sed "s/__DOMAIN__/${DOMAIN}/g" nginx/nginx-init.conf > nginx/nginx-generated.conf
+              docker compose -f docker-compose.prod.yml up -d --no-build
             else
-              sed "s/__DOMAIN__/${DOMAIN:-localhost}/g" nginx/nginx-init.conf > nginx/nginx-generated.conf
+              cp nginx/nginx-ip.conf nginx/nginx-generated.conf
+              docker compose -f docker-compose.prod.yml up -d --no-build
             fi
-            docker compose -f docker-compose.prod.yml up -d --no-build
             docker compose -f docker-compose.prod.yml exec -T app wget -qO- http://localhost:8080/actuator/health
             echo "Deployment successful!"
