@@ -176,6 +176,7 @@ jobs:
           script: |
             cd /opt/gtd
             chmod +x scripts/*.sh
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login ghcr.io -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
             docker pull ${{ vars.DOCKER_REGISTRY }}/gtd-backend:${{ github.sha }}
             docker tag ${{ vars.DOCKER_REGISTRY }}/gtd-backend:${{ github.sha }} gtd-backend:latest
             # Pick nginx config: SSL with domain, init for fresh domain, or plain HTTP for IP-only
