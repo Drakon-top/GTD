@@ -110,11 +110,8 @@ const EMOJI_TO_LUCIDE: Record<string, string> = {
   '\u2764\uFE0F': 'heart',
   '\u2B50': 'star',
   '\uD83D\uDCC1': 'briefcase',
-  '\uD83D\uDD27': 'wrench',
   '\uD83C\uDF4E': 'leaf',
   '\uD83D\uDCDD': 'book-open',
-  '\uD83C\uDF93': 'graduation-cap',
-  '\u2764\uFE0F': 'heart',
 };
 
 export function getCategoryIcon(iconKey: string | null | undefined): ComponentType<{ className?: string }> {
