@@ -73,9 +73,54 @@ const CONTEXT_ICON_MAP: Record<string, ComponentType<{ className?: string }>> = 
   'star': Star,
 };
 
+const EMOJI_TO_LUCIDE: Record<string, string> = {
+  '\uD83D\uDCDA': 'book-open',
+  '\uD83D\uDCBC': 'briefcase',
+  '\uD83C\uDFE0': 'home',
+  '\uD83C\uDFAF': 'target',
+  '\uD83C\uDFC3': 'activity',
+  '\uD83C\uDFA8': 'palette',
+  '\uD83C\uDFB5': 'music',
+  '\uD83D\uDCB0': 'wallet',
+  '\uD83D\uDED2': 'shopping-cart',
+  '\u2708\uFE0F': 'plane',
+  '\uD83D\uDD27': 'wrench',
+  '\uD83C\uDF93': 'graduation-cap',
+  '\uD83D\uDCF7': 'camera',
+  '\u2615': 'coffee',
+  '\uD83C\uDF0D': 'globe',
+  '\uD83C\uDFA7': 'headphones',
+  '\uD83D\uDCBB': 'laptop',
+  '\uD83D\uDDFA\uFE0F': 'map',
+  '\uD83D\uDCDE': 'phone',
+  '\u2702\uFE0F': 'scissors',
+  '\uD83D\uDE04': 'smile',
+  '\u2600\uFE0F': 'sun',
+  '\u2602\uFE0F': 'umbrella',
+  '\uD83C\uDF74': 'utensils',
+  '\uD83D\uDEB2': 'bike',
+  '\uD83D\uDE97': 'car',
+  '\uD83C\uDFAC': 'film',
+  '\uD83C\uDF81': 'gift',
+  '\uD83D\uDD11': 'key',
+  '\uD83C\uDF3F': 'leaf',
+  '\u26F0\uFE0F': 'mountain',
+  '\u2728': 'sparkles',
+  '\uD83C\uDFCB\uFE0F': 'dumbbell',
+  '\u2764\uFE0F': 'heart',
+  '\u2B50': 'star',
+  '\uD83D\uDCC1': 'briefcase',
+  '\uD83D\uDD27': 'wrench',
+  '\uD83C\uDF4E': 'leaf',
+  '\uD83D\uDCDD': 'book-open',
+  '\uD83C\uDF93': 'graduation-cap',
+  '\u2764\uFE0F': 'heart',
+};
+
 export function getCategoryIcon(iconKey: string | null | undefined): ComponentType<{ className?: string }> {
   if (!iconKey) return Tag;
-  return CATEGORY_ICON_MAP[iconKey] ?? Tag;
+  const resolved = CATEGORY_ICON_MAP[iconKey] ?? CATEGORY_ICON_MAP[EMOJI_TO_LUCIDE[iconKey] ?? ''];
+  return resolved ?? Tag;
 }
 
 export function getContextIcon(iconKey: string | null | undefined): ComponentType<{ className?: string }> {

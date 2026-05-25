@@ -46,9 +46,13 @@ private val CATEGORY_COLORS = listOf(
     "#06B6D4", "#3B82F6", "#8B5CF6", "#EC4899",
 )
 
-private val CATEGORY_ICONS = listOf(
-    "📁", "📚", "💼", "🎯", "🏠", "💡", "🎨", "🔧",
-    "🎵", "🏃", "🍎", "✈️", "📝", "💰", "🎓", "❤️",
+private val CATEGORY_ICON_PRESETS = listOf(
+    "book-open", "briefcase", "home", "target", "activity", "palette",
+    "music", "wallet", "shopping-cart", "plane", "wrench", "graduation-cap",
+    "camera", "coffee", "globe", "headphones", "laptop", "map",
+    "phone", "scissors", "smile", "sun", "umbrella", "utensils",
+    "bike", "car", "film", "gift", "key", "leaf",
+    "mountain", "sparkles", "dumbbell", "heart", "star",
 )
 
 @Composable
@@ -148,7 +152,7 @@ private fun CategoryListItem(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = category.icon ?: "🏷️",
+            text = resolveCategoryIcon(category.icon),
             fontSize = 18.sp,
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -197,7 +201,7 @@ private fun CategoryForm(
     submitLabel: String,
 ) {
     var name by remember { mutableStateOf(initialName) }
-    var selectedIcon by remember { mutableStateOf(initialIcon) }
+    var selectedIcon by remember { mutableStateOf(normalizeCategoryIconKey(initialIcon)) }
     var selectedColor by remember { mutableStateOf(initialColor) }
 
     Column {
@@ -212,19 +216,21 @@ private fun CategoryForm(
         Spacer(modifier = Modifier.height(8.dp))
         Text("Icon", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            items(CATEGORY_ICONS) { icon ->
+            items(CATEGORY_ICON_PRESETS) { iconKey ->
+                val isSelected = iconKey == selectedIcon ||
+                    normalizeCategoryIconKey(selectedIcon) == iconKey
                 Box(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(
-                            if (icon == selectedIcon) MaterialTheme.colorScheme.primaryContainer
+                            if (isSelected) MaterialTheme.colorScheme.primaryContainer
                             else Color.Transparent,
                         )
-                        .clickable { selectedIcon = icon },
+                        .clickable { selectedIcon = iconKey },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(icon, fontSize = 18.sp)
+                    Text(resolveCategoryIcon(iconKey), fontSize = 18.sp)
                 }
             }
         }

@@ -3,6 +3,8 @@ package com.gtd.android.ui.workspace
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,6 +74,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gtd.android.data.sync.SyncStatus
 import com.gtd.android.domain.model.GtdList
+import com.gtd.android.ui.theme.ContextThemeColorScheme
+import com.gtd.android.ui.theme.getContextTheme
 import kotlinx.coroutines.launch
 
 private val GTD_ICONS = mapOf(
@@ -85,6 +89,7 @@ private val GTD_ICONS = mapOf(
     "DONE" to "✅",
 )
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkspaceScreen(
@@ -96,14 +101,18 @@ fun WorkspaceScreen(
     val state by viewModel.uiState.collectAsState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val themeColors = getContextTheme(state.contextTheme)
 
     DismissibleNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            DismissibleDrawerSheet {
+            DismissibleDrawerSheet(
+                drawerContainerColor = themeColors.sidebarBg,
+            ) {
                 WorkspaceDrawerContent(
                     sections = state.sidebarSections,
                     selectedSection = state.selectedSection,
+                    themeColors = themeColors,
                     onSectionClick = { key ->
                         viewModel.selectSection(key)
                         scope.launch { drawerState.close() }
@@ -113,6 +122,7 @@ fun WorkspaceScreen(
         },
     ) {
         Scaffold(
+            containerColor = themeColors.background,
             topBar = {
                 TopAppBar(
                     title = {
@@ -121,11 +131,12 @@ fun WorkspaceScreen(
                                 text = state.contextName,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                                color = themeColors.headerText,
                             )
                             Text(
                                 text = sectionLabel(state.selectedSection, state.sidebarSections),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = themeColors.headerSubtext,
                             )
                         }
                     },
@@ -135,10 +146,15 @@ fun WorkspaceScreen(
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back",
+                                    tint = themeColors.headerText,
                                 )
                             }
                             IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                                Icon(
+                                    Icons.Default.Menu,
+                                    contentDescription = "Menu",
+                                    tint = themeColors.headerText,
+                                )
                             }
                         }
                     },
@@ -148,13 +164,19 @@ fun WorkspaceScreen(
                             onManageCategories = { viewModel.showCategoryManager() },
                             onChangeTheme = { viewModel.showThemePicker() },
                             onExport = { viewModel.showExport() },
+                            iconTint = themeColors.headerText,
                         )
                     },
+                    colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+                        containerColor = themeColors.headerBg,
+                    ),
                 )
             },
             floatingActionButton = {
                 FloatingActionButton(
                     onClick = { viewModel.showCreateTask() },
+                    containerColor = themeColors.btnPrimary,
+                    contentColor = themeColors.btnPrimaryText,
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Add task")
                 }
@@ -163,12 +185,14 @@ fun WorkspaceScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(themeColors.background)
                     .padding(paddingValues),
             ) {
                 when {
                     state.isLoadingContext || state.isLoadingTasks -> {
                         CircularProgressIndicator(
                             modifier = Modifier.align(Alignment.Center),
+                            color = themeColors.accentColor,
                         )
                     }
                     state.error != null -> {
@@ -178,7 +202,11 @@ fun WorkspaceScreen(
                                 .padding(32.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Text("Failed to load", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Failed to load",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = themeColors.taskText,
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = state.error!!,
@@ -188,7 +216,7 @@ fun WorkspaceScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = "Tap to retry",
-                                color = MaterialTheme.colorScheme.primary,
+                                color = themeColors.accentColor,
                                 modifier = Modifier.clickable { viewModel.loadAll() },
                             )
                         }
@@ -203,13 +231,13 @@ fun WorkspaceScreen(
                             Text(
                                 text = "No tasks",
                                 style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = themeColors.taskSubtext,
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = "Tap + to add your first task",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = themeColors.taskSubtext,
                             )
                         }
                     }
@@ -221,6 +249,7 @@ fun WorkspaceScreen(
                             items(state.tasks, key = { it.id }) { task ->
                                 SwipeableTaskItem(
                                     task = task,
+                                    themeColors = themeColors,
                                     onCheckedChange = { viewModel.completeTask(task.id) },
                                     onClick = { onTaskClick(task.id) },
                                     onSwipeComplete = { viewModel.completeTask(task.id) },
@@ -285,12 +314,13 @@ private fun WorkspaceMenu(
     onManageCategories: () -> Unit,
     onChangeTheme: () -> Unit,
     onExport: () -> Unit,
+    iconTint: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
     Box {
         IconButton(onClick = { showMenu = true }) {
-            Icon(Icons.Default.MoreVert, contentDescription = "Settings")
+            Icon(Icons.Default.MoreVert, contentDescription = "Settings", tint = iconTint)
         }
         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
             DropdownMenuItem(
@@ -313,72 +343,134 @@ private fun WorkspaceMenu(
 private fun WorkspaceDrawerContent(
     sections: List<SidebarSection>,
     selectedSection: String,
+    themeColors: ContextThemeColorScheme,
     onSectionClick: (String) -> Unit,
 ) {
     val gtdSections = sections.filter { it.isGtdList && it.key != "DONE" }
     val doneSections = sections.filter { it.isGtdList && it.key == "DONE" }
     val categorySections = sections.filter { !it.isGtdList }
 
-    Column(modifier = Modifier.padding(top = 16.dp)) {
+    Column(
+        modifier = Modifier
+            .padding(top = 16.dp)
+            .verticalScroll(rememberScrollState()),
+    ) {
         Text(
             text = "GTD Lists",
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = themeColors.sidebarLabel,
             modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
         )
 
         gtdSections.forEach { section ->
+            val isSelected = selectedSection == section.key
             NavigationDrawerItem(
                 icon = {
                     Text(GTD_ICONS[section.key] ?: "\uD83D\uDCCB", fontSize = 18.sp)
                 },
-                label = { Text(section.label) },
+                label = {
+                    Text(
+                        section.label,
+                        color = if (isSelected) themeColors.sidebarItemActiveText
+                        else themeColors.sidebarItemText,
+                    )
+                },
                 badge = if (section.count > 0) {
-                    { Text("${section.count}", fontSize = 12.sp) }
+                    {
+                        Text(
+                            "${section.count}",
+                            fontSize = 12.sp,
+                            color = themeColors.badgeText,
+                        )
+                    }
                 } else null,
-                selected = selectedSection == section.key,
+                selected = isSelected,
                 onClick = { onSectionClick(section.key) },
                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                colors = NavigationDrawerItemDefaults.colors(
+                    selectedContainerColor = themeColors.sidebarItemActive,
+                    unselectedContainerColor = Color.Transparent,
+                ),
             )
         }
 
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+            color = themeColors.taskDivider,
+        )
 
         doneSections.forEach { section ->
+            val isSelected = selectedSection == section.key
             NavigationDrawerItem(
                 icon = { Text("✅", fontSize = 18.sp) },
-                label = { Text(section.label) },
+                label = {
+                    Text(
+                        section.label,
+                        color = if (isSelected) themeColors.sidebarItemActiveText
+                        else themeColors.sidebarItemText,
+                    )
+                },
                 badge = if (section.count > 0) {
-                    { Text("${section.count}", fontSize = 12.sp) }
+                    {
+                        Text(
+                            "${section.count}",
+                            fontSize = 12.sp,
+                            color = themeColors.badgeText,
+                        )
+                    }
                 } else null,
-                selected = selectedSection == section.key,
+                selected = isSelected,
                 onClick = { onSectionClick(section.key) },
                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                colors = NavigationDrawerItemDefaults.colors(
+                    selectedContainerColor = themeColors.sidebarItemActive,
+                    unselectedContainerColor = Color.Transparent,
+                ),
             )
         }
 
         if (categorySections.isNotEmpty()) {
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+                color = themeColors.taskDivider,
+            )
 
             Text(
                 text = "Categories",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = themeColors.sidebarLabel,
                 modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
             )
 
             categorySections.forEach { section ->
+                val isSelected = selectedSection == section.key
                 NavigationDrawerItem(
-                    icon = { Text("\uD83C\uDFF7\uFE0F", fontSize = 18.sp) },
-                    label = { Text(section.label) },
+                    icon = { Text(resolveCategoryIcon(section.icon), fontSize = 18.sp) },
+                    label = {
+                        Text(
+                            section.label,
+                            color = if (isSelected) themeColors.sidebarItemActiveText
+                            else themeColors.sidebarItemText,
+                        )
+                    },
                     badge = if (section.count > 0) {
-                        { Text("${section.count}", fontSize = 12.sp) }
+                        {
+                            Text(
+                                "${section.count}",
+                                fontSize = 12.sp,
+                                color = themeColors.badgeText,
+                            )
+                        }
                     } else null,
-                    selected = selectedSection == section.key,
+                    selected = isSelected,
                     onClick = { onSectionClick(section.key) },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    colors = NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = themeColors.sidebarItemActive,
+                        unselectedContainerColor = Color.Transparent,
+                    ),
                 )
             }
         }
@@ -389,13 +481,14 @@ private fun WorkspaceDrawerContent(
 @Composable
 private fun SwipeableTaskItem(
     task: TaskUiItem,
+    themeColors: ContextThemeColorScheme,
     onCheckedChange: () -> Unit,
     onClick: () -> Unit,
     onSwipeComplete: () -> Unit,
     onSwipeMove: () -> Unit,
 ) {
     if (task.isCompleted) {
-        TaskListItemContent(task = task, onCheckedChange = onCheckedChange, onClick = onClick)
+        TaskListItemContent(task = task, themeColors = themeColors, onCheckedChange = onCheckedChange, onClick = onClick)
         return
     }
 
@@ -461,13 +554,14 @@ private fun SwipeableTaskItem(
         enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = true,
     ) {
-        TaskListItemContent(task = task, onCheckedChange = onCheckedChange, onClick = onClick)
+        TaskListItemContent(task = task, themeColors = themeColors, onCheckedChange = onCheckedChange, onClick = onClick)
     }
 }
 
 @Composable
 private fun TaskListItemContent(
     task: TaskUiItem,
+    themeColors: ContextThemeColorScheme,
     onCheckedChange: () -> Unit,
     onClick: () -> Unit,
 ) {
@@ -477,7 +571,7 @@ private fun TaskListItemContent(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = themeColors.taskCardBg,
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp),
     ) {
@@ -491,6 +585,11 @@ private fun TaskListItemContent(
                 Checkbox(
                     checked = task.isCompleted,
                     onCheckedChange = { if (!task.isCompleted) onCheckedChange() },
+                    colors = androidx.compose.material3.CheckboxDefaults.colors(
+                        uncheckedColor = themeColors.checkboxBorder,
+                        checkedColor = themeColors.checkboxChecked,
+                        checkmarkColor = if (themeColors.isDark) Color.White else Color.White,
+                    ),
                 )
 
                 Column(
@@ -503,9 +602,9 @@ private fun TaskListItemContent(
                         overflow = TextOverflow.Ellipsis,
                         textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
                         color = if (task.isCompleted) {
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            themeColors.taskCompletedText
                         } else {
-                            MaterialTheme.colorScheme.onSurface
+                            themeColors.taskText
                         },
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -513,7 +612,7 @@ private fun TaskListItemContent(
                             Text(
                                 text = task.dueDate,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = themeColors.taskSubtext,
                             )
                         }
                         if (task.hasSubtasks) {
@@ -523,7 +622,7 @@ private fun TaskListItemContent(
                             Text(
                                 text = "▸ subtasks",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = themeColors.accentColor,
                             )
                         }
                     }
@@ -537,7 +636,8 @@ private fun TaskListItemContent(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp)
                         .height(3.dp),
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    trackColor = themeColors.progressBg,
+                    color = themeColors.progressFill,
                 )
             }
         }

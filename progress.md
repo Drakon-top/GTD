@@ -1974,3 +1974,29 @@
 - Добавлена поддержка IP-only деплоя без домена и SSL
 - Настроен CI: workflow_dispatch, conditional docker/deploy jobs
 - Первый деплой на Yandex Cloud VPS (158.160.71.58)
+
+## 2026-05-26: Синхронизация иконок категорий + скролл
+### Исправлены проблемы:
+1. **Иконки категорий не синхронизировались между Web и Android**
+   - Web хранил Lucide-ключи (`book-open`, `briefcase`), Android хранил эмодзи (`📚`, `💼`)
+   - Категории, созданные на Android, показывали дефолтную иконку на Web и наоборот
+   - **Решение:** стандартизация на Lucide-ключах как каноническом формате
+     - Android: пикер иконок переведён с 16 эмодзи на 35 Lucide-ключей (идентично Web)
+     - Android: `LUCIDE_TO_EMOJI` и `resolveCategoryIcon()` вынесены в общий `CategoryIcons.kt`
+     - Android: `CategoryManagerDialog` теперь использует `resolveCategoryIcon()` для отображения
+     - Android: при редактировании старых категорий эмодзи нормализуются в Lucide-ключи
+     - Web: добавлен обратный маппинг `EMOJI_TO_LUCIDE` в `icons.ts` для совместимости со старыми данными
+
+2. **Отсутствовал скролл категорий на Android**
+   - Навигационный drawer не скроллился при большом количестве категорий
+   - Чипы категорий в TaskDetail переполняли экран без горизонтального скролла
+   - **Решение:**
+     - Добавлен `verticalScroll` к `WorkspaceDrawerContent` в drawer
+     - Добавлен `horizontalScroll` к строке категорий-чипов в `TaskDetailScreen`
+
+### Изменённые файлы:
+- `android/.../ui/workspace/CategoryIcons.kt` — новый: общий маппинг Lucide↔Emoji
+- `android/.../ui/workspace/CategoryManagerDialog.kt` — пикер на Lucide-ключах
+- `android/.../ui/workspace/WorkspaceScreen.kt` — вертикальный скролл drawer
+- `android/.../ui/task/TaskDetailScreen.kt` — горизонтальный скролл чипов
+- `frontend/src/utils/icons.ts` — обратный маппинг эмодзи→Lucide

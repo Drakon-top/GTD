@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -26,6 +27,8 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -34,12 +37,14 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,6 +66,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gtd.android.domain.model.GtdList
+import com.gtd.android.ui.theme.ContextThemeColorScheme
+import com.gtd.android.ui.theme.getContextTheme
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -77,36 +84,38 @@ fun TaskDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var showMenu by remember { mutableStateOf(false) }
+    val themeColors = getContextTheme(state.contextTheme)
 
     LaunchedEffect(state.isDeleted) {
         if (state.isDeleted) onNavigateBack()
     }
 
     Scaffold(
+        containerColor = themeColors.background,
         topBar = {
             TopAppBar(
-                title = { Text("Task", maxLines = 1) },
+                title = { Text("Task", maxLines = 1, color = themeColors.headerText) },
                 navigationIcon = {
                     IconButton(onClick = {
                         if (state.hasUnsavedChanges) viewModel.saveTask()
                         onNavigateBack()
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = themeColors.headerText)
                     }
                 },
                 actions = {
                     if (state.hasUnsavedChanges) {
                         IconButton(onClick = { viewModel.saveTask() }) {
                             if (state.isSaving) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = themeColors.accentColor)
                             } else {
-                                Icon(Icons.Default.Check, contentDescription = "Save")
+                                Icon(Icons.Default.Check, contentDescription = "Save", tint = themeColors.accentColor)
                             }
                         }
                     }
                     Box {
                         IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "More")
+                            Icon(Icons.Default.MoreVert, contentDescription = "More", tint = themeColors.headerText)
                         }
                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                             DropdownMenuItem(
@@ -135,6 +144,9 @@ fun TaskDetailScreen(
                         }
                     }
                 },
+                colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+                    containerColor = themeColors.headerBg,
+                ),
             )
         },
     ) { paddingValues ->
@@ -146,7 +158,7 @@ fun TaskDetailScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = themeColors.accentColor)
                 }
             }
             state.error != null && state.title.isEmpty() -> {
@@ -157,11 +169,11 @@ fun TaskDetailScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Failed to load task", style = MaterialTheme.typography.titleMedium)
+                        Text("Failed to load task", style = MaterialTheme.typography.titleMedium, color = themeColors.taskText)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(state.error!!, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Tap to retry", color = MaterialTheme.colorScheme.primary,
+                        Text("Tap to retry", color = themeColors.accentColor,
                             modifier = Modifier.clickable { viewModel.loadTask() })
                     }
                 }
@@ -174,21 +186,22 @@ fun TaskDetailScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
                 ) {
-                    TaskTitleSection(state, viewModel)
+                    TaskTitleSection(state, viewModel, themeColors)
                     Spacer(modifier = Modifier.height(16.dp))
-                    TaskMetadataSection(state, viewModel)
+                    TaskMetadataSection(state, viewModel, themeColors)
                     Spacer(modifier = Modifier.height(16.dp))
-                    TaskNotesSection(state, viewModel)
+                    TaskNotesSection(state, viewModel, themeColors)
 
                     if (state.progress != null) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        ProgressSection(state.progress!!)
+                        ProgressSection(state.progress!!, themeColors)
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
                     SubtasksSection(
                         subtasks = state.subtasks,
                         nestingLevel = state.nestingLevel,
+                        themeColors = themeColors,
                         onComplete = { viewModel.completeSubtask(it) },
                         onTap = onNavigateToSubtask,
                         onAddSubtask = { viewModel.showAddSubtask() },
@@ -198,6 +211,7 @@ fun TaskDetailScreen(
                     RemindersSection(
                         reminders = state.reminders,
                         isCompleted = state.isCompleted,
+                        themeColors = themeColors,
                         onAdd = { viewModel.showAddReminder() },
                         onDelete = { viewModel.deleteReminder(it) },
                     )
@@ -206,6 +220,7 @@ fun TaskDetailScreen(
                     RecurrenceSection(
                         recurrenceRule = state.recurrenceRule,
                         isCompleted = state.isCompleted,
+                        themeColors = themeColors,
                         onConfigure = { viewModel.showRecurrencePicker() },
                         onClear = { viewModel.setRecurrence(null) },
                     )
@@ -255,47 +270,67 @@ fun TaskDetailScreen(
 }
 
 @Composable
-private fun TaskTitleSection(state: TaskDetailUiState, viewModel: TaskDetailViewModel) {
+private fun TaskTitleSection(state: TaskDetailUiState, viewModel: TaskDetailViewModel, themeColors: ContextThemeColorScheme) {
     OutlinedTextField(
         value = state.title,
         onValueChange = { viewModel.updateTitle(it) },
-        label = { Text("Title") },
+        label = { Text("Title", color = themeColors.taskSubtext) },
         modifier = Modifier.fillMaxWidth(),
-        textStyle = MaterialTheme.typography.titleLarge,
+        textStyle = MaterialTheme.typography.titleLarge.copy(color = themeColors.taskText),
         singleLine = false,
         maxLines = 3,
         enabled = !state.isCompleted,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = themeColors.taskText,
+            unfocusedTextColor = themeColors.taskText,
+            focusedBorderColor = themeColors.accentColor,
+            unfocusedBorderColor = themeColors.inputBorder,
+            focusedLabelColor = themeColors.accentColor,
+            unfocusedLabelColor = themeColors.taskSubtext,
+            cursorColor = themeColors.accentColor,
+            focusedContainerColor = themeColors.inputBg,
+            unfocusedContainerColor = themeColors.inputBg,
+        ),
     )
 }
 
 @Composable
-private fun TaskMetadataSection(state: TaskDetailUiState, viewModel: TaskDetailViewModel) {
+private fun TaskMetadataSection(state: TaskDetailUiState, viewModel: TaskDetailViewModel, themeColors: ContextThemeColorScheme) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Details", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Text("Details", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = themeColors.taskText)
 
-        // GTD List chip
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("List: ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("List: ", style = MaterialTheme.typography.bodyMedium, color = themeColors.taskSubtext)
             AssistChip(
                 onClick = { viewModel.showMoveDialog() },
                 label = {
                     val label = GTD_LIST_LABELS[state.gtdList] ?: state.gtdList
-                    Text(label)
+                    Text(label, color = themeColors.taskText)
                 },
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = themeColors.cardBg,
+                    labelColor = themeColors.taskText,
+                ),
+                border = BorderStroke(1.dp, themeColors.inputBorder),
             )
         }
 
-        // Due date
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Due: ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Due: ", style = MaterialTheme.typography.bodyMedium, color = themeColors.taskSubtext)
             AssistChip(
                 onClick = { viewModel.showDatePicker() },
                 label = {
-                    Text(state.dueDate.ifBlank { "No due date" })
+                    Text(state.dueDate.ifBlank { "No due date" }, color = themeColors.taskText)
                 },
                 leadingIcon = {
-                    Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp), tint = themeColors.accentColor)
                 },
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = themeColors.cardBg,
+                    labelColor = themeColors.taskText,
+                    leadingIconContentColor = themeColors.accentColor,
+                ),
+                border = BorderStroke(1.dp, themeColors.inputBorder),
             )
             if (state.dueDate.isNotBlank()) {
                 IconButton(onClick = { viewModel.clearDueDate() }, modifier = Modifier.size(32.dp)) {
@@ -304,20 +339,38 @@ private fun TaskMetadataSection(state: TaskDetailUiState, viewModel: TaskDetailV
             }
         }
 
-        // Category
         if (state.categories.isNotEmpty()) {
-            Text("Category", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Category", style = MaterialTheme.typography.bodyMedium, color = themeColors.taskSubtext)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                val noneSelected = state.categoryId == null
                 FilterChip(
-                    selected = state.categoryId == null,
+                    selected = noneSelected,
                     onClick = { viewModel.updateCategory(null) },
                     label = { Text("None") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = themeColors.cardBg,
+                        labelColor = themeColors.taskText,
+                        selectedContainerColor = themeColors.accentColor,
+                        selectedLabelColor = themeColors.btnPrimaryText,
+                    ),
+                    border = BorderStroke(1.dp, if (noneSelected) themeColors.accentColor else themeColors.inputBorder),
                 )
                 state.categories.forEach { cat ->
+                    val catSelected = state.categoryId == cat.id
                     FilterChip(
-                        selected = state.categoryId == cat.id,
+                        selected = catSelected,
                         onClick = { viewModel.updateCategory(cat.id) },
                         label = { Text(cat.name) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = themeColors.cardBg,
+                            labelColor = themeColors.taskText,
+                            selectedContainerColor = themeColors.accentColor,
+                            selectedLabelColor = themeColors.btnPrimaryText,
+                        ),
+                        border = BorderStroke(1.dp, if (catSelected) themeColors.accentColor else themeColors.inputBorder),
                     )
                 }
             }
@@ -327,7 +380,7 @@ private fun TaskMetadataSection(state: TaskDetailUiState, viewModel: TaskDetailV
             Text(
                 "✅ Completed",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = themeColors.accentColor,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -335,9 +388,9 @@ private fun TaskMetadataSection(state: TaskDetailUiState, viewModel: TaskDetailV
 }
 
 @Composable
-private fun TaskNotesSection(state: TaskDetailUiState, viewModel: TaskDetailViewModel) {
+private fun TaskNotesSection(state: TaskDetailUiState, viewModel: TaskDetailViewModel, themeColors: ContextThemeColorScheme) {
     Column {
-        Text("Notes", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Text("Notes", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = themeColors.taskText)
         Spacer(modifier = Modifier.height(4.dp))
         OutlinedTextField(
             value = state.notes,
@@ -345,16 +398,28 @@ private fun TaskNotesSection(state: TaskDetailUiState, viewModel: TaskDetailView
             modifier = Modifier
                 .fillMaxWidth()
                 .height(120.dp),
-            placeholder = { Text("Add notes...") },
+            placeholder = { Text("Add notes...", color = themeColors.taskSubtext) },
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = themeColors.taskText),
             enabled = !state.isCompleted,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = themeColors.taskText,
+                unfocusedTextColor = themeColors.taskText,
+                focusedBorderColor = themeColors.accentColor,
+                unfocusedBorderColor = themeColors.inputBorder,
+                focusedLabelColor = themeColors.accentColor,
+                unfocusedLabelColor = themeColors.taskSubtext,
+                cursorColor = themeColors.accentColor,
+                focusedContainerColor = themeColors.inputBg,
+                unfocusedContainerColor = themeColors.inputBg,
+            ),
         )
     }
 }
 
 @Composable
-private fun ProgressSection(progress: Int) {
+private fun ProgressSection(progress: Int, themeColors: ContextThemeColorScheme) {
     Column {
-        Text("Progress", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Text("Progress", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = themeColors.taskText)
         Spacer(modifier = Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             LinearProgressIndicator(
@@ -362,10 +427,11 @@ private fun ProgressSection(progress: Int) {
                 modifier = Modifier
                     .weight(1f)
                     .height(6.dp),
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                trackColor = themeColors.progressBg,
+                color = themeColors.progressFill,
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("$progress%", style = MaterialTheme.typography.bodySmall)
+            Text("$progress%", style = MaterialTheme.typography.bodySmall, color = themeColors.taskSubtext)
         }
     }
 }
@@ -374,6 +440,7 @@ private fun ProgressSection(progress: Int) {
 private fun SubtasksSection(
     subtasks: List<SubtaskUiItem>,
     nestingLevel: Int,
+    themeColors: ContextThemeColorScheme,
     onComplete: (String) -> Unit,
     onTap: (String) -> Unit,
     onAddSubtask: () -> Unit,
@@ -388,10 +455,11 @@ private fun SubtasksSection(
                 "Subtasks (${subtasks.size})",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
+                color = themeColors.taskText,
             )
             if (nestingLevel < 4) {
                 IconButton(onClick = onAddSubtask) {
-                    Icon(Icons.Default.Add, contentDescription = "Add subtask")
+                    Icon(Icons.Default.Add, contentDescription = "Add subtask", tint = themeColors.accentColor)
                 }
             }
         }
@@ -400,7 +468,7 @@ private fun SubtasksSection(
             Text(
                 if (nestingLevel < 4) "No subtasks yet" else "Maximum nesting depth reached",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = themeColors.taskSubtext,
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         } else {
@@ -408,6 +476,7 @@ private fun SubtasksSection(
                 SubtaskItem(
                     subtask = subtask,
                     indent = 0,
+                    themeColors = themeColors,
                     onComplete = onComplete,
                     onTap = onTap,
                 )
@@ -420,6 +489,7 @@ private fun SubtasksSection(
 private fun SubtaskItem(
     subtask: SubtaskUiItem,
     indent: Int,
+    themeColors: ContextThemeColorScheme,
     onComplete: (String) -> Unit,
     onTap: (String) -> Unit,
 ) {
@@ -435,26 +505,30 @@ private fun SubtaskItem(
                 checked = subtask.isCompleted,
                 onCheckedChange = { if (!subtask.isCompleted) onComplete(subtask.id) },
                 modifier = Modifier.size(36.dp),
+                colors = androidx.compose.material3.CheckboxDefaults.colors(
+                    uncheckedColor = themeColors.checkboxBorder,
+                    checkedColor = themeColors.checkboxChecked,
+                ),
             )
             Text(
                 text = subtask.title,
                 style = MaterialTheme.typography.bodyMedium,
                 textDecoration = if (subtask.isCompleted) TextDecoration.LineThrough else null,
-                color = if (subtask.isCompleted) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                else MaterialTheme.colorScheme.onSurface,
+                color = if (subtask.isCompleted) themeColors.taskCompletedText
+                else themeColors.taskText,
                 modifier = Modifier.weight(1f),
             )
             if (subtask.subtasks.isNotEmpty()) {
                 Text(
                     "${subtask.subtasks.size}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = themeColors.accentColor,
                     fontSize = 11.sp,
                 )
             }
         }
         subtask.subtasks.forEach { child ->
-            SubtaskItem(subtask = child, indent = indent + 1, onComplete = onComplete, onTap = onTap)
+            SubtaskItem(subtask = child, indent = indent + 1, themeColors = themeColors, onComplete = onComplete, onTap = onTap)
         }
     }
 }
@@ -580,6 +654,7 @@ private fun TaskDatePickerDialog(
 private fun RemindersSection(
     reminders: List<ReminderUiItem>,
     isCompleted: Boolean,
+    themeColors: ContextThemeColorScheme,
     onAdd: () -> Unit,
     onDelete: (String) -> Unit,
 ) {
@@ -594,18 +669,19 @@ private fun RemindersSection(
                     Icons.Default.Notifications,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = themeColors.taskSubtext,
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     "Reminders (${reminders.size})",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
+                    color = themeColors.taskText,
                 )
             }
             if (!isCompleted) {
                 IconButton(onClick = onAdd) {
-                    Icon(Icons.Default.Add, contentDescription = "Add reminder")
+                    Icon(Icons.Default.Add, contentDescription = "Add reminder", tint = themeColors.accentColor)
                 }
             }
         }
@@ -614,7 +690,7 @@ private fun RemindersSection(
             Text(
                 "No reminders set",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = themeColors.taskSubtext,
                 modifier = Modifier.padding(vertical = 4.dp),
             )
         } else {
@@ -630,6 +706,7 @@ private fun RemindersSection(
                     Text(
                         text = formatReminderTime(reminder.remindAt),
                         style = MaterialTheme.typography.bodyMedium,
+                        color = themeColors.taskText,
                         modifier = Modifier.weight(1f),
                     )
                     if (!isCompleted) {
@@ -652,6 +729,7 @@ private fun RemindersSection(
 private fun RecurrenceSection(
     recurrenceRule: String?,
     isCompleted: Boolean,
+    themeColors: ContextThemeColorScheme,
     onConfigure: () -> Unit,
     onClear: () -> Unit,
 ) {
@@ -666,13 +744,14 @@ private fun RecurrenceSection(
                     Icons.Default.Refresh,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = themeColors.taskSubtext,
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     "Recurrence",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
+                    color = themeColors.taskText,
                 )
             }
         }
@@ -682,13 +761,13 @@ private fun RecurrenceSection(
         if (recurrenceRule.isNullOrBlank()) {
             if (!isCompleted) {
                 TextButton(onClick = onConfigure) {
-                    Text("Set up recurring task")
+                    Text("Set up recurring task", color = themeColors.accentColor)
                 }
             } else {
                 Text(
                     "Not recurring",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = themeColors.taskSubtext,
                 )
             }
         } else {
