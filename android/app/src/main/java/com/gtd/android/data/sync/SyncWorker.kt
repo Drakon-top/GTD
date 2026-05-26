@@ -6,10 +6,12 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.gtd.android.data.local.TokenStorage
+import com.gtd.android.data.local.dao.ContextDao
 import com.gtd.android.data.local.dao.PendingChangeDao
 import com.gtd.android.data.local.dao.TaskDao
 import com.gtd.android.data.local.entity.PendingChangeEntity
 import com.gtd.android.data.remote.api.GtdApi
+import com.gtd.android.data.remote.dto.CreateContextRequest
 import com.gtd.android.data.remote.dto.CreateTaskRequest
 import com.gtd.android.data.remote.dto.SyncChangeRequest
 import com.gtd.android.data.remote.dto.SyncPushRequest
@@ -25,6 +27,7 @@ class SyncWorker @AssistedInject constructor(
     private val api: GtdApi,
     private val pendingChangeDao: PendingChangeDao,
     private val taskDao: TaskDao,
+    private val contextDao: ContextDao,
     private val tokenStorage: TokenStorage,
 ) : CoroutineWorker(appContext, params) {
 
@@ -199,9 +202,33 @@ class SyncWorker @AssistedInject constructor(
     }
 
     private suspend fun syncContextChange(change: PendingChangeEntity): Boolean {
-        // Context create sync is still limited; mark as synced to avoid blocking
-        Log.w(TAG, "Context sync not fully implemented for: ${change.changeType}")
-        return true
+        val entity = contextDao.getById(change.entityId) ?: return true
+
+        return when (change.changeType) {
+            "UPDATE" -> {
+                val request = CreateContextRequest(
+                    name = entity.name,
+                    theme = entity.theme,
+                    icon = entity.icon,
+                    sortOrder = entity.sortOrder,
+                )
+                val response = api.updateContext(change.entityId, request)
+                if (response.isSuccessful) {
+                    val userId = tokenStorage.getUserId() ?: ""
+                    response.body()?.let { dto ->
+                        contextDao.insert(dto.toEntity(userId))
+                    }
+                    true
+                } else {
+                    Log.w(TAG, "Context UPDATE sync failed: HTTP ${response.code()}")
+                    false
+                }
+            }
+            else -> {
+                Log.w(TAG, "Context sync not implemented for: ${change.changeType}")
+                true
+            }
+        }
     }
 
     private suspend fun syncTaskCrudChange(change: PendingChangeEntity): Boolean {

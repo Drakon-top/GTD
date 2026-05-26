@@ -104,6 +104,7 @@ export interface ThemeColors {
   iceDotIndicator: boolean;
   iceBreathingBg: boolean;
   iceForgeStamp: boolean;
+  colorScheme: 'light' | 'dark';
 }
 
 const MINIMALIST: ThemeColors = {
@@ -207,6 +208,7 @@ const MINIMALIST: ThemeColors = {
   iceDotIndicator: false,
   iceBreathingBg: false,
   iceForgeStamp: false,
+  colorScheme: 'light',
 };
 
 const DESIGN: ThemeColors = {
@@ -310,6 +312,7 @@ const DESIGN: ThemeColors = {
   iceDotIndicator: false,
   iceBreathingBg: false,
   iceForgeStamp: false,
+  colorScheme: 'light',
 };
 
 const FORMAL: ThemeColors = {
@@ -413,6 +416,7 @@ const FORMAL: ThemeColors = {
   iceDotIndicator: false,
   iceBreathingBg: false,
   iceForgeStamp: false,
+  colorScheme: 'light',
 };
 
 const NATURE: ThemeColors = {
@@ -516,6 +520,7 @@ const NATURE: ThemeColors = {
   iceDotIndicator: false,
   iceBreathingBg: false,
   iceForgeStamp: false,
+  colorScheme: 'light',
 };
 
 const DARK: ThemeColors = {
@@ -619,6 +624,7 @@ const DARK: ThemeColors = {
   iceDotIndicator: false,
   iceBreathingBg: false,
   iceForgeStamp: false,
+  colorScheme: 'dark',
 };
 
 const DRAGONS: ThemeColors = {
@@ -722,6 +728,7 @@ const DRAGONS: ThemeColors = {
   iceDotIndicator: false,
   iceBreathingBg: false,
   iceForgeStamp: false,
+  colorScheme: 'dark',
 };
 
 const ICE_DRAGONS: ThemeColors = {
@@ -825,6 +832,7 @@ const ICE_DRAGONS: ThemeColors = {
   iceDotIndicator: true,
   iceBreathingBg: true,
   iceForgeStamp: true,
+  colorScheme: 'dark',
 };
 
 const THEME_MAP: Record<ContextTheme, ThemeColors> = {

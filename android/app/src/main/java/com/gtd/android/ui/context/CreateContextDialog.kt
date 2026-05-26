@@ -36,19 +36,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gtd.android.ui.theme.THEME_PREVIEWS
 
-private data class ThemeOption(val key: String, val label: String, val color: Color, val textColor: Color)
 private data class IconOption(val key: String, val emoji: String)
-
-private val THEMES = listOf(
-    ThemeOption("MINIMALIST", "Minimal", Color(0xFFF5F5F5), Color.Black),
-    ThemeOption("DESIGN", "Design", Color(0xFF7C3AED), Color.White),
-    ThemeOption("FORMAL", "Formal", Color(0xFF1F2937), Color.White),
-    ThemeOption("NATURE", "Nature", Color(0xFF059669), Color.White),
-    ThemeOption("DARK", "Dark", Color(0xFF18181B), Color.White),
-    ThemeOption("DRAGONS", "Dragons", Color(0xFF78350F), Color(0xFFFBBF24)),
-    ThemeOption("ICE_DRAGONS", "Ice", Color(0xFF0C4A6E), Color(0xFF7DD3FC)),
-)
 
 private val ICONS = listOf(
     IconOption("briefcase", "\uD83D\uDCBC"),
@@ -105,16 +95,16 @@ fun CreateContextDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    THEMES.forEach { theme ->
+                    THEME_PREVIEWS.forEach { theme ->
                         val isSelected = selectedTheme == theme.key
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(theme.color)
+                                .background(theme.bgColor)
                                 .then(
                                     if (isSelected) Modifier.border(
                                         2.dp,
-                                        MaterialTheme.colorScheme.primary,
+                                        theme.primaryColor,
                                         RoundedCornerShape(8.dp),
                                     ) else Modifier
                                 )

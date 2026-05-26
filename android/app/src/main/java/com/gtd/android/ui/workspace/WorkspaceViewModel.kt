@@ -45,6 +45,7 @@ data class SidebarSection(
     val label: String,
     val count: Int,
     val isGtdList: Boolean,
+    val icon: String? = null,
 )
 
 data class WorkspaceUiState(
@@ -84,6 +85,8 @@ class WorkspaceViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(WorkspaceUiState())
     val uiState: StateFlow<WorkspaceUiState> = _uiState.asStateFlow()
 
+    private var themeOverride: String? = null
+
     init {
         loadAll()
         observeSyncStatus()
@@ -111,11 +114,15 @@ class WorkspaceViewModel @Inject constructor(
             if (contextResult is ApiResult.Success) {
                 val ctx = contextResult.data.find { it.id == contextId }
                 if (ctx != null) {
+                    val effectiveTheme = themeOverride ?: ctx.theme
                     _uiState.value = _uiState.value.copy(
                         contextName = ctx.name,
-                        contextTheme = ctx.theme,
+                        contextTheme = effectiveTheme,
                         contextIcon = ctx.icon,
                     )
+                    if (themeOverride != null && ctx.theme == themeOverride) {
+                        themeOverride = null
+                    }
                 }
             }
 
@@ -160,6 +167,7 @@ class WorkspaceViewModel @Inject constructor(
                     label = cat.name,
                     count = cat.taskCount,
                     isGtdList = false,
+                    icon = cat.icon,
                 )
             }
 
@@ -351,6 +359,7 @@ class WorkspaceViewModel @Inject constructor(
             val s = _uiState.value
             when (repository.updateContext(contextId, s.contextName, newTheme, s.contextIcon)) {
                 is ApiResult.Success -> {
+                    themeOverride = newTheme
                     _uiState.value = _uiState.value.copy(contextTheme = newTheme, showThemePicker = false)
                     syncManager.requestSync()
                 }

@@ -233,6 +233,7 @@ export default function TaskDetailPanel({
             onChange={(e) => handleMove(e.target.value as GtdList)}
             disabled={task.isCompleted}
             className={`w-full ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
+            style={{ colorScheme: theme.colorScheme }}
           >
             {GTD_OPTIONS.map((g) => (
               <option key={g} value={g}>{gtdListLabel(g)}</option>
@@ -252,6 +253,7 @@ export default function TaskDetailPanel({
               onChange={(e) => handleDueDateChange(e.target.value)}
               disabled={task.isCompleted}
               className={`flex-1 ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
+              style={{ colorScheme: theme.colorScheme }}
             />
             {task.dueDate && !task.isCompleted && (
               <button
@@ -275,6 +277,7 @@ export default function TaskDetailPanel({
             onChange={(e) => handleCategoryChange(e.target.value)}
             disabled={task.isCompleted}
             className={`w-full ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1.5 text-sm ${theme.inputText} outline-none ${theme.inputFocus} disabled:opacity-50`}
+            style={{ colorScheme: theme.colorScheme }}
           >
             <option value="">No category</option>
             {categories.map((cat) => (
@@ -851,6 +854,7 @@ function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCom
                 value={remindAt}
                 onChange={(e) => setRemindAt(e.target.value)}
                 className={`flex-1 ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
+                style={{ colorScheme: theme.colorScheme }}
               />
               <button
                 type="button"
@@ -867,6 +871,7 @@ function ReminderSection({ taskId, isCompleted, theme }: { taskId: string; isCom
                 value={selectedPreset}
                 onChange={(e) => setSelectedPreset(Number(e.target.value))}
                 className={`flex-1 ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
+                style={{ colorScheme: theme.colorScheme }}
               >
                 {OFFSET_PRESETS.map((p, i) => (
                   <option key={i} value={i}>{p.label}</option>
@@ -1005,6 +1010,7 @@ function RecurrenceSection({
             value={selectedPreset}
             onChange={(e) => setSelectedPreset(Number(e.target.value))}
             className={`mb-2 w-full ${theme.borderRadius} border ${theme.inputBorder} ${theme.inputBg} px-2 py-1 text-xs ${theme.inputText} outline-none ${theme.inputFocus}`}
+            style={{ colorScheme: theme.colorScheme }}
           >
             {RECURRENCE_PRESETS.map((p, i) => (
               <option key={i} value={i}>{p.label}</option>

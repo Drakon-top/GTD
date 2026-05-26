@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,23 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-private data class ThemeOption(
-    val key: String,
-    val label: String,
-    val primaryColor: Color,
-    val bgColor: Color,
-)
-
-private val THEMES = listOf(
-    ThemeOption("MINIMALIST", "Minimalist", Color(0xFF6B7280), Color(0xFFF5F5F5)),
-    ThemeOption("DESIGN", "Design", Color(0xFF7C3AED), Color(0xFFF5F3FF)),
-    ThemeOption("FORMAL", "Formal", Color(0xFF374151), Color(0xFFF9FAFB)),
-    ThemeOption("NATURE", "Nature", Color(0xFF059669), Color(0xFFF0FDF4)),
-    ThemeOption("DARK", "Dark", Color(0xFFA78BFA), Color(0xFF18181B)),
-    ThemeOption("DRAGONS", "Dragons", Color(0xFFF59E0B), Color(0xFF1C1917)),
-    ThemeOption("ICE_DRAGONS", "Ice Dragons", Color(0xFF38BDF8), Color(0xFF0C4A6E)),
-)
+import com.gtd.android.ui.theme.THEME_PREVIEWS
 
 @Composable
 fun ThemePickerDialog(
@@ -59,7 +42,7 @@ fun ThemePickerDialog(
         title = { Text("Change Theme") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                THEMES.forEach { theme ->
+                THEME_PREVIEWS.forEach { theme ->
                     val isSelected = theme.key == currentTheme
                     Row(
                         modifier = Modifier
@@ -98,8 +81,7 @@ fun ThemePickerDialog(
                             text = theme.label,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (theme.key in listOf("DARK", "DRAGONS", "ICE_DRAGONS"))
-                                Color.White else Color(0xFF1F2937),
+                            color = theme.textColor,
                         )
                     }
                 }

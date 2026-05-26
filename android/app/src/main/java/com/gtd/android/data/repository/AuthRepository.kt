@@ -1,5 +1,6 @@
 package com.gtd.android.data.repository
 
+import com.gtd.android.data.local.GtdDatabase
 import com.gtd.android.data.local.TokenStorage
 import com.gtd.android.data.local.dao.UserDao
 import com.gtd.android.data.local.entity.UserEntity
@@ -23,6 +24,7 @@ class AuthRepository @Inject constructor(
     private val authApi: AuthApi,
     private val tokenStorage: TokenStorage,
     private val userDao: UserDao,
+    private val database: GtdDatabase,
     private val json: Json,
     private val deviceTokenManager: DeviceTokenManager,
 ) {
@@ -72,6 +74,17 @@ class AuthRepository @Inject constructor(
             if (response.isSuccessful) {
                 val body = response.body() ?: return AuthResult.Error("Empty response")
                 tokenStorage.saveAccessToken(body.accessToken)
+                val userId = tokenStorage.getUserId()
+                val email = tokenStorage.getUserEmail()
+                if (!userId.isNullOrBlank()) {
+                    userDao.insert(
+                        UserEntity(
+                            id = userId,
+                            email = email ?: "",
+                            passwordHash = "",
+                        )
+                    )
+                }
                 try { deviceTokenManager.registerTokenIfNeeded() } catch (_: Exception) {}
                 AuthResult.Success(Unit)
             } else {
@@ -87,13 +100,22 @@ class AuthRepository @Inject constructor(
             try { deviceTokenManager.unregisterToken() } catch (_: Exception) {}
             authApi.logout()
             tokenStorage.clear()
-            userDao.deleteAll()
+            clearLocalDatabase()
             AuthResult.Success(Unit)
         } catch (e: Exception) {
             tokenStorage.clear()
-            userDao.deleteAll()
+            clearLocalDatabase()
             AuthResult.Success(Unit)
         }
+    }
+
+    private suspend fun clearLocalDatabase() {
+        database.reminderDao().deleteAll()
+        database.pendingChangeDao().deleteAll()
+        database.taskDao().deleteAll()
+        database.categoryDao().deleteAll()
+        database.contextDao().deleteAll()
+        database.userDao().deleteAll()
     }
 
     fun isLoggedIn(): Boolean = tokenStorage.isLoggedIn()

@@ -35,6 +35,7 @@ data class ReminderUiItem(
 data class TaskDetailUiState(
     val taskId: String = "",
     val contextId: String = "",
+    val contextTheme: String = "MINIMALIST",
     val title: String = "",
     val notes: String = "",
     val dueDate: String = "",
@@ -88,6 +89,11 @@ class TaskDetailViewModel @Inject constructor(
             val taskResult = repository.getTask(taskId)
             val categoriesResult = repository.getCategories(contextId)
             val remindersResult = repository.getReminders(taskId)
+            val contextResult = repository.getContexts()
+
+            val contextTheme = if (contextResult is ApiResult.Success) {
+                contextResult.data.find { it.id == contextId }?.theme ?: "MINIMALIST"
+            } else "MINIMALIST"
 
             when (taskResult) {
                 is ApiResult.Success -> {
@@ -102,6 +108,7 @@ class TaskDetailViewModel @Inject constructor(
                     } else emptyList()
 
                     _uiState.value = _uiState.value.copy(
+                        contextTheme = contextTheme,
                         title = task.title,
                         notes = task.notes ?: "",
                         dueDate = task.dueDate ?: "",
@@ -120,6 +127,7 @@ class TaskDetailViewModel @Inject constructor(
                 }
                 is ApiResult.Error -> {
                     _uiState.value = _uiState.value.copy(
+                        contextTheme = contextTheme,
                         error = taskResult.message,
                         isLoading = false,
                     )

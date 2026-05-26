@@ -49,25 +49,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gtd.android.data.sync.SyncStatus
 import com.gtd.android.ui.auth.AuthViewModel
+import com.gtd.android.ui.theme.getContextTheme
 import kotlinx.coroutines.launch
 
-private data class ThemeStyle(
-    val cardBg: Color,
-    val textColor: Color,
-    val badgeBg: Color,
-    val badgeText: Color,
-    val accentColor: Color,
-)
-
-private val THEME_STYLES = mapOf(
-    "MINIMALIST" to ThemeStyle(Color(0xFFF5F5F5), Color(0xFF1F2937), Color(0xFFE5E7EB), Color(0xFF374151), Color(0xFF6B7280)),
-    "DESIGN" to ThemeStyle(Color(0xFFF5F3FF), Color(0xFF5B21B6), Color(0xFFEDE9FE), Color(0xFF7C3AED), Color(0xFF7C3AED)),
-    "FORMAL" to ThemeStyle(Color(0xFFF9FAFB), Color(0xFF111827), Color(0xFFF3F4F6), Color(0xFF374151), Color(0xFF4B5563)),
-    "NATURE" to ThemeStyle(Color(0xFFF0FDF4), Color(0xFF065F46), Color(0xFFD1FAE5), Color(0xFF059669), Color(0xFF059669)),
-    "DARK" to ThemeStyle(Color(0xFF18181B), Color(0xFFF4F4F5), Color(0xFF27272A), Color(0xFFA78BFA), Color(0xFFA78BFA)),
-    "DRAGONS" to ThemeStyle(Color(0xFF1C1917), Color(0xFFFBBF24), Color(0xFF292524), Color(0xFFF59E0B), Color(0xFFF59E0B)),
-    "ICE_DRAGONS" to ThemeStyle(Color(0xFF0C4A6E), Color(0xFFE0F2FE), Color(0xFF075985), Color(0xFF7DD3FC), Color(0xFF38BDF8)),
-)
 
 private val ICON_MAP = mapOf(
     "briefcase" to "\uD83D\uDCBC", "home" to "\uD83C\uDFE0", "book" to "\uD83D\uDCDA",
@@ -248,7 +232,7 @@ private fun ContextCard(
     context: ContextUiItem,
     onClick: () -> Unit,
 ) {
-    val style = THEME_STYLES[context.theme] ?: THEME_STYLES["MINIMALIST"]!!
+    val themeColors = getContextTheme(context.theme)
 
     Card(
         modifier = Modifier
@@ -256,7 +240,7 @@ private fun ContextCard(
             .height(140.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = style.cardBg),
+        colors = CardDefaults.cardColors(containerColor = themeColors.cardBg),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
@@ -274,7 +258,7 @@ private fun ContextCard(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(style.accentColor.copy(alpha = 0.15f)),
+                        .background(themeColors.accentColor.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -287,13 +271,13 @@ private fun ContextCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(style.badgeBg)
+                            .background(themeColors.badgeBg)
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "${context.inboxCount}",
-                            color = style.badgeText,
+                            color = themeColors.badgeText,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -304,7 +288,7 @@ private fun ContextCard(
             Column {
                 Text(
                     text = context.name,
-                    color = style.textColor,
+                    color = themeColors.headerText,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
@@ -314,7 +298,7 @@ private fun ContextCard(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "${context.inboxCount} in Inbox",
-                        color = style.textColor.copy(alpha = 0.6f),
+                        color = themeColors.headerSubtext,
                         fontSize = 12.sp,
                     )
                 }

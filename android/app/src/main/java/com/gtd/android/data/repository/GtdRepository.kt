@@ -1,5 +1,6 @@
 package com.gtd.android.data.repository
 
+import android.util.Log
 import com.gtd.android.data.NetworkMonitor
 import com.gtd.android.data.flattenWithSubtasks
 import com.gtd.android.data.local.TokenStorage
@@ -8,11 +9,13 @@ import com.gtd.android.data.local.dao.ContextDao
 import com.gtd.android.data.local.dao.PendingChangeDao
 import com.gtd.android.data.local.dao.ReminderDao
 import com.gtd.android.data.local.dao.TaskDao
+import com.gtd.android.data.local.dao.UserDao
 import com.gtd.android.data.local.entity.CategoryEntity
 import com.gtd.android.data.local.entity.ContextEntity
 import com.gtd.android.data.local.entity.PendingChangeEntity
 import com.gtd.android.data.local.entity.ReminderEntity
 import com.gtd.android.data.local.entity.TaskEntity
+import com.gtd.android.data.local.entity.UserEntity
 import com.gtd.android.data.remote.api.GtdApi
 import com.gtd.android.data.remote.dto.CategoryDto
 import com.gtd.android.data.remote.dto.ContextDto
@@ -43,6 +46,7 @@ sealed class ApiResult<out T> {
 class GtdRepository @Inject constructor(
     private val api: GtdApi,
     private val json: Json,
+    private val userDao: UserDao,
     private val contextDao: ContextDao,
     private val taskDao: TaskDao,
     private val categoryDao: CategoryDao,
@@ -59,7 +63,14 @@ class GtdRepository @Inject constructor(
             val result = safeCall { api.getContexts() }
             if (result is ApiResult.Success) {
                 val userId = tokenStorage.getUserId() ?: ""
-                contextDao.insertAll(result.data.map { it.toEntity(userId) })
+                if (userId.isNotBlank()) {
+                    ensureUserExists(userId)
+                    try {
+                        contextDao.insertAll(result.data.map { it.toEntity(userId) })
+                    } catch (e: Exception) {
+                        Log.e("GtdRepository", "Failed to cache contexts locally", e)
+                    }
+                }
                 return result
             }
         }
@@ -81,7 +92,14 @@ class GtdRepository @Inject constructor(
             val result = safeCall { api.createContext(CreateContextRequest(name, theme, icon)) }
             if (result is ApiResult.Success) {
                 val userId = tokenStorage.getUserId() ?: ""
-                contextDao.insert(result.data.toEntity(userId))
+                if (userId.isNotBlank()) {
+                    try {
+                        ensureUserExists(userId)
+                        contextDao.insert(result.data.toEntity(userId))
+                    } catch (e: Exception) {
+                        Log.e("GtdRepository", "Failed to cache context locally", e)
+                    }
+                }
             }
             return result
         }
@@ -98,7 +116,13 @@ class GtdRepository @Inject constructor(
             createdAt = now,
             updatedAt = now,
         )
-        contextDao.insert(entity)
+        try {
+            ensureUserExists(userId)
+            contextDao.insert(entity)
+        } catch (e: Exception) {
+            Log.e("GtdRepository", "Failed to insert context locally", e)
+            return ApiResult.Error("Local database error: ${e.message}")
+        }
         trackChange("CONTEXT", localId, "CREATE", null, name)
         return ApiResult.Success(entity.toDto())
     }
@@ -157,7 +181,12 @@ class GtdRepository @Inject constructor(
         if (networkMonitor.isCurrentlyOnline()) {
             val result = safeCall { api.createTask(contextId, CreateTaskRequest(title = title)) }
             if (result is ApiResult.Success) {
-                taskDao.insert(result.data.toEntity())
+                try {
+                    ensureContextExists(contextId)
+                    taskDao.insert(result.data.toEntity())
+                } catch (e: Exception) {
+                    Log.e("GtdRepository", "Failed to cache task locally", e)
+                }
             }
             return result
         }
@@ -172,7 +201,13 @@ class GtdRepository @Inject constructor(
             createdAt = now,
             updatedAt = now,
         )
-        taskDao.insert(entity)
+        try {
+            ensureContextExists(contextId)
+            taskDao.insert(entity)
+        } catch (e: Exception) {
+            Log.e("GtdRepository", "Failed to insert task locally", e)
+            return ApiResult.Error("Local database error: ${e.message}")
+        }
         trackChange("TASK", localId, "CREATE", null, title)
         return ApiResult.Success(entity.toDto())
     }
@@ -204,7 +239,11 @@ class GtdRepository @Inject constructor(
         if (networkMonitor.isCurrentlyOnline()) {
             val result = safeCall { api.updateTask(taskId, request) }
             if (result is ApiResult.Success) {
-                taskDao.insert(result.data.toEntity())
+                try {
+                    taskDao.insert(result.data.toEntity())
+                } catch (e: Exception) {
+                    Log.e("GtdRepository", "Failed to cache updated task locally", e)
+                }
             }
             return result
         }
@@ -246,7 +285,11 @@ class GtdRepository @Inject constructor(
         if (networkMonitor.isCurrentlyOnline()) {
             val result = safeCall { api.moveTask(taskId, MoveTaskRequest(gtdList)) }
             if (result is ApiResult.Success) {
-                taskDao.insert(result.data.toEntity())
+                try {
+                    taskDao.insert(result.data.toEntity())
+                } catch (e: Exception) {
+                    Log.e("GtdRepository", "Failed to cache moved task locally", e)
+                }
             }
             return result
         }
@@ -263,7 +306,11 @@ class GtdRepository @Inject constructor(
         if (networkMonitor.isCurrentlyOnline()) {
             val result = safeCall { api.completeTask(taskId) }
             if (result is ApiResult.Success) {
-                taskDao.insert(result.data.toEntity())
+                try {
+                    taskDao.insert(result.data.toEntity())
+                } catch (e: Exception) {
+                    Log.e("GtdRepository", "Failed to cache completed task locally", e)
+                }
                 return result
             }
         }
@@ -286,7 +333,11 @@ class GtdRepository @Inject constructor(
         if (networkMonitor.isCurrentlyOnline()) {
             val result = safeCall { api.createSubtask(parentId, CreateTaskRequest(title = title)) }
             if (result is ApiResult.Success) {
-                taskDao.insert(result.data.toEntity())
+                try {
+                    taskDao.insert(result.data.toEntity())
+                } catch (e: Exception) {
+                    Log.e("GtdRepository", "Failed to cache subtask locally", e)
+                }
             }
             return result
         }
@@ -313,7 +364,11 @@ class GtdRepository @Inject constructor(
         if (networkMonitor.isCurrentlyOnline()) {
             val result = safeCall { api.getSubtasks(taskId) }
             if (result is ApiResult.Success) {
-                result.data.forEach { taskDao.insert(it.toEntity()) }
+                try {
+                    result.data.forEach { taskDao.insert(it.toEntity()) }
+                } catch (e: Exception) {
+                    Log.e("GtdRepository", "Failed to cache subtasks locally", e)
+                }
                 return result
             }
         }
@@ -465,7 +520,12 @@ class GtdRepository @Inject constructor(
             val result = safeCall { api.updateContext(contextId, request) }
             if (result is ApiResult.Success) {
                 val userId = tokenStorage.getUserId() ?: ""
-                contextDao.insert(result.data.toEntity(userId))
+                if (userId.isNotBlank()) {
+                    try {
+                        ensureUserExists(userId)
+                        contextDao.insert(result.data.toEntity(userId))
+                    } catch (_: Exception) { }
+                }
             }
             return result
         }
@@ -554,7 +614,11 @@ class GtdRepository @Inject constructor(
     private suspend fun cacheTasksLocally(tasks: List<TaskDto>) {
         val entities = tasks.flattenWithSubtasks()
         if (entities.isNotEmpty()) {
-            taskDao.insertAll(entities)
+            try {
+                taskDao.insertAll(entities)
+            } catch (e: Exception) {
+                Log.e("GtdRepository", "Failed to cache tasks locally", e)
+            }
         }
     }
 
@@ -563,6 +627,36 @@ class GtdRepository @Inject constructor(
         if (subtasks.isEmpty()) return null
         val completed = subtasks.count { it.isCompleted }
         return (completed * 100) / subtasks.size
+    }
+
+    // ── FK safety helpers ──
+
+    private suspend fun ensureUserExists(userId: String) {
+        if (userDao.getById(userId) == null) {
+            val email = tokenStorage.getUserEmail() ?: ""
+            userDao.insert(UserEntity(id = userId, email = email, passwordHash = ""))
+        }
+    }
+
+    private suspend fun ensureContextExists(contextId: String) {
+        if (contextDao.getById(contextId) == null) {
+            val userId = tokenStorage.getUserId() ?: ""
+            if (userId.isNotBlank()) {
+                ensureUserExists(userId)
+                contextDao.insert(
+                    ContextEntity(
+                        id = contextId,
+                        userId = userId,
+                        name = "",
+                        theme = "MINIMALIST",
+                        icon = "",
+                        sortOrder = 0,
+                        createdAt = System.currentTimeMillis(),
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                )
+            }
+        }
     }
 
     // ── Network helpers ──

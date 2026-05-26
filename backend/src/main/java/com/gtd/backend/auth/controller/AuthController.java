@@ -19,7 +19,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,7 +38,6 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtProperties jwtProperties;
-    private final org.springframework.core.env.Environment environment;
 
     @Operation(summary = "Register a new user",
             description = "Creates a new user account with email and password. "
@@ -137,29 +138,25 @@ public class AuthController {
         return null;
     }
 
-    private boolean isSecureCookie() {
-        String[] profiles = environment.getActiveProfiles();
-        for (String p : profiles) {
-            if ("prod".equals(p)) return true;
-        }
-        return false;
-    }
-
     private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
-        Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE, refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(isSecureCookie());
-        cookie.setPath("/api/v1/auth");
-        cookie.setMaxAge((int) (jwtProperties.getRefreshTokenExpirationMs() / 1000));
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
+                .httpOnly(true)
+                .secure(jwtProperties.isCookieSecure())
+                .path("/api/v1/auth")
+                .maxAge(jwtProperties.getRefreshTokenExpirationMs() / 1000)
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     private void clearRefreshTokenCookie(HttpServletResponse response) {
-        Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE, "");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(isSecureCookie());
-        cookie.setPath("/api/v1/auth");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(jwtProperties.isCookieSecure())
+                .path("/api/v1/auth")
+                .maxAge(0)
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 }
