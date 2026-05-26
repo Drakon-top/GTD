@@ -35,11 +35,18 @@ sed "s/__DOMAIN__/$DOMAIN/g" "$NGINX_CONF_DIR/nginx-init.conf" > "$NGINX_GENERAT
 
 echo "[2/5] Starting Nginx for certificate verification..."
 cd "$PROJECT_DIR"
-docker compose -f docker-compose.prod.yml up -d nginx
+docker compose -f docker-compose.prod.yml stop nginx 2>/dev/null || true
+docker compose -f docker-compose.prod.yml rm -f nginx 2>/dev/null || true
+
+docker run -d --name gtd-nginx-acme \
+    -p 80:80 \
+    -v "$NGINX_GENERATED:/etc/nginx/conf.d/default.conf:ro" \
+    -v "$CERTBOT_DIR/www:/var/www/certbot" \
+    nginx:1.27-alpine
 sleep 3
 
-if ! docker compose -f docker-compose.prod.yml ps nginx | grep -q "Up\|running"; then
-    echo "Error: Nginx failed to start. Check: docker compose -f docker-compose.prod.yml logs nginx"
+if ! docker ps | grep -q gtd-nginx-acme; then
+    echo "Error: Nginx failed to start. Check: docker logs gtd-nginx-acme"
     exit 1
 fi
 echo "Nginx is running."
@@ -63,6 +70,9 @@ docker run --rm \
     -d "www.$DOMAIN" \
     $STAGING_ARG
 
+echo "[3.5/5] Stopping temporary Nginx..."
+docker stop gtd-nginx-acme && docker rm gtd-nginx-acme
+
 if [ ! -f "$CERTBOT_DIR/conf/live/$DOMAIN/fullchain.pem" ]; then
     echo "Error: Certificate not found after certbot run."
     echo "Check output above for errors. If DNS is not ready, try again later."
@@ -73,8 +83,8 @@ echo "Certificate obtained successfully."
 echo "[4/5] Switching Nginx to HTTPS configuration..."
 sed "s/__DOMAIN__/$DOMAIN/g" "$NGINX_CONF_DIR/nginx.conf" > "$NGINX_GENERATED"
 
-echo "[5/5] Reloading Nginx with HTTPS..."
-docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
+echo "[5/5] Starting all services with HTTPS..."
+docker compose -f docker-compose.prod.yml --profile ssl up -d
 
 echo ""
 echo "=== SSL Setup Complete ==="
