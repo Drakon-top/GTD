@@ -34,8 +34,28 @@ public class UpdateTaskRequest {
     @Schema(description = "Due date (ISO-8601 timestamp)")
     private Instant dueDate;
 
+    @JsonIgnore
+    @Schema(hidden = true)
+    @Builder.Default
+    private boolean dueDateProvided = false;
+
+    public void setDueDate(Instant dueDate) {
+        this.dueDate = dueDate;
+        this.dueDateProvided = true;
+    }
+
     @Schema(description = "Category ID")
     private UUID categoryId;
+
+    @JsonIgnore
+    @Schema(hidden = true)
+    @Builder.Default
+    private boolean categoryIdProvided = false;
+
+    public void setCategoryId(UUID categoryId) {
+        this.categoryId = categoryId;
+        this.categoryIdProvided = true;
+    }
 
     @Schema(description = "Sort order", example = "1")
     private Integer sortOrder;

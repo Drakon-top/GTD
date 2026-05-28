@@ -93,10 +93,10 @@ public class TaskService {
         if (request.getGtdList() != null) {
             task.setGtdList(request.getGtdList());
         }
-        if (request.getDueDate() != null) {
+        if (request.isDueDateProvided()) {
             task.setDueDate(request.getDueDate());
         }
-        if (request.getCategoryId() != null) {
+        if (request.isCategoryIdProvided()) {
             task.setCategoryId(request.getCategoryId());
         }
         if (request.getSortOrder() != null) {

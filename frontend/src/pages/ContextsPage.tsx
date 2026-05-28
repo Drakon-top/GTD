@@ -72,19 +72,23 @@ export default function ContextsPage() {
   const [contexts, setContexts] = useState<ContextResponse[]>([]);
   const [inboxCounts, setInboxCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [refreshKey, refresh] = useReducer((x: number) => x + 1, 0);
   const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
     loadContexts()
       .then(({ contexts: ctxs, inboxCounts: counts }) => {
         if (cancelled) return;
         setContexts(ctxs);
         setInboxCounts(counts);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setError('Failed to load contexts. Please try again.');
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -153,7 +157,18 @@ export default function ContextsPage() {
           )}
         </div>
 
-        {contexts.length === 0 ? (
+        {error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-12 text-center">
+            <h3 className="mb-1 text-base font-medium text-red-900">{error}</h3>
+            <button
+              type="button"
+              onClick={refresh}
+              className="mt-4 rounded-lg bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800"
+            >
+              Retry
+            </button>
+          </div>
+        ) : contexts.length === 0 ? (
           <div className="rounded-xl border border-dashed border-stone-300 bg-white p-12 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-stone-100">
               <Plus className="h-7 w-7 text-stone-400" />

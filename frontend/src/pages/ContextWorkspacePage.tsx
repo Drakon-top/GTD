@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useState } from 'react';
+import { useCallback, useEffect, useRef, useReducer, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
@@ -35,11 +35,28 @@ export default function ContextWorkspacePage() {
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<string>('INBOX');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [refreshKey, refresh] = useReducer((x: number) => x + 1, 0);
+  const [refreshKey, rawRefresh] = useReducer((x: number) => x + 1, 0);
   const [draggedTask, setDraggedTask] = useState<TaskResponse | null>(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialLoadDone = useRef(false);
+
+  const refresh = useCallback(() => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => {
+      refreshTimerRef.current = null;
+      rawRefresh();
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -60,8 +77,11 @@ export default function ContextWorkspacePage() {
         setContext(ctxRes.data);
         setCategories(catsRes.data);
         setCounts(countsRes.data);
+        initialLoadDone.current = true;
       } catch {
-        if (!cancelled) navigate('/contexts', { replace: true });
+        if (!cancelled && !initialLoadDone.current) {
+          navigate('/contexts', { replace: true });
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
