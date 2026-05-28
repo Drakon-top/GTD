@@ -35,6 +35,9 @@ public class NotificationConsumer {
         Map<String, String> data = new HashMap<>();
         data.put("type", "REMINDER");
         data.put("taskId", notification.getTaskId().toString());
+        if (notification.getContextId() != null) {
+            data.put("contextId", notification.getContextId().toString());
+        }
 
         pushNotificationService.sendPush(
                 notification.getUserId(),
@@ -56,6 +59,9 @@ public class NotificationConsumer {
         Map<String, String> data = new HashMap<>();
         data.put("type", "DEADLINE");
         data.put("taskId", notification.getTaskId().toString());
+        if (notification.getContextId() != null) {
+            data.put("contextId", notification.getContextId().toString());
+        }
 
         String body = notification.getHoursUntilDeadline() <= 1
                 ? "Due in less than 1 hour!"
@@ -83,6 +89,9 @@ public class NotificationConsumer {
         data.put("taskId", notification.getNewTaskId() != null
                 ? notification.getNewTaskId().toString()
                 : notification.getOriginalTaskId().toString());
+        if (notification.getContextId() != null) {
+            data.put("contextId", notification.getContextId().toString());
+        }
 
         pushNotificationService.sendPush(
                 notification.getUserId(),

@@ -55,6 +55,7 @@ public class NotificationScheduler {
                 ReminderNotification notification = ReminderNotification.builder()
                         .reminderId(reminder.getId())
                         .taskId(task.getId())
+                        .contextId(task.getContext().getId())
                         .userId(task.getContext().getUser().getId())
                         .taskTitle(task.getTitle())
                         .remindAt(reminder.getRemindAt())
@@ -96,6 +97,7 @@ public class NotificationScheduler {
 
                 DeadlineNotification notification = DeadlineNotification.builder()
                         .taskId(task.getId())
+                        .contextId(task.getContext().getId())
                         .userId(task.getContext().getUser().getId())
                         .taskTitle(task.getTitle())
                         .dueDate(task.getDueDate())

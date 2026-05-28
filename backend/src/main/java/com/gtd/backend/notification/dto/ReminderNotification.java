@@ -16,6 +16,7 @@ public class ReminderNotification {
 
     private UUID reminderId;
     private UUID taskId;
+    private UUID contextId;
     private UUID userId;
     private String taskTitle;
     private Instant remindAt;

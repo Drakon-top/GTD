@@ -106,6 +106,7 @@ public class RecurrenceScheduler {
         RecurrenceNotification notification = RecurrenceNotification.builder()
                 .originalTaskId(original.getId())
                 .newTaskId(newInstance.getId())
+                .contextId(original.getContext().getId())
                 .userId(original.getContext().getUser().getId())
                 .taskTitle(original.getTitle())
                 .recurrenceRule(original.getRecurrenceRule())

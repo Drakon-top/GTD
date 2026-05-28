@@ -16,6 +16,7 @@ public class RecurrenceNotification {
 
     private UUID originalTaskId;
     private UUID newTaskId;
+    private UUID contextId;
     private UUID userId;
     private String taskTitle;
     private String recurrenceRule;

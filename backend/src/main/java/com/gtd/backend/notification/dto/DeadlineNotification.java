@@ -15,6 +15,7 @@ import java.util.UUID;
 public class DeadlineNotification {
 
     private UUID taskId;
+    private UUID contextId;
     private UUID userId;
     private String taskTitle;
     private Instant dueDate;
