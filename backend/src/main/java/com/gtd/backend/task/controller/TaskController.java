@@ -192,6 +192,26 @@ public class TaskController {
         return ResponseEntity.ok(taskService.completeTask(id, userId));
     }
 
+    @Operation(summary = "Reopen a completed task",
+            description = "Marks the task as not completed. Sets is_completed=false, completed_at=null, gtd_list=INBOX.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Task reopened successfully",
+                    content = @Content(schema = @Schema(implementation = TaskResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Access denied to task",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Task not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/tasks/{id}/reopen")
+    public ResponseEntity<TaskResponse> reopenTask(
+            @PathVariable UUID id,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(taskService.reopenTask(id, userId));
+    }
+
     @Operation(summary = "Delete a task (soft delete)",
             description = "Marks the task as deleted. Cascades soft delete to all subtasks.")
     @ApiResponses({

@@ -24,6 +24,15 @@ async function fetchTask(taskId: string): Promise<TaskResponse> {
   return data;
 }
 
+function findSubtask(subtasks: TaskResponse[], id: string): TaskResponse | undefined {
+  for (const s of subtasks) {
+    if (s.id === id) return s;
+    const found = findSubtask(s.subtasks ?? [], id);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 export default function TaskDetailPanel({
   taskId,
   contextId,
@@ -137,7 +146,11 @@ export default function TaskDetailPanel({
   async function handleComplete() {
     if (!task) return;
     try {
-      await apiClient.patch(`/tasks/${task.id}/complete`);
+      if (task.isCompleted) {
+        await apiClient.patch(`/tasks/${task.id}/reopen`);
+      } else {
+        await apiClient.patch(`/tasks/${task.id}/complete`);
+      }
       onTaskChanged();
       onClose();
     } catch { /* silently fail */ }
@@ -150,8 +163,14 @@ export default function TaskDetailPanel({
   }, [taskId, onTaskChanged]);
 
   async function handleSubtaskToggle(subtaskId: string) {
+    if (!task) return;
+    const subtask = findSubtask(task.subtasks ?? [], subtaskId);
     try {
-      await apiClient.patch(`/tasks/${subtaskId}/complete`);
+      if (subtask?.isCompleted) {
+        await apiClient.patch(`/tasks/${subtaskId}/reopen`);
+      } else {
+        await apiClient.patch(`/tasks/${subtaskId}/complete`);
+      }
       await reloadTask();
     } catch { /* silently fail */ }
   }
@@ -383,15 +402,13 @@ export default function TaskDetailPanel({
           </div>
         ) : (
           <div className="flex gap-2">
-            {!task.isCompleted && (
-              <button
-                type="button"
-                onClick={handleComplete}
-                className={`flex-1 ${theme.borderRadius} ${theme.btnPrimary} px-3 py-1.5 text-sm font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover}`}
-              >
-                Complete
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleComplete}
+              className={`flex-1 ${theme.borderRadius} ${theme.btnPrimary} px-3 py-1.5 text-sm font-medium ${theme.btnPrimaryText} transition ${theme.btnPrimaryHover}`}
+            >
+              {task.isCompleted ? 'Reopen' : 'Complete'}
+            </button>
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
@@ -571,10 +588,9 @@ function SubtaskItem({
 
         <button
           type="button"
-          onClick={() => { if (!subtask.isCompleted) onToggle(subtask.id); }}
-          disabled={subtask.isCompleted}
+          onClick={() => { onToggle(subtask.id); }}
           className={`h-3.5 w-3.5 shrink-0 ${theme.checkboxRadius} border transition ${theme.transitionSpeed} ${theme.checkboxExtra} ${
-            subtask.isCompleted ? theme.checkboxChecked : `${theme.checkbox} cursor-pointer`
+            subtask.isCompleted ? `${theme.checkboxChecked} cursor-pointer` : `${theme.checkbox} cursor-pointer`
           } flex items-center justify-center`}
         >
           {subtask.isCompleted && <Check className="h-2.5 w-2.5" />}

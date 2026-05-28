@@ -77,6 +77,9 @@ interface GtdApi {
     @PATCH("tasks/{id}/complete")
     suspend fun completeTask(@Path("id") id: String): Response<TaskDto>
 
+    @PATCH("tasks/{id}/reopen")
+    suspend fun reopenTask(@Path("id") id: String): Response<TaskDto>
+
     // Subtasks
     @POST("tasks/{taskId}/subtasks")
     suspend fun createSubtask(

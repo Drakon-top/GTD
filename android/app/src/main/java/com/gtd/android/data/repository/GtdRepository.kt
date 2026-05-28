@@ -30,6 +30,7 @@ import com.gtd.android.data.remote.dto.TaskDto
 import com.gtd.android.data.remote.dto.UpdateTaskRequest
 import com.gtd.android.data.toDto
 import com.gtd.android.data.toEntity
+import com.gtd.android.notification.ReminderScheduler
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -54,6 +55,7 @@ class GtdRepository @Inject constructor(
     private val pendingChangeDao: PendingChangeDao,
     private val tokenStorage: TokenStorage,
     private val networkMonitor: NetworkMonitor,
+    private val reminderScheduler: ReminderScheduler,
 ) {
 
     // ── Contexts ──
@@ -327,6 +329,32 @@ class GtdRepository @Inject constructor(
         return ApiResult.Success(updated.toDto())
     }
 
+    suspend fun reopenTask(taskId: String): ApiResult<TaskDto> {
+        val now = System.currentTimeMillis()
+        if (networkMonitor.isCurrentlyOnline()) {
+            val result = safeCall { api.reopenTask(taskId) }
+            if (result is ApiResult.Success) {
+                try {
+                    taskDao.insert(result.data.toEntity())
+                } catch (e: Exception) {
+                    Log.e("GtdRepository", "Failed to cache reopened task locally", e)
+                }
+                return result
+            }
+        }
+        val entity = taskDao.getById(taskId) ?: return ApiResult.Error("Task not found")
+        val updated = entity.copy(
+            isCompleted = false,
+            completedAt = null,
+            gtdList = "INBOX",
+            updatedAt = now,
+            version = entity.version + 1,
+        )
+        taskDao.update(updated)
+        trackChange("TASK", taskId, "REOPEN", "true", "false")
+        return ApiResult.Success(updated.toDto())
+    }
+
     // ── Subtasks ──
 
     suspend fun createSubtask(parentId: String, title: String): ApiResult<TaskDto> {
@@ -462,25 +490,41 @@ class GtdRepository @Inject constructor(
         if (networkMonitor.isCurrentlyOnline()) {
             val result = safeCall { api.createReminder(taskId, request) }
             if (result is ApiResult.Success) {
-                reminderDao.insert(result.data.toEntity())
+                val reminderEntity = result.data.toEntity()
+                reminderDao.insert(reminderEntity)
+                scheduleAlarmForReminder(reminderEntity.id, taskId, reminderEntity.remindAt)
             }
             return result
         }
         val localId = UUID.randomUUID().toString()
+        val triggerAtMillis = java.time.Instant.parse(remindAt).toEpochMilli()
         val entity = ReminderEntity(
             id = localId,
             taskId = taskId,
-            remindAt = java.time.Instant.parse(remindAt).toEpochMilli(),
+            remindAt = triggerAtMillis,
             offsetType = offsetType,
             offsetValue = offsetValue,
             createdAt = System.currentTimeMillis(),
         )
         reminderDao.insert(entity)
+        scheduleAlarmForReminder(localId, taskId, triggerAtMillis)
         trackChange("REMINDER", localId, "CREATE", null, remindAt)
         return ApiResult.Success(entity.toDto())
     }
 
+    private suspend fun scheduleAlarmForReminder(reminderId: String, taskId: String, triggerAtMillis: Long) {
+        val task = taskDao.getById(taskId) ?: return
+        reminderScheduler.scheduleReminder(
+            reminderId = reminderId,
+            taskId = taskId,
+            contextId = task.contextId,
+            taskTitle = task.title,
+            triggerAtMillis = triggerAtMillis,
+        )
+    }
+
     suspend fun deleteReminder(reminderId: String): ApiResult<Unit> {
+        reminderScheduler.cancelReminder(reminderId)
         if (networkMonitor.isCurrentlyOnline()) {
             val result = safeCall { api.deleteReminder(reminderId) }
             if (result is ApiResult.Success) {

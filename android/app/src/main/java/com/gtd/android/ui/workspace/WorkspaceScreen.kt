@@ -250,7 +250,7 @@ fun WorkspaceScreen(
                                 SwipeableTaskItem(
                                     task = task,
                                     themeColors = themeColors,
-                                    onCheckedChange = { viewModel.completeTask(task.id) },
+                                    onCheckedChange = { viewModel.toggleTaskCompletion(task.id) },
                                     onClick = { onTaskClick(task.id) },
                                     onSwipeComplete = { viewModel.completeTask(task.id) },
                                     onSwipeMove = { viewModel.showMoveTask(task.id) },
@@ -584,7 +584,7 @@ private fun TaskListItemContent(
             ) {
                 Checkbox(
                     checked = task.isCompleted,
-                    onCheckedChange = { if (!task.isCompleted) onCheckedChange() },
+                    onCheckedChange = { onCheckedChange() },
                     colors = androidx.compose.material3.CheckboxDefaults.colors(
                         uncheckedColor = themeColors.checkboxBorder,
                         checkedColor = themeColors.checkboxChecked,

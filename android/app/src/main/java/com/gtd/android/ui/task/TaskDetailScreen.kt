@@ -134,6 +134,15 @@ fun TaskDetailScreen(
                                     },
                                 )
                             }
+                            if (state.isCompleted) {
+                                DropdownMenuItem(
+                                    text = { Text("Reopen") },
+                                    onClick = {
+                                        showMenu = false
+                                        viewModel.reopenTask()
+                                    },
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
                                 onClick = {
@@ -202,7 +211,7 @@ fun TaskDetailScreen(
                         subtasks = state.subtasks,
                         nestingLevel = state.nestingLevel,
                         themeColors = themeColors,
-                        onComplete = { viewModel.completeSubtask(it) },
+                        onComplete = { viewModel.toggleSubtaskCompletion(it) },
                         onTap = onNavigateToSubtask,
                         onAddSubtask = { viewModel.showAddSubtask() },
                     )
@@ -503,7 +512,7 @@ private fun SubtaskItem(
         ) {
             Checkbox(
                 checked = subtask.isCompleted,
-                onCheckedChange = { if (!subtask.isCompleted) onComplete(subtask.id) },
+                onCheckedChange = { onComplete(subtask.id) },
                 modifier = Modifier.size(36.dp),
                 colors = androidx.compose.material3.CheckboxDefaults.colors(
                     uncheckedColor = themeColors.checkboxBorder,

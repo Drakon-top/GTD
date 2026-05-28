@@ -236,6 +236,52 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 
+    fun reopenTask() {
+        viewModelScope.launch {
+            when (repository.reopenTask(taskId)) {
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadTask()
+                }
+                is ApiResult.Error -> { /* silently fail */ }
+            }
+        }
+    }
+
+    fun toggleTaskCompletion() {
+        if (_uiState.value.isCompleted) {
+            reopenTask()
+        } else {
+            completeTask()
+        }
+    }
+
+    fun toggleSubtaskCompletion(subtaskId: String) {
+        val subtask = findSubtask(_uiState.value.subtasks, subtaskId)
+        if (subtask?.isCompleted == true) {
+            viewModelScope.launch {
+                when (repository.reopenTask(subtaskId)) {
+                    is ApiResult.Success -> {
+                        syncManager.requestSync()
+                        loadTask()
+                    }
+                    is ApiResult.Error -> { /* silently fail */ }
+                }
+            }
+        } else {
+            completeSubtask(subtaskId)
+        }
+    }
+
+    private fun findSubtask(subtasks: List<SubtaskUiItem>, id: String): SubtaskUiItem? {
+        for (s in subtasks) {
+            if (s.id == id) return s
+            val found = findSubtask(s.subtasks, id)
+            if (found != null) return found
+        }
+        return null
+    }
+
     fun completeSubtask(subtaskId: String) {
         viewModelScope.launch {
             when (repository.completeTask(subtaskId)) {

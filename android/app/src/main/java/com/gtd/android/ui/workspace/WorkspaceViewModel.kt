@@ -259,6 +259,27 @@ class WorkspaceViewModel @Inject constructor(
         }
     }
 
+    fun reopenTask(taskId: String) {
+        viewModelScope.launch {
+            when (repository.reopenTask(taskId)) {
+                is ApiResult.Success -> {
+                    syncManager.requestSync()
+                    loadAll()
+                }
+                is ApiResult.Error -> { /* silently fail */ }
+            }
+        }
+    }
+
+    fun toggleTaskCompletion(taskId: String) {
+        val task = _uiState.value.tasks.find { it.id == taskId }
+        if (task?.isCompleted == true) {
+            reopenTask(taskId)
+        } else {
+            completeTask(taskId)
+        }
+    }
+
     fun showMoveTask(taskId: String) {
         val task = _uiState.value.tasks.find { it.id == taskId }
         _uiState.value = _uiState.value.copy(

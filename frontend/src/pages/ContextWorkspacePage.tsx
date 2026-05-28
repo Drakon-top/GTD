@@ -129,10 +129,14 @@ export default function ContextWorkspacePage() {
     const { task } = active.data.current as { task: TaskResponse };
 
     if (task.gtdList === targetList) return;
-    if (task.isCompleted) return;
 
     try {
-      await apiClient.patch(`/tasks/${task.id}/move`, { gtdList: targetList });
+      if (task.isCompleted) {
+        await apiClient.patch(`/tasks/${task.id}/reopen`);
+      }
+      if (targetList !== 'INBOX' || !task.isCompleted) {
+        await apiClient.patch(`/tasks/${task.id}/move`, { gtdList: targetList });
+      }
       refresh();
     } catch { /* silently fail */ }
   }

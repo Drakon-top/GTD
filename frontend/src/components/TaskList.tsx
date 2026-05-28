@@ -204,9 +204,12 @@ export default function TaskList({
 
   async function handleToggleComplete(task: TaskResponse, e: React.MouseEvent) {
     e.stopPropagation();
-    if (task.isCompleted) return;
     try {
-      await apiClient.patch(`/tasks/${task.id}/complete`);
+      if (task.isCompleted) {
+        await apiClient.patch(`/tasks/${task.id}/reopen`);
+      } else {
+        await apiClient.patch(`/tasks/${task.id}/complete`);
+      }
       onTasksChanged();
     } catch { /* silently fail */ }
   }
@@ -331,6 +334,18 @@ export default function TaskList({
               className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${theme.taskText} transition ${theme.transitionSpeed} ${theme.taskHover}`}
             >
               <CheckCircle className="h-3.5 w-3.5" /> Complete
+            </button>
+          )}
+          {contextTask.isCompleted && (
+            <button
+              type="button"
+              onClick={() => {
+                apiClient.patch(`/tasks/${contextMenu.taskId}/reopen`).then(onTasksChanged).catch(() => {});
+                setContextMenu(null);
+              }}
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${theme.taskText} transition ${theme.transitionSpeed} ${theme.taskHover}`}
+            >
+              <CheckCircle className="h-3.5 w-3.5" /> Reopen
             </button>
           )}
 

@@ -122,6 +122,18 @@ public class TaskService {
     }
 
     @Transactional
+    public TaskResponse reopenTask(UUID taskId, UUID userId) {
+        Task task = findTaskOrThrow(taskId);
+        verifyTaskOwnership(task, userId);
+
+        task.setCompleted(false);
+        task.setCompletedAt(null);
+        task.setGtdList(GtdList.INBOX);
+        Task saved = taskRepository.saveAndFlush(task);
+        return toResponse(saved);
+    }
+
+    @Transactional
     public TaskResponse completeTask(UUID taskId, UUID userId) {
         Task task = findTaskOrThrow(taskId);
         verifyTaskOwnership(task, userId);

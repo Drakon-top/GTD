@@ -268,6 +268,14 @@ class SyncWorker @AssistedInject constructor(
                     true
                 } else false
             }
+            "REOPEN" -> {
+                val response = api.reopenTask(change.entityId)
+                if (response.isSuccessful) {
+                    val serverTask = response.body() ?: return false
+                    taskDao.insert(serverTask.toEntity())
+                    true
+                } else false
+            }
             "DELETE" -> {
                 val response = api.deleteTask(change.entityId)
                 response.isSuccessful || response.code() == 404
