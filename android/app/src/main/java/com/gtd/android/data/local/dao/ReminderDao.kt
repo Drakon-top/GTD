@@ -1,19 +1,18 @@
 package com.gtd.android.data.local.dao
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.gtd.android.data.local.entity.ReminderEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ReminderDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insert(reminder: ReminderEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertAll(reminders: List<ReminderEntity>)
 
     @Update

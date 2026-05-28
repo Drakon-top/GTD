@@ -1,19 +1,18 @@
 package com.gtd.android.data.local.dao
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.gtd.android.data.local.entity.ContextEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ContextDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insert(context: ContextEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertAll(contexts: List<ContextEntity>)
 
     @Update
