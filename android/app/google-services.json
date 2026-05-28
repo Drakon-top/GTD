@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "gtd-app-placeholder",
-    "storage_bucket": "gtd-app-placeholder.appspot.com"
+    "project_number": "809013646413",
+    "project_id": "gtd-project-6392f",
+    "storage_bucket": "gtd-project-6392f.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "mobilesdk_app_id": "1:809013646413:android:4e9c467eead4e44fc53804",
         "android_client_info": {
           "package_name": "com.gtd.android"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyPlaceholderKeyForDevelopment000"
+          "current_key": "AIzaSyCEEH3Y6Adtr07zB1B1FSgkZ8u-GZTNzgY"
         }
       ],
       "services": {

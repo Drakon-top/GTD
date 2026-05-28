@@ -24,6 +24,15 @@ android {
         buildConfigField("String", "API_BASE_URL", "\"https://gtd-method.site/api/v1/\"")
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release-keystore.jks")
+            storePassword = "gtd2026release"
+            keyAlias = "gtd-release"
+            keyPassword = "gtd2026release"
+        }
+    }
+
     buildTypes {
         debug {
             buildConfigField("String", "API_BASE_URL", "\"https://gtd-method.site/api/v1/\"")
@@ -31,6 +40,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
