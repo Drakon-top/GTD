@@ -13,7 +13,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.gtd.android"
+        applicationId = "com.gtd.androidd"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -27,9 +27,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("release-keystore.jks")
-            storePassword = "gtd2026release"
-            keyAlias = "gtd-release"
-            keyPassword = "gtd2026release"
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "gtd2026release"
+            keyAlias = System.getenv("KEY_ALIAS") ?: "gtd-release"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "gtd2026release"
         }
     }
 
