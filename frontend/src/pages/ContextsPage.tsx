@@ -79,12 +79,12 @@ export default function ContextsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setError(null);
     loadContexts()
       .then(({ contexts: ctxs, inboxCounts: counts }) => {
         if (cancelled) return;
         setContexts(ctxs);
         setInboxCounts(counts);
+        setError(null);
       })
       .catch(() => {
         if (!cancelled) setError('Failed to load contexts. Please try again.');

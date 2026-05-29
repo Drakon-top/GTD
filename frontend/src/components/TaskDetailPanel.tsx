@@ -11,6 +11,7 @@ interface TaskDetailPanelProps {
   categories: CategoryResponse[];
   onClose: () => void;
   onTaskChanged: () => void;
+  onSubtaskClick?: (subtaskId: string) => void;
   theme: ThemeColors;
 }
 
@@ -39,6 +40,7 @@ export default function TaskDetailPanel({
   categories,
   onClose,
   onTaskChanged,
+  onSubtaskClick,
   theme,
 }: TaskDetailPanelProps) {
   const [task, setTask] = useState<TaskResponse | null>(null);
@@ -367,6 +369,7 @@ export default function TaskDetailPanel({
           isCompleted={task.isCompleted}
           onToggle={handleSubtaskToggle}
           onAdd={handleAddSubtask}
+          onSubtaskClick={onSubtaskClick}
           theme={theme}
         />
 
@@ -430,6 +433,7 @@ function SubtaskSection({
   isCompleted,
   onToggle,
   onAdd,
+  onSubtaskClick,
   theme,
 }: {
   parentId: string;
@@ -438,6 +442,7 @@ function SubtaskSection({
   isCompleted: boolean;
   onToggle: (subtaskId: string) => void;
   onAdd: (parentId: string, title: string) => void;
+  onSubtaskClick?: (subtaskId: string) => void;
   theme: ThemeColors;
 }) {
   const canAddMore = nestingLevel < 4;
@@ -478,6 +483,7 @@ function SubtaskSection({
           parentIsCompleted={isCompleted}
           onToggle={onToggle}
           onAdd={onAdd}
+          onSubtaskClick={onSubtaskClick}
           theme={theme}
         />
       )}
@@ -524,6 +530,7 @@ function SubtaskTree({
   parentIsCompleted,
   onToggle,
   onAdd,
+  onSubtaskClick,
   theme,
 }: {
   subtasks: TaskResponse[];
@@ -531,6 +538,7 @@ function SubtaskTree({
   parentIsCompleted: boolean;
   onToggle: (subtaskId: string) => void;
   onAdd: (parentId: string, title: string) => void;
+  onSubtaskClick?: (subtaskId: string) => void;
   theme: ThemeColors;
 }) {
   return (
@@ -543,6 +551,7 @@ function SubtaskTree({
           parentIsCompleted={parentIsCompleted}
           onToggle={onToggle}
           onAdd={onAdd}
+          onSubtaskClick={onSubtaskClick}
           theme={theme}
         />
       ))}
@@ -556,6 +565,7 @@ function SubtaskItem({
   parentIsCompleted,
   onToggle,
   onAdd,
+  onSubtaskClick,
   theme,
 }: {
   subtask: TaskResponse;
@@ -563,6 +573,7 @@ function SubtaskItem({
   parentIsCompleted: boolean;
   onToggle: (subtaskId: string) => void;
   onAdd: (parentId: string, title: string) => void;
+  onSubtaskClick?: (subtaskId: string) => void;
   theme: ThemeColors;
 }) {
   const [expanded, setExpanded] = useState(true);
@@ -596,7 +607,14 @@ function SubtaskItem({
           {subtask.isCompleted && <Check className="h-2.5 w-2.5" />}
         </button>
 
-        <span className={`flex-1 text-sm ${theme.fontFamily} ${subtask.isCompleted ? `${theme.taskCompletedText} line-through` : theme.taskText}`}>
+        <span
+          onClick={() => onSubtaskClick?.(subtask.id)}
+          className={`flex-1 text-sm ${theme.fontFamily} ${
+            subtask.isCompleted
+              ? `${theme.taskCompletedText} line-through`
+              : `${theme.taskText} ${onSubtaskClick ? `cursor-pointer ${theme.taskHover} rounded px-0.5 -mx-0.5` : ''}`
+          }`}
+        >
           {subtask.title}
         </span>
 
@@ -614,6 +632,7 @@ function SubtaskItem({
           parentIsCompleted={parentIsCompleted || subtask.isCompleted}
           onToggle={onToggle}
           onAdd={onAdd}
+          onSubtaskClick={onSubtaskClick}
           theme={theme}
         />
       )}

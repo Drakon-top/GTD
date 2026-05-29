@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "809013646413",
-    "project_id": "gtd-project-6392f",
-    "storage_bucket": "gtd-project-6392f.firebasestorage.app"
+    "project_number": "000000000000",
+    "project_id": "your-project-id",
+    "storage_bucket": "your-project-id.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:809013646413:android:4e9c467eead4e44fc53804",
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
         "android_client_info": {
           "package_name": "com.gtd.android"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCEEH3Y6Adtr07zB1B1FSgkZ8u-GZTNzgY"
+          "current_key": "YOUR_API_KEY_HERE"
         }
       ],
       "services": {

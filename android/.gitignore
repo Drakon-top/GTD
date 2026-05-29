@@ -13,4 +13,7 @@ local.properties
 *.apk
 *.aab
 # Real google-services.json should be provided per-environment
-# The committed placeholder allows builds without Firebase config
+# Use app/google-services.json.example as a template
+app/google-services.json
+*.jks
+*.keystore

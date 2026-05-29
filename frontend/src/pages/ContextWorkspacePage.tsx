@@ -290,6 +290,7 @@ export default function ContextWorkspacePage() {
               categories={categories}
               onClose={handleCloseDetail}
               onTaskChanged={handleTasksChanged}
+              onSubtaskClick={setSelectedTaskId}
               theme={theme}
             />
           )}

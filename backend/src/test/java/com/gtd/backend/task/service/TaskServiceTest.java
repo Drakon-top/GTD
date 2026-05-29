@@ -252,9 +252,9 @@ class TaskServiceTest {
                 .title("New title")
                 .notes("Updated notes")
                 .gtdList(GtdList.NEXT_ACTIONS)
-                .dueDate(dueDate)
                 .sortOrder(5)
                 .build();
+        request.setDueDate(dueDate);
 
         TaskResponse result = taskService.updateTask(taskId, request, userId);
 
