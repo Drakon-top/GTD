@@ -1,5 +1,6 @@
 package com.gtd.android.di
 
+import android.content.SharedPreferences
 import com.gtd.android.BuildConfig
 import com.gtd.android.data.remote.api.AuthApi
 import com.gtd.android.data.remote.api.GtdApi
@@ -33,10 +34,16 @@ object NetworkModule {
         encodeDefaults = true
     }
 
+    private const val COOKIE_PREFS_PREFIX = "cookie_"
+
     @Provides
     @Singleton
-    fun provideCookieJar(): CookieJar = object : CookieJar {
+    fun provideCookieJar(prefs: SharedPreferences): CookieJar = object : CookieJar {
         private val store = ConcurrentHashMap<String, MutableList<Cookie>>()
+
+        init {
+            loadFromPrefs()
+        }
 
         override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
             val key = url.host
@@ -48,11 +55,40 @@ object NetworkModule {
                     }
                 }
             }
+            persistForHost(key)
         }
 
         override fun loadForRequest(url: HttpUrl): List<Cookie> {
             val now = System.currentTimeMillis()
             return store[url.host]?.filter { it.expiresAt > now } ?: emptyList()
+        }
+
+        private fun persistForHost(host: String) {
+            val cookies = store[host] ?: return
+            val now = System.currentTimeMillis()
+            val serialized = cookies
+                .filter { it.expiresAt > now }
+                .joinToString("|") { it.toString() }
+            prefs.edit().putString("$COOKIE_PREFS_PREFIX$host", serialized).apply()
+        }
+
+        private fun loadFromPrefs() {
+            val now = System.currentTimeMillis()
+            prefs.all.forEach { (key, value) ->
+                if (key.startsWith(COOKIE_PREFS_PREFIX) && value is String && value.isNotEmpty()) {
+                    val host = key.removePrefix(COOKIE_PREFS_PREFIX)
+                    val dummyUrl = HttpUrl.Builder()
+                        .scheme("https")
+                        .host(host)
+                        .build()
+                    val cookies = value.split("|").mapNotNull { raw ->
+                        Cookie.parse(dummyUrl, raw)
+                    }.filter { it.expiresAt > now }
+                    if (cookies.isNotEmpty()) {
+                        store[host] = cookies.toMutableList()
+                    }
+                }
+            }
         }
     }
 
