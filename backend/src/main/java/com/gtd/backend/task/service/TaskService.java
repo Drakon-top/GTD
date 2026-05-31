@@ -249,7 +249,7 @@ public class TaskService {
                 .parentTask(parentTask)
                 .title(request.getTitle().trim())
                 .notes(request.getNotes())
-                .gtdList(request.getGtdList() != null ? request.getGtdList() : GtdList.INBOX)
+                .gtdList(request.getGtdList() != null ? request.getGtdList() : parentTask.getGtdList())
                 .dueDate(request.getDueDate())
                 .categoryId(request.getCategoryId())
                 .recurrenceRule(request.getRecurrenceRule())
